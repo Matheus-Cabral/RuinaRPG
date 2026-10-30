@@ -19,11 +19,13 @@ namespace RuinaRPG.Tests.Integration.Persistence;
 
 /// <summary>
 /// Um banco na migration anterior (2.1.0) com linhas de Afinidade no formato antigo e Condições com o elemento
-/// por nome; depois a migration AfinidadesPorElemento. Montado uma vez para a classe toda.
+/// por nome; depois a migration AfinidadesPorElemento. Montado uma vez para a classe toda. As linhas antigas entram
+/// por SQL: o modelo atual não tem mais as tabelas (a RemoverLinhasDeAfinidade as tira).
 /// </summary>
 public sealed class BancoComAfinidadesAntigas : IAsyncLifetime
 {
     public const string MigrationAnterior = "20261029154815_EstadoDaConta";
+    public const string MigrationDaConversao = "20261030162938_AfinidadesPorElemento";
 
     private readonly BlankDatabaseFixture _banco = new();
 
@@ -108,20 +110,10 @@ public sealed class BancoComAfinidadesAntigas : IAsyncLifetime
         {
             var ficha = new CharacterSheet { Id = Guid.NewGuid(), CampaignId = campanha.Id, OwnerId = jogador.Id };
             db.CharacterSheets.Add(ficha);
-            db.CharacterAffinities.AddRange(caso.Select(l => new CharacterAffinity
-            {
-                Id = Guid.NewGuid(), SheetId = ficha.Id, Elemento = l.Elemento, ElementoValor = l.ElementoValor, SubElemento = l.SubElemento,
-                SubElementoValor = l.SubElementoValor, SegundaEssencia = l.SegundaEssencia, SegundaEssenciaValor = l.SegundaEssenciaValor, Experiencia = l.Experiencia,
-            }));
             Personagens[ficha.Id] = caso;
 
             var npc = new NpcSheet { Id = Guid.NewGuid(), GmId = gm.Id };
             db.NpcSheets.Add(npc);
-            db.NpcAffinities.AddRange(caso.Select(l => new NpcAffinity
-            {
-                Id = Guid.NewGuid(), SheetId = npc.Id, Elemento = l.Elemento, ElementoValor = l.ElementoValor, SubElemento = l.SubElemento,
-                SubElementoValor = l.SubElementoValor, SegundaEssencia = l.SegundaEssencia, SegundaEssenciaValor = l.SegundaEssenciaValor, Experiencia = l.Experiencia,
-            }));
             Npcs[npc.Id] = caso;
 
             if (ReferenceEquals(caso, SubElementoNegativo))
@@ -167,7 +159,55 @@ public sealed class BancoComAfinidadesAntigas : IAsyncLifetime
         db.EncounterParticipantCondicoes.Add(new EncounterParticipantCondicao { Id = Guid.NewGuid(), EncounterParticipantId = participante.Id, Nome = "Vazia", Icone = "Agua" });
         await db.SaveChangesAsync();
 
-        await db.Database.MigrateAsync();
+        await db.Database.OpenConnectionAsync();
+        foreach (var (ficha, linhas) in Personagens)
+            foreach (var l in linhas)
+                await InserirLinhaAntigaAsync(db, "CharacterAffinities", "CharacterSheetId", ficha, l);
+        foreach (var (ficha, linhas) in Npcs)
+            foreach (var l in linhas)
+                await InserirLinhaAntigaAsync(db, "NpcAffinities", "NpcSheetId", ficha, l);
+        await db.Database.CloseConnectionAsync();
+
+        await db.GetService<IMigrator>().MigrateAsync(MigrationDaConversao);
+    }
+
+    /// <summary>Uma linha no formato antigo (enums gravados como inteiro), direto na tabela.</summary>
+    private static async Task InserirLinhaAntigaAsync(RuinaRpgDbContext db, string tabela, string colunaDaFicha, Guid ficha, LinhaDeAfinidade l)
+    {
+        await using var comando = db.Database.GetDbConnection().CreateCommand();
+        comando.CommandText = $"INSERT INTO \"{tabela}\" (\"Id\", \"{colunaDaFicha}\", \"Elemento\", \"ElementoValor\", \"SubElemento\", \"SubElementoValor\", " +
+            "\"SegundaEssencia\", \"SegundaEssenciaValor\", \"Experiencia\") VALUES (@id, @ficha, @e1, @v1, @sub, @vsub, @e2, @v2, @xp)";
+        void Parametro(string nome, object? valor)
+        {
+            var p = comando.CreateParameter();
+            p.ParameterName = nome;
+            p.Value = valor ?? DBNull.Value;
+            p.DbType = valor is Guid ? System.Data.DbType.Guid : System.Data.DbType.Int32;
+            comando.Parameters.Add(p);
+        }
+        Parametro("id", Guid.NewGuid());
+        Parametro("ficha", ficha);
+        Parametro("e1", (int?)l.Elemento);
+        Parametro("v1", l.ElementoValor);
+        Parametro("sub", (int?)l.SubElemento);
+        Parametro("vsub", l.SubElementoValor);
+        Parametro("e2", (int?)l.SegundaEssencia);
+        Parametro("v2", l.SegundaEssenciaValor);
+        Parametro("xp", l.Experiencia);
+        await comando.ExecuteNonQueryAsync();
+    }
+
+    /// <summary>Quantas linhas uma tabela tem agora (as antigas não estão mais no modelo).</summary>
+    public async Task<int> ContarAsync(string tabela)
+    {
+        await using var db = new RuinaRpgDbContext(Options);
+        var sql = tabela switch
+        {
+            "CharacterAffinities" => "SELECT COUNT(*)::int AS \"Value\" FROM \"CharacterAffinities\"",
+            "NpcAffinities" => "SELECT COUNT(*)::int AS \"Value\" FROM \"NpcAffinities\"",
+            _ => throw new ArgumentOutOfRangeException(nameof(tabela)),
+        };
+        return (await db.Database.SqlQueryRaw<int>(sql).ToListAsync()).Single();
     }
 
     public Task DisposeAsync() => _banco.DisposeAsync();
@@ -215,8 +255,8 @@ public class AfinidadesPorElementoMigrationTests : IClassFixture<BancoComAfinida
 
         personagem.Should().BeEquivalentTo(esperado);
         npc.Should().BeEquivalentTo(esperado);
-        var gastoAntes = VocacaoArcanaCalculator.Gasto(_banco.Personagens[_banco.PersonagemDoReviewFocus1]);
-        personagem.Values.Sum(v => v.Pontos).Should().Be(gastoAntes).And.Be(9);
+        // O gasto de antes: cada Essência pelo maior valor (Ar 2, Água 1, Fogo 2) + os Sub-Elementos (Gelo 3, Raio 1).
+        personagem.Values.Sum(v => v.Pontos).Should().Be(9);
     }
 
     [Fact]
@@ -238,11 +278,10 @@ public class AfinidadesPorElementoMigrationTests : IClassFixture<BancoComAfinida
     }
 
     [Fact]
-    public async Task As_linhas_antigas_ficam_ate_a_Task_5()
+    public async Task A_conversao_nao_apaga_as_linhas_antigas()
     {
-        await using var db = Db();
-        (await db.CharacterAffinities.CountAsync()).Should().Be(_banco.Personagens.Values.Sum(l => l.Length));
-        (await db.NpcAffinities.CountAsync()).Should().Be(_banco.Npcs.Values.Sum(l => l.Length));
+        (await _banco.ContarAsync("CharacterAffinities")).Should().Be(_banco.Personagens.Values.Sum(l => l.Length));
+        (await _banco.ContarAsync("NpcAffinities")).Should().Be(_banco.Npcs.Values.Sum(l => l.Length));
     }
 
     [Fact]
@@ -346,6 +385,34 @@ public class AfinidadesPorElementoMigrationDownTests : IClassFixture<BancoComAfi
         (await depois.Database.SqlQueryRaw<string>(
             "SELECT table_name AS \"Value\" FROM information_schema.tables WHERE table_name IN ('ElementosDeAfinidade', 'CruzamentosDeAfinidade', 'TotaisDeAfinidadePorCirculo', 'VisibilidadesDeElemento', 'CharacterPontosDeAfinidade', 'NpcPontosDeAfinidade')").ToListAsync())
             .Should().BeEmpty();
-        (await depois.CharacterAffinities.CountAsync()).Should().Be(_banco.Personagens.Values.Sum(l => l.Length));
+        (await _banco.ContarAsync("CharacterAffinities")).Should().Be(_banco.Personagens.Values.Sum(l => l.Length));
+    }
+}
+
+/// <summary>A RemoverLinhasDeAfinidade, depois da conversão: as tabelas antigas saem e os pontos ficam.</summary>
+public class RemoverLinhasDeAfinidadeMigrationTests : IClassFixture<BancoComAfinidadesAntigas>
+{
+    private const string Tabelas = "SELECT table_name AS \"Value\" FROM information_schema.tables WHERE table_name IN ('CharacterAffinities', 'NpcAffinities')";
+
+    private readonly BancoComAfinidadesAntigas _banco;
+
+    public RemoverLinhasDeAfinidadeMigrationTests(BancoComAfinidadesAntigas banco) => _banco = banco;
+
+    [Fact]
+    public async Task Tira_as_tabelas_antigas_mantem_os_pontos_e_o_Down_as_recria_vazias()
+    {
+        await using var db = new RuinaRpgDbContext(_banco.Options);
+        var pontosAntes = await db.CharacterPontosDeAfinidade.CountAsync() + await db.NpcPontosDeAfinidade.CountAsync();
+
+        await db.Database.MigrateAsync();
+
+        (await db.Database.SqlQueryRaw<string>(Tabelas).ToListAsync()).Should().BeEmpty();
+        (await db.CharacterPontosDeAfinidade.CountAsync() + await db.NpcPontosDeAfinidade.CountAsync()).Should().Be(pontosAntes).And.BePositive();
+
+        await db.GetService<IMigrator>().MigrateAsync(BancoComAfinidadesAntigas.MigrationDaConversao);
+
+        (await db.Database.SqlQueryRaw<string>(Tabelas).ToListAsync()).Should().BeEquivalentTo("CharacterAffinities", "NpcAffinities");
+        (await _banco.ContarAsync("CharacterAffinities")).Should().Be(0);
+        (await _banco.ContarAsync("NpcAffinities")).Should().Be(0);
     }
 }

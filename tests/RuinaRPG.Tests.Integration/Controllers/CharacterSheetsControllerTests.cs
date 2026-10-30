@@ -777,7 +777,7 @@ public class CharacterSheetsControllerTests(ApiFixture fixture) : FichaDePersona
     }
 
     [Fact]
-    public async Task SubAttributes_computes_EficienciaElemental_and_DanoElemental_from_the_matching_Afinidade_row()
+    public async Task SubAttributes_computes_EficienciaElemental_and_DanoElemental_from_the_points_in_the_Afinidade()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("SheetGmSub7", "sheetsub7@teste.com");
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerSub7", "sheetplayersub7@teste.com");
@@ -788,8 +788,8 @@ public class CharacterSheetsControllerTests(ApiFixture fixture) : FichaDePersona
         // Adepto libera Dobra (Fogo) — Afinidade principal = Fogo.
         await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken,
             ValidUpdate() with { Vocacao = "Adepto", Afinidade = 2, AfinidadeAdicional = 10 }));
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddAffinityRequest("Fogo", 7, null, null, null, null)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/afinidades/2", playerToken,
+            new AtualizarAfinidadeRequest(7, null)));
 
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/sub-attributes", playerToken));
 
@@ -816,8 +816,8 @@ public class CharacterSheetsControllerTests(ApiFixture fixture) : FichaDePersona
         var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
         await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken,
             ValidUpdate() with { Vocacao = "Adepto", Afinidade = 2, AfinidadeAdicional = 10 }));
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddAffinityRequest("Fogo", 7, null, null, null, null)));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/afinidades/2", playerToken,
+            new AtualizarAfinidadeRequest(7, null)));
         var linhas = (await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/tabela-de-afinidades", gmToken)))
             .Content.ReadFromJsonAsync<List<LinhaDaTabelaDeAfinidadesResponse>>())!;
         var linha7 = linhas.Single(l => l.Afinidade == 7);

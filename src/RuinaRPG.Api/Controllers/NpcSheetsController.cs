@@ -20,7 +20,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Route("api/npc-sheets")]
 [Authorize]
-public sealed class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<NpcSheetsController> logger, NpcSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, ITipoDeFicha<NpcSheet> tipo, CatalogoDeAfinidadesService afinidades)
+public sealed class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<NpcSheetsController> logger, NpcSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, ITipoDeFicha<NpcSheet> tipo, CatalogoDeAfinidadesService afinidades, AfinidadesDaFicha afinidadesDaFicha)
     : FichaComLinhagemController<NpcSheet, NpcSheetStats, NpcSheetHistoriaImage>(db, tabelaDeNiveis, tipo, stats, penalidades, hub, logger)
 {
     // Creating a fresh (un-granted) NPC is GM roster curation, not something a player who's been
@@ -236,10 +236,7 @@ public sealed class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider
         var graduacao = s.Vocacao is null ? 0 : GraduacaoCalculator.Compute(vocacao, eapAtual, s.PossuiCoracaoDeMana, rules.CirculoGrauPorEap);
         var graduacaoLabel = vocacao is Vocacao.Campeao or Vocacao.Cacador ? "Grau" : "Círculo";
 
-        var linhasDeAfinidade = await Db.NpcAffinities.Where(a => a.SheetId == s.Id)
-            .Select(a => new LinhaDeAfinidade(a.Elemento, a.ElementoValor, a.SubElemento, a.SubElementoValor, a.SegundaEssencia, a.SegundaEssenciaValor))
-            .ToListAsync();
-        var vocacaoArcanaGasta = VocacaoArcanaCalculator.Gasto(linhasDeAfinidade);
+        var (afinidadeGasta, afinidadeMaxima) = await afinidadesDaFicha.OrcamentoAsync<NpcPontosDeAfinidade>(s);
 
         // Totais exibidos: Artefatos + penalidades de equipamento ativas e as Condições ativas (Nenhum numa ficha do GM, sem dono).
         var (vitalidadeMaximo, focoMaximo, adrenalinaMaximo, estresseMaximo) = await Stats.MaximosAsync(s, await Tipo.CondicoesAsync(s));
@@ -257,7 +254,7 @@ public sealed class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider
             vitalidadeMaximo, focoMaximo, adrenalinaMaximo, estresseMaximo,
             campaignId?.ToString(), await NomeDaCampanhaAsync(Db, campaignId), s.ImageId?.ToString(), s.ArcaRolada,
             s.Estrela?.ToString(), s.SinaAtual, s.HistoricoId?.ToString(), s.EquipmentKitId?.ToString(), s.Historia,
-            s.AfinidadeAdicional, vocacaoArcanaGasta, VocacaoArcanaCalculator.Maxima(s.Vocacao, graduacao, s.AfinidadeAdicional, rules.CirculoGrauPorEap),
+            s.AfinidadeAdicional, afinidadeGasta, afinidadeMaxima,
             abate, assistencia);
     }
 }

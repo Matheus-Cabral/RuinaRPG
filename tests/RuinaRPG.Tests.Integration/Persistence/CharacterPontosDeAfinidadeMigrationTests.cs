@@ -1,6 +1,5 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
-using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Enums;
 using RuinaRPG.Infrastructure.Campaigns;
 using RuinaRPG.Infrastructure.CharacterSheets;
@@ -9,14 +8,14 @@ using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Tests.Integration.Persistence;
 
-public class CharacterAffinityMigrationTests : IClassFixture<BlankDatabaseFixture>
+public class CharacterPontosDeAfinidadeMigrationTests : IClassFixture<BlankDatabaseFixture>
 {
     private readonly BlankDatabaseFixture _fixture;
 
-    public CharacterAffinityMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
+    public CharacterPontosDeAfinidadeMigrationTests(BlankDatabaseFixture fixture) => _fixture = fixture;
 
     [Fact]
-    public async Task Migrate_creates_the_CharacterAffinities_table()
+    public async Task Migrate_creates_the_CharacterPontosDeAfinidade_table()
     {
         var options = new DbContextOptionsBuilder<RuinaRpgDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
         await using var db = new RuinaRpgDbContext(options);
@@ -33,9 +32,9 @@ public class CharacterAffinityMigrationTests : IClassFixture<BlankDatabaseFixtur
         db.CharacterSheets.Add(sheet);
         await db.SaveChangesAsync();
 
-        db.CharacterAffinities.Add(new CharacterAffinity { Id = Guid.NewGuid(), SheetId = sheet.Id, Elemento = Elemento.Fogo, SubElemento = SubElemento.Vida, Experiencia = 10 });
+        db.CharacterPontosDeAfinidade.Add(new CharacterPontosDeAfinidade { Id = Guid.NewGuid(), SheetId = sheet.Id, ElementoId = 2 /* Fogo */, Pontos = 3, Experiencia = 10 });
         await db.SaveChangesAsync();
 
-        (await db.CharacterAffinities.CountAsync()).Should().Be(1);
+        (await db.CharacterPontosDeAfinidade.CountAsync()).Should().Be(1);
     }
 }

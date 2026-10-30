@@ -44,4 +44,6 @@ public sealed class TipoPersonagem(RuinaRpgDbContext db, CondicoesAtivasDaFicha 
     public bool SoPericiasDeCriatura => false;
 
     public bool RecusaAtributosAcimaDoOrcamento => true;
+
+    public bool AfinidadesRecusamForaDasRegras(CharacterSheet sheet, Guid userId) => true;
 }

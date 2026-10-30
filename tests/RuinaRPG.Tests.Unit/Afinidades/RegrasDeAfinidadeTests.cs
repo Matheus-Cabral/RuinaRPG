@@ -187,4 +187,15 @@ public class RegrasDeAfinidadeTests
     public void Sub_elemento_ja_quebrado_nao_impede_baixar_o_elemento() =>
         Assert.Null(RegrasDeAfinidade.MotivoParaRecusarMudanca(
             Catalogo(), Vocacao.Feiticeiro, null, P((Ar, 2), (Agua, 0), (Gelo, 2)), Ar, 0, 10));
+
+    [Theory]
+    [InlineData(99, 1, null, "Elemento inexistente.")]
+    [InlineData(Fogo, -1, null, "O valor não pode ser negativo.")]
+    [InlineData(Fogo, 1, -1, "A Experiência não pode ser negativa.")]
+    public void Valor_invalido_e_recusado_para_qualquer_um(int elemento, int pontos, int? experiencia, string motivo) =>
+        Assert.Equal(motivo, RegrasDeAfinidade.MotivoDeValorInvalido(Catalogo(), elemento, pontos, experiencia));
+
+    [Fact]
+    public void Valor_valido_mesmo_fora_das_regras_da_ficha_nao_e_invalido() =>
+        Assert.Null(RegrasDeAfinidade.MotivoDeValorInvalido(Catalogo(tetoAr: 1), Ar, 5, 0));
 }

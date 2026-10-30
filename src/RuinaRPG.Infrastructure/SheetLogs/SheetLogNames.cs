@@ -26,7 +26,7 @@ internal sealed class SheetLogNames(RuinaRpgDbContext db)
     }
 
     private static bool EhReferencia(string propriedade) => propriedade is "ImageId" or "ItemId" or "ArtifactItemId" or "PericiaId"
-        or "TraitId" or "CreatureExclusiveTraitId" or "HistoricoId" or "EquipmentKitId" or "Afinidade";
+        or "TraitId" or "CreatureExclusiveTraitId" or "HistoricoId" or "EquipmentKitId" or "Afinidade" or "ElementoId";
 
     private Task<string?> BuscarAsync(string propriedade, object id, CancellationToken ct) => (propriedade, id) switch
     {
@@ -35,7 +35,7 @@ internal sealed class SheetLogNames(RuinaRpgDbContext db)
         ("TraitId", Guid g) => db.Traits.AsNoTracking().Where(t => t.Id == g).Select(t => t.Nome).FirstOrDefaultAsync(ct),
         ("CreatureExclusiveTraitId", Guid g) => db.CreatureExclusiveTraits.AsNoTracking().Where(t => t.Id == g).Select(t => t.Nome).FirstOrDefaultAsync(ct),
         ("HistoricoId", Guid g) => db.Historicos.AsNoTracking().Where(h => h.Id == g).Select(h => h.Nome).FirstOrDefaultAsync(ct),
-        ("Afinidade", int a) => db.ElementosDeAfinidade.AsNoTracking().Where(e => e.Id == a).Select(e => e.Nome).FirstOrDefaultAsync(ct),
+        ("Afinidade" or "ElementoId", int a) => db.ElementosDeAfinidade.AsNoTracking().Where(e => e.Id == a).Select(e => e.Nome).FirstOrDefaultAsync(ct),
         ("EquipmentKitId", Guid g) => db.EquipmentKits.AsNoTracking().Where(k => k.Id == g).Select(k => k.Nome).FirstOrDefaultAsync(ct),
         _ => Task.FromResult<string?>(null),
     };

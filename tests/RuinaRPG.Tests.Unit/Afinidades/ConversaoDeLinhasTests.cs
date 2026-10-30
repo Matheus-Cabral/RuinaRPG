@@ -22,9 +22,8 @@ public class ConversaoDeLinhasTests
         Assert.Equal((2, (int?)null), r[2]); // Fogo
         Assert.Equal((3, (int?)5), r[4]);    // Gelo
         Assert.Equal((1, (int?)null), r[7]); // Raio
+        // O gasto de antes (cada Essência pelo maior valor + Sub-Elementos: Ar 2, Água 1, Fogo 2, Gelo 3, Raio 1) não muda.
         Assert.Equal(9, r.Values.Sum(v => v.Pontos));
-        var antes = VocacaoArcanaCalculator.Gasto(linhas);
-        Assert.Equal(antes, r.Values.Sum(v => v.Pontos));
     }
 
     [Fact]

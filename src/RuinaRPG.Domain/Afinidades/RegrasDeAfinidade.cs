@@ -35,14 +35,23 @@ public static class RegrasDeAfinidade
         return resultado;
     }
 
+    /// <summary>
+    /// O que nenhuma ficha aceita, nem a do GM de um NPC (Ficha de NPCs R0010): elemento fora do catálogo, pontos ou
+    /// Experiência negativos. Null = válido.
+    /// </summary>
+    public static string? MotivoDeValorInvalido(CatalogoDeAfinidades c, int elementoId, int pontos, int? experiencia) =>
+        c.Elementos.All(e => e.Id != elementoId) ? "Elemento inexistente."
+        : pontos < 0 ? "O valor não pode ser negativo."
+        : experiencia < 0 ? "A Experiência não pode ser negativa."
+        : null;
+
     /// <summary>Null = permitido.</summary>
     public static string? MotivoParaRecusarMudanca(
         CatalogoDeAfinidades c, Vocacao? v, string? classe, IReadOnlyDictionary<int, int> pontos,
         int elementoId, int novoValor, int maximo)
     {
-        var elemento = c.Elementos.FirstOrDefault(e => e.Id == elementoId);
-        if (elemento is null) return "Elemento inexistente.";
-        if (novoValor < 0) return "O valor não pode ser negativo.";
+        if (MotivoDeValorInvalido(c, elementoId, novoValor, null) is { } invalido) return invalido;
+        var elemento = c.Elementos.First(e => e.Id == elementoId);
 
         var atual = pontos.GetValueOrDefault(elementoId);
         if (novoValor == atual) return null;

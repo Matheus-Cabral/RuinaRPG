@@ -21,7 +21,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/character-sheets")]
-public sealed class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<CharacterSheetsController> logger, CharacterSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, ITipoDeFicha<CharacterSheet> tipo, CemiterioDaFicha cemiterio, IHubContext<NotificationHub> notificacoes, CatalogoDeAfinidadesService afinidades)
+public sealed class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<CharacterSheetsController> logger, CharacterSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, ITipoDeFicha<CharacterSheet> tipo, CemiterioDaFicha cemiterio, IHubContext<NotificationHub> notificacoes, CatalogoDeAfinidadesService afinidades, AfinidadesDaFicha afinidadesDaFicha)
     : FichaComLinhagemController<CharacterSheet, CharacterSheetStats, CharacterSheetHistoriaImage>(db, tabelaDeNiveis, tipo, stats, penalidades, hub, logger)
 {
     [HttpPost("/api/campaigns/{campaignId}/character-sheets")]
@@ -314,10 +314,7 @@ public sealed class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataPr
         var graduacao = s.Vocacao is null ? 0 : GraduacaoCalculator.Compute(vocacao, eapAtual, s.PossuiCoracaoDeMana, rules.CirculoGrauPorEap);
         var graduacaoLabel = vocacao is RuinaRPG.Domain.CharacterSheets.Vocacao.Campeao or RuinaRPG.Domain.CharacterSheets.Vocacao.Cacador ? "Grau" : "Círculo";
 
-        var linhasDeAfinidade = await Db.CharacterAffinities.Where(a => a.SheetId == s.Id)
-            .Select(a => new LinhaDeAfinidade(a.Elemento, a.ElementoValor, a.SubElemento, a.SubElementoValor, a.SegundaEssencia, a.SegundaEssenciaValor))
-            .ToListAsync();
-        var vocacaoArcanaGasta = VocacaoArcanaCalculator.Gasto(linhasDeAfinidade);
+        var (afinidadeGasta, afinidadeMaxima) = await afinidadesDaFicha.OrcamentoAsync<CharacterPontosDeAfinidade>(s);
 
         var maximos = await ComputeResourceMaximumsAsync(s, s.Vocacao, s.Nivel);
         var xpParaProximoNivel = NivelCalculator.XpParaProximoNivel(s.ExperienciaAtual, tabela.ComoXpPorNivel());
@@ -334,7 +331,7 @@ public sealed class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataPr
             maximos.Vitalidade, maximos.Foco, maximos.Adrenalina, maximos.Estresse, xpParaProximoNivel,
             s.PontosDeIgnicaoBonusManual, s.PontosDePericiaBonusCritico, s.ImageId?.ToString(), s.ArcaRolada,
             s.Estrela?.ToString(), s.SinaAtual, s.HistoricoId?.ToString(), s.EquipmentKitId?.ToString(), s.Historia,
-            s.AfinidadeAdicional, vocacaoArcanaGasta, VocacaoArcanaCalculator.Maxima(s.Vocacao, graduacao, s.AfinidadeAdicional, rules.CirculoGrauPorEap),
+            s.AfinidadeAdicional, afinidadeGasta, afinidadeMaxima,
             motivosDoCemiterio.Count > 0, MotivosComoTexto(motivosDoCemiterio), campaignName, donoNickname);
     }
 

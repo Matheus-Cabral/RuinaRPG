@@ -25,7 +25,7 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules,
         await Db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.BonusDeCarga).FirstOrDefaultAsync();
 
     protected override Task<(int? Eficiencia, int? Dano)> ElementalAsync(CharacterSheet sheet, EfeitosDeCondicao efeitos) =>
-        ElementalDasAfinidadesAsync<CharacterAffinity>(sheet.Id, sheet.Afinidade, efeitos, tabelaDeAfinidades);
+        ElementalDasAfinidadesAsync<CharacterPontosDeAfinidade>(sheet.Id, sheet.Afinidade, efeitos, tabelaDeAfinidades);
 
     protected override Task<List<(Guid Id, Guid ItemId, bool IsEquipped)>> ArmasDoCatalogoAsync(Guid sheetId) => ArmasDoCatalogoAsync<CharacterWeapon>(sheetId);
 

@@ -27,7 +27,7 @@ namespace RuinaRPG.Tests.Integration.Condicoes;
 /// As Condições ativas mudam os números CALCULADOS da ficha enquanto estão ativas, e só então. Toda ficha destes
 /// testes parte do mesmo retrato: Força 10, Agilidade 6, Vigor 8, Astúcia 7; uma Perícia sobre Força (total 10);
 /// a Maestria "Espadas" (3 + 0 + Força = 13); Artefatos de Dano Cortante +10 e Redução Física +4; e, onde a ficha
-/// tem Afinidades, a Afinidade Fogo com uma linha de Fogo valendo 6 (Eficiência 3 e Dano 3 na Tabela de Afinidades).
+/// tem Afinidades, a Afinidade Fogo com 6 pontos em Fogo (Eficiência 3 e Dano 3 na Tabela de Afinidades).
 /// </summary>
 public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
@@ -156,12 +156,12 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
         if (rota == Personagem)
         {
             (await db.CharacterSheets.FindAsync(sheetId))!.Afinidade = 2;
-            db.CharacterAffinities.Add(new CharacterAffinity { Id = Guid.NewGuid(), SheetId = sheetId, Elemento = Elemento.Fogo, ElementoValor = 6 });
+            db.CharacterPontosDeAfinidade.Add(new CharacterPontosDeAfinidade { Id = Guid.NewGuid(), SheetId = sheetId, ElementoId = 2, Pontos = 6 });
         }
         else if (rota == Npc)
         {
             (await db.NpcSheets.FindAsync(sheetId))!.Afinidade = 2;
-            db.NpcAffinities.Add(new NpcAffinity { Id = Guid.NewGuid(), SheetId = sheetId, Elemento = Elemento.Fogo, ElementoValor = 6 });
+            db.NpcPontosDeAfinidade.Add(new NpcPontosDeAfinidade { Id = Guid.NewGuid(), SheetId = sheetId, ElementoId = 2, Pontos = 6 });
         }
         await db.SaveChangesAsync();
 
@@ -212,11 +212,13 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
 
         if (f.TemAfinidades)
         {
-            foreach (var a in (await JsonAsync(token, $"{raiz}/affinities")).EnumerateArray())
+            // Só os elementos em que a ficha tem pontos (a lista mostra também os zerados que a ficha vê).
+            foreach (var a in (await JsonAsync(token, $"{raiz}/afinidades")).GetProperty("elementos").EnumerateArray()
+                         .Where(a => a.GetProperty("pontos").GetInt32() > 0))
             {
-                var elemento = a.GetProperty("elemento").GetString();
-                n[$"Afinidade:{elemento}"] = a.GetProperty("elementoValorComCondicoes").GetInt32();
-                n[$"Afinidade:{elemento}.guardada"] = a.GetProperty("elementoValor").GetInt32();
+                var elemento = a.GetProperty("nome").GetString();
+                n[$"Afinidade:{elemento}"] = a.GetProperty("pontosComCondicoes").GetInt32();
+                n[$"Afinidade:{elemento}.guardada"] = a.GetProperty("pontos").GetInt32();
             }
         }
         return n;
@@ -229,7 +231,7 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
         if (f.Rota == Personagem)
             caminhos.Add("/skills/budget");
         if (f.TemAfinidades)
-            caminhos.Add("/affinities");
+            caminhos.Add("/afinidades");
 
         var retrato = new Dictionary<string, string>();
         foreach (var caminho in caminhos)
@@ -916,9 +918,8 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
             await EnviarAsync(HttpMethod.Put, $"{raiz}/skills/{p.Pericia}", mesa.Jogador, new UpdateSkillRequest(p.Gasto, p.AtributoEscolhido));
         foreach (var m in await LerAsync<List<MasteryResponse>>(mesa.Jogador, $"{raiz}/masteries"))
             await EnviarAsync(HttpMethod.Put, $"{raiz}/masteries/{m.Id}", mesa.Jogador, new UpdateMasteryRequest(m.Nome, m.Pericia, m.Atributo, m.GastoMaestria));
-        foreach (var a in await LerAsync<List<AffinityResponse>>(mesa.Jogador, $"{raiz}/affinities"))
-            await EnviarAsync(HttpMethod.Put, $"{raiz}/affinities/{a.Id}", mesa.Jogador,
-                new UpdateAffinityRequest(a.Elemento, a.ElementoValor, a.SegundaEssencia, a.SegundaEssenciaValor, a.SubElementoValor, a.Experiencia));
+        foreach (var a in (await LerAsync<AfinidadesDaFichaResponse>(mesa.Jogador, $"{raiz}/afinidades")).Elementos)
+            await EnviarAsync(HttpMethod.Put, $"{raiz}/afinidades/{a.Id}", mesa.Jogador, new AtualizarAfinidadeRequest(a.Pontos, a.Experiencia));
 
         await RemoverAsync(mesa, encounterId, participantId, aplicadaId);
 
@@ -936,7 +937,7 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
         var atributos = await db.CharacterAttributes.AsNoTracking().Where(a => a.SheetId == id).OrderBy(a => a.Atributo).ToListAsync();
         var pericias = await db.CharacterSkills.AsNoTracking().Where(s => s.SheetId == id).OrderBy(s => s.PericiaId).ToListAsync();
         var maestrias = await db.CharacterMasteries.AsNoTracking().Where(m => m.SheetId == id).OrderBy(m => m.Id).ToListAsync();
-        var afinidades = await db.CharacterAffinities.AsNoTracking().Where(a => a.SheetId == id).OrderBy(a => a.Id).ToListAsync();
+        var afinidades = await db.CharacterPontosDeAfinidade.AsNoTracking().Where(a => a.SheetId == id).OrderBy(a => a.ElementoId).ToListAsync();
         return JsonSerializer.Serialize(new { sheet, atributos, pericias, maestrias, afinidades });
     }
 

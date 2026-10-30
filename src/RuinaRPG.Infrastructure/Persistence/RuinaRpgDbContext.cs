@@ -50,7 +50,6 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<CharacterSheet> CharacterSheets => Set<CharacterSheet>();
     public DbSet<CharacterAttribute> CharacterAttributes => Set<CharacterAttribute>();
     public DbSet<CharacterSkill> CharacterSkills => Set<CharacterSkill>();
-    public DbSet<CharacterAffinity> CharacterAffinities => Set<CharacterAffinity>();
     public DbSet<CharacterPontosDeAfinidade> CharacterPontosDeAfinidade => Set<CharacterPontosDeAfinidade>();
     public DbSet<CharacterRune> CharacterRunes => Set<CharacterRune>();
     public DbSet<CharacterMastery> CharacterMasteries => Set<CharacterMastery>();
@@ -85,7 +84,6 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<NpcSheet> NpcSheets => Set<NpcSheet>();
     public DbSet<NpcAttribute> NpcAttributes => Set<NpcAttribute>();
     public DbSet<NpcSkill> NpcSkills => Set<NpcSkill>();
-    public DbSet<NpcAffinity> NpcAffinities => Set<NpcAffinity>();
     public DbSet<NpcPontosDeAfinidade> NpcPontosDeAfinidade => Set<NpcPontosDeAfinidade>();
     public DbSet<NpcRune> NpcRunes => Set<NpcRune>();
     public DbSet<NpcMastery> NpcMasteries => Set<NpcMastery>();
@@ -427,15 +425,6 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        builder.Entity<CharacterAffinity>(entity =>
-        {
-            entity.Property(e => e.SheetId).HasColumnName("CharacterSheetId");
-            entity.HasOne<CharacterSheet>()
-                .WithMany()
-                .HasForeignKey(a => a.SheetId)
-                .OnDelete(DeleteBehavior.Cascade);
-        });
-
         builder.Entity<CharacterPontosDeAfinidade>(entity =>
         {
             entity.ToTable(t => t.HasCheckConstraint("CK_CharacterPontosDeAfinidade_Pontos", "\"Pontos\" >= 0"));
@@ -645,12 +634,6 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
             entity.HasIndex(s => new { s.SheetId, s.PericiaId }).IsUnique();
             entity.HasOne<PericiaDefinicao>().WithMany().HasForeignKey(s => s.PericiaId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<NpcSheet>().WithMany().HasForeignKey(s => s.SheetId).OnDelete(DeleteBehavior.Cascade);
-        });
-
-        builder.Entity<NpcAffinity>(entity =>
-        {
-            entity.Property(e => e.SheetId).HasColumnName("NpcSheetId");
-            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(a => a.SheetId).OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<NpcPontosDeAfinidade>(entity =>

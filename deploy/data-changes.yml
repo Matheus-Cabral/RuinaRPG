@@ -9,3 +9,11 @@ changes:
     columns: [Modificadores]
     change: altered
     reason: "2.2.0 (migration AfinidadesPorElemento): o mesmo nas Condições já aplicadas a participantes (AlvoEspecifico dentro do jsonb)"
+  - table: CharacterAffinities
+    columns: "*"
+    change: lost
+    reason: "2.2.0 (migration RemoverLinhasDeAfinidade): as linhas antigas de Afinidade saem; a AfinidadesPorElemento já as converteu em CharacterPontosDeAfinidade"
+  - table: NpcAffinities
+    columns: "*"
+    change: lost
+    reason: "2.2.0 (migration RemoverLinhasDeAfinidade): o mesmo nas fichas de NPC (convertidas em NpcPontosDeAfinidade)"

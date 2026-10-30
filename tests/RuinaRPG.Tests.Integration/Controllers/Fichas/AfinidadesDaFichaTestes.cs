@@ -1,515 +1,439 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.Fichas;
-using RuinaRPG.Contracts.NpcSheets;
+using RuinaRPG.Domain.Afinidades;
 using RuinaRPG.Domain.CharacterSheets;
+using RuinaRPG.Infrastructure.Afinidades;
+using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.Fichas;
+using RuinaRPG.Infrastructure.NpcSheets;
 using RuinaRPG.Infrastructure.Persistence;
-// Pedidos e resposta de Afinidade têm o mesmo JSON no Personagem e no NPC.
-using AdicionarAfinidade = RuinaRPG.Contracts.Fichas.AddAffinityRequest;
-using AfinidadeLida = RuinaRPG.Contracts.Fichas.AffinityResponse;
-using AtualizarAfinidade = RuinaRPG.Contracts.Fichas.UpdateAffinityRequest;
 
 namespace RuinaRPG.Tests.Integration.Controllers.Fichas;
 
 /// <summary>
-/// Afinidades da ficha (<c>/affinities</c>), que só Personagem e NPC têm. A ficha começa como Adepto com
-/// Afinidade Adicional 100, para o limite da Vocação Arcana (só do Personagem) não interferir.
+/// Afinidades da ficha por pontos (<c>/afinidades</c>, Ficha de Personagem 2.c e R0007), que só Personagem e NPC têm.
+/// As regras valem para quem edita a ficha como jogador: o dono do Personagem e o jogador de um NPC concedido
+/// (Ficha de NPCs R0010). O catálogo é o semeado (ids fixos; Feiticeiro, Adepto e Bruxo veem tudo; total do
+/// Círculo 0 = 3); o que um teste muda nele (requisito, teto, visibilidade) volta ao fim do teste.
 /// </summary>
 public abstract class AfinidadesDaFichaTestes<TTipo>(ApiFixture fixture) : TestesDeFicha<TTipo>(fixture) where TTipo : ITipoDeTestePersonagemOuNpc, new()
 {
-    /// <summary>Corpo do PUT da ficha com a Vocação e a Afinidade Adicional dadas.</summary>
-    protected abstract object AtualizacaoComVocacao(string? vocacao, int afinidadeAdicional);
+    protected const int Terra = 0, Agua = 1, Fogo = 2, Ar = 3, Gelo = 4, Alma = 9, Necromancia = 16;
 
-    /// <summary>Linha de Afinidade nova da tabela do tipo, para inserir direto no banco.</summary>
-    protected abstract IAfinidadeDaFicha NovaLinha();
+    /// <summary>A ficha do tipo, rastreada, para os testes mudarem Vocação, Classe, Afinidade Adicional e coração de mana.</summary>
+    protected abstract Task<IFichaComAfinidades> FichaNoBancoAsync(RuinaRpgDbContext db, Guid id);
 
-    protected async Task<FichaDeTeste> FichaAsync()
-    {
-        var f = await NovaFichaAsync();
-        // Adepto libera Dobra+Consagração — cobre todas as combinações que os testes usam: Fogo/Terra são
-        // Dobra, Curar/Aprimorar são Consagração.
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/{Tipo.Rota}/{f.SheetId}", f.GmToken, AtualizacaoComVocacao("Adepto", 100)));
-        return f;
-    }
+    /// <summary>Uma linha nova da tabela de pontos do tipo, para inserir direto no banco.</summary>
+    protected abstract IPontosDeAfinidadeDaFicha NovosPontos();
 
-    protected Task<HttpResponseMessage> AddAsync(FichaDeTeste f, string? elemento, string? segunda, int? subValor = null) =>
-        Client.SendAsync(AuthedRequest(HttpMethod.Post, Url(f, "affinities"), f.Token, new AdicionarAfinidade(elemento, null, segunda, null, subValor, null)));
-
-    protected Task<HttpResponseMessage> AddAsync(FichaDeTeste f, AdicionarAfinidade request) =>
-        Client.SendAsync(AuthedRequest(HttpMethod.Post, Url(f, "affinities"), f.Token, request));
-
-    protected Task<HttpResponseMessage> UpdateAsync(FichaDeTeste f, string token, string id, AtualizarAfinidade request) =>
-        Client.SendAsync(AuthedRequest(HttpMethod.Put, Url(f, $"affinities/{id}"), token, request));
-
-    protected async Task<List<AfinidadeLida>> ListAsync(FichaDeTeste f) =>
-        (await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, Url(f, "affinities"), f.Token)))
-            .Content.ReadFromJsonAsync<List<AfinidadeLida>>())!;
-
-    private async Task InserirDiretoAsync(Guid id, FichaDeTeste f, Elemento elemento, EssenciaBasica? segunda, SubElemento sub)
+    protected async Task DefinirAsync(FichaDeTeste f, Vocacao? vocacao, int afinidadeAdicional, bool coracaoDeMana = false, string? classe = null, int? afinidade = null)
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
-        var linha = NovaLinha();
-        linha.Id = id;
-        linha.SheetId = Guid.Parse(f.SheetId);
-        linha.Elemento = elemento;
-        linha.SegundaEssencia = segunda;
-        linha.SubElemento = sub;
-        db.Add((object)linha);
+        var ficha = await FichaNoBancoAsync(db, Guid.Parse(f.SheetId));
+        ficha.Vocacao = vocacao;
+        ficha.SubVocacao = classe;
+        ficha.AfinidadeAdicional = afinidadeAdicional;
+        ficha.PossuiCoracaoDeMana = coracaoDeMana;
+        ficha.Afinidade = afinidade;
         await db.SaveChangesAsync();
     }
 
-    [Fact]
-    public async Task Add_a_valid_combination_returns_201()
+    /// <summary>Ficha editada por um jogador (o dono do Personagem; o jogador de um NPC concedido).</summary>
+    protected async Task<FichaDeTeste> FichaDeJogadorAsync(Vocacao? vocacao, int afinidadeAdicional, bool coracaoDeMana = false, string? classe = null)
     {
-        var f = await FichaAsync();
+        var f = await FichaDeJogadorAsync();
+        await DefinirAsync(f, vocacao, afinidadeAdicional, coracaoDeMana, classe);
+        return f;
+    }
 
-        var response = await AddAsync(f, new AdicionarAfinidade("Fogo", 3, "Vida", 4, 2, 10));
+    protected async Task InserirPontosAsync(FichaDeTeste f, params (int Elemento, int Pontos)[] pontos)
+    {
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        foreach (var (elemento, valor) in pontos)
+        {
+            var linha = NovosPontos();
+            linha.Id = Guid.NewGuid();
+            linha.SheetId = Guid.Parse(f.SheetId);
+            linha.ElementoId = elemento;
+            linha.Pontos = valor;
+            db.Add((object)linha);
+        }
+        await db.SaveChangesAsync();
+    }
 
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
+    protected Task<HttpResponseMessage> PutAsync(FichaDeTeste f, string token, int elemento, int pontos, int? experiencia = null) =>
+        Client.SendAsync(AuthedRequest(HttpMethod.Put, Url(f, $"afinidades/{elemento}"), token, new AtualizarAfinidadeRequest(pontos, experiencia)));
 
-        var body = await ListAsync(f);
-        body.Should().ContainSingle(a => a.Elemento == "Fogo" && a.ElementoValor == 3 && a.SegundaEssencia == "Vida" && a.SegundaEssenciaValor == 4
-            && a.SubElemento == "Curar" && a.SubElementoValor == 2 && a.Experiencia == 10);
+    protected async Task PutOkAsync(FichaDeTeste f, int elemento, int pontos)
+    {
+        var response = await PutAsync(f, f.Token, elemento, pontos);
+        response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
+    }
+
+    protected async Task<AfinidadesDaFichaResponse> GetAsync(FichaDeTeste f, string? token = null)
+    {
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, Url(f, "afinidades"), token ?? f.Token));
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        return (await response.Content.ReadFromJsonAsync<AfinidadesDaFichaResponse>())!;
+    }
+
+    protected static async Task DeveRecusarAsync(HttpResponseMessage response, string texto)
+    {
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain(texto);
+    }
+
+    /// <summary>Muda o catálogo para um teste e o devolve como estava ao fim, mesmo se o teste falhar.</summary>
+    protected async Task ComCatalogoAsync(Func<RuinaRpgDbContext, Task> mudar, Func<RuinaRpgDbContext, Task> desfazer, Func<Task> teste)
+    {
+        await using (var scope = Factory.Services.CreateAsyncScope())
+        {
+            await mudar(scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>());
+        }
+        try
+        {
+            await teste();
+        }
+        finally
+        {
+            await using var scope = Factory.Services.CreateAsyncScope();
+            await desfazer(scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>());
+        }
     }
 
     [Fact]
-    public async Task Delete_an_existing_affinity_returns_204_and_it_no_longer_appears_on_list()
+    public async Task Uma_Vocacao_magica_ve_todos_os_elementos_com_gasto_maximo_e_o_Sub_Elemento_bloqueado_com_a_dica()
     {
-        var f = await FichaAsync();
+        var f = await FichaDeJogadorAsync(Vocacao.Feiticeiro, afinidadeAdicional: 2);
+        await InserirPontosAsync(f, (Ar, 1));
 
-        var addResponse = await AddAsync(f, new AdicionarAfinidade("Terra", 1, null, null, 1, 5));
-        var added = await addResponse.Content.ReadFromJsonAsync<AfinidadeLida>();
+        var afinidades = await GetAsync(f);
 
-        var deleteResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, Url(f, $"affinities/{added!.Id}"), f.Token));
-        deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
-
-        (await ListAsync(f)).Should().NotContain(a => a.Id == added.Id);
+        // Feiticeiro sem coração de mana: Círculo 0 → total 3, + Afinidade Adicional 2.
+        (afinidades.Gasto, afinidades.Maximo, afinidades.SecaoVisivel).Should().Be((1, 5, true));
+        afinidades.Elementos.Select(e => e.Id).Should().Equal(Enumerable.Range(0, 19));
+        afinidades.Elementos.Single(e => e.Id == Ar).Should().Be(new ElementoDaFichaResponse(Ar, "Ar", "Base", null, 1, null, false, null, 1));
+        afinidades.Elementos.Single(e => e.Id == Alma).Should().Be(new ElementoDaFichaResponse(Alma, "Alma", "Caminho", null, 0, null, false, null, 0));
+        // O par é gravado em ordem de id (Água=1, Ar=3), e a dica segue essa ordem.
+        afinidades.Elementos.Single(e => e.Id == Gelo).Should().Be(
+            new ElementoDaFichaResponse(Gelo, "Gelo", "SubElemento", null, 0, null, true, "Precisa de 1 em Água e 1 em Ar", 0));
     }
 
     [Fact]
-    public async Task Add_by_someone_without_access_returns_the_denied_status()
+    public async Task Os_pontos_sobem_e_descem_pelo_PUT_e_a_resposta_traz_a_lista_nova()
     {
-        var f = await FichaAsync();
-        var otherToken = await Tipo.CriarIntrusoAsync(this, f);
+        var f = await FichaDeJogadorAsync(Vocacao.Feiticeiro, afinidadeAdicional: 10);
 
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, Url(f, "affinities"), otherToken,
-            new AdicionarAfinidade("Terra", 1, null, null, 1, 5)));
+        var response = await PutAsync(f, f.Token, Fogo, 3, experiencia: 4);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var depois = (await response.Content.ReadFromJsonAsync<AfinidadesDaFichaResponse>())!;
+        await PutOkAsync(f, Fogo, 2);
 
-        response.StatusCode.Should().Be(Tipo.StatusNegado);
+        depois.Gasto.Should().Be(3);
+        depois.Elementos.Single(e => e.Id == Fogo).Experiencia.Should().Be(4);
+        var lida = await GetAsync(f);
+        lida.Gasto.Should().Be(2);
+        lida.Elementos.Single(e => e.Id == Fogo).Should().Match<ElementoDaFichaResponse>(e => e.Pontos == 2 && e.Experiencia == null);
     }
 
     [Fact]
-    public async Task List_by_someone_without_access_returns_the_denied_status()
+    public async Task Review_Focus_2_tirar_o_ultimo_ponto_de_Ar_com_Gelo_e_recusado_e_depois_de_zerar_Gelo_passa()
     {
-        var f = await FichaAsync();
-        var otherToken = await Tipo.CriarIntrusoAsync(this, f);
+        var f = await FichaDeJogadorAsync(Vocacao.Feiticeiro, afinidadeAdicional: 10);
+        await PutOkAsync(f, Ar, 1);
+        await PutOkAsync(f, Agua, 1);
+        await PutOkAsync(f, Gelo, 1);
 
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, Url(f, "affinities"), otherToken));
+        await DeveRecusarAsync(await PutAsync(f, f.Token, Ar, 0), "Gelo depende de Ar: zere Gelo antes.");
+        (await GetAsync(f)).Elementos.Single(e => e.Id == Ar).Pontos.Should().Be(1);
 
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        await PutOkAsync(f, Gelo, 0);
+        await PutOkAsync(f, Ar, 0);
+        (await GetAsync(f)).Gasto.Should().Be(1);
     }
 
     [Fact]
-    public async Task Add_with_every_field_null_returns_201_and_a_blank_row()
+    public async Task Review_Focus_3_requisito_maior_nao_tira_pontos_marca_o_Gelo_e_so_aceita_descer()
     {
-        var f = await FichaAsync();
+        var f = await FichaDeJogadorAsync(Vocacao.Feiticeiro, afinidadeAdicional: 10);
+        await PutOkAsync(f, Ar, 1);
+        await PutOkAsync(f, Agua, 1);
+        await PutOkAsync(f, Gelo, 2);
 
-        var response = await AddAsync(f, new AdicionarAfinidade(null, null, null, null, null, null));
+        await ComCatalogoAsync(
+            db => db.CruzamentosDeAfinidade.Where(c => c.SubElementoId == Gelo).ExecuteUpdateAsync(c => c.SetProperty(x => x.MinimoB, 2)),
+            db => db.CruzamentosDeAfinidade.Where(c => c.SubElementoId == Gelo).ExecuteUpdateAsync(c => c.SetProperty(x => x.MinimoB, 1)),
+            async () =>
+            {
+                var afinidades = await GetAsync(f);
+                afinidades.Gasto.Should().Be(4);
+                afinidades.Elementos.Single(e => e.Id == Gelo).Should().Match<ElementoDaFichaResponse>(e =>
+                    e.Pontos == 2 && e.Bloqueado && e.Motivo == "Precisa de 1 em Água e 2 em Ar");
 
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var added = await response.Content.ReadFromJsonAsync<AfinidadeLida>();
-        added!.Elemento.Should().BeNull();
-        added.SubElemento.Should().BeNull();
-        added.Experiencia.Should().BeNull();
+                await DeveRecusarAsync(await PutAsync(f, f.Token, Gelo, 3), "Precisa de 1 em Água e 2 em Ar");
+                await PutOkAsync(f, Gelo, 1);
+                // Já inconsistente: baixar Ar também passa (o requisito não estava cumprido antes).
+                await PutOkAsync(f, Ar, 0);
+            });
     }
 
     [Fact]
-    public async Task Add_with_only_Elemento_given_returns_201_without_checking_a_combination()
+    public async Task Review_Focus_5_Campeao_sem_Afinidade_Adicional_nem_coracao_de_mana_nao_mostra_a_secao()
     {
-        var f = await FichaAsync();
+        var f = await FichaDeJogadorAsync(Vocacao.Campeao, afinidadeAdicional: 0);
 
-        var response = await AddAsync(f, new AdicionarAfinidade("Fogo", 3, null, null, null, null));
+        var afinidades = await GetAsync(f);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var added = await response.Content.ReadFromJsonAsync<AfinidadeLida>();
-        added!.Elemento.Should().Be("Fogo");
-        added.SubElemento.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task Update_an_existing_affinity_returns_200_and_the_list_reflects_the_change()
-    {
-        var f = await FichaAsync();
-
-        var addResponse = await AddAsync(f, new AdicionarAfinidade("Fogo", 3, "Vida", 4, 2, 10));
-        var added = await addResponse.Content.ReadFromJsonAsync<AfinidadeLida>();
-
-        var updateResponse = await UpdateAsync(f, f.Token, added!.Id, new AtualizarAfinidade("Terra", 5, "Vida", 4, 1, 8));
-        updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var updated = await updateResponse.Content.ReadFromJsonAsync<AfinidadeLida>();
-        updated!.Elemento.Should().Be("Terra");
-        updated.ElementoValor.Should().Be(5);
-        updated.SegundaEssencia.Should().Be("Vida");
-        updated.SubElemento.Should().Be("Aprimorar");
-        updated.SubElementoValor.Should().Be(1);
-        updated.Experiencia.Should().Be(8);
-
-        (await ListAsync(f)).Should().ContainSingle(a => a.Id == added.Id && a.Elemento == "Terra" && a.SubElemento == "Aprimorar");
-    }
-
-    [Fact]
-    public async Task Update_can_clear_fields_back_to_null()
-    {
-        var f = await FichaAsync();
-
-        var addResponse = await AddAsync(f, new AdicionarAfinidade("Fogo", 3, "Vida", 4, 2, 10));
-        var added = await addResponse.Content.ReadFromJsonAsync<AfinidadeLida>();
-
-        var updateResponse = await UpdateAsync(f, f.Token, added!.Id, new AtualizarAfinidade(null, null, null, null, null, null));
-        updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var updated = await updateResponse.Content.ReadFromJsonAsync<AfinidadeLida>();
-        updated!.Elemento.Should().BeNull();
-        updated.SubElemento.Should().BeNull();
-        updated.SegundaEssencia.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task Update_by_someone_without_access_returns_the_denied_status()
-    {
-        var f = await FichaAsync();
-        var otherToken = await Tipo.CriarIntrusoAsync(this, f);
-
-        var addResponse = await AddAsync(f, new AdicionarAfinidade("Fogo", 3, null, null, 2, 10));
-        var added = await addResponse.Content.ReadFromJsonAsync<AfinidadeLida>();
-
-        var updateResponse = await UpdateAsync(f, otherToken, added!.Id, new AtualizarAfinidade("Terra", 1, null, null, 1, 1));
-
-        updateResponse.StatusCode.Should().Be(Tipo.StatusNegado);
-    }
-
-    [Fact]
-    public async Task Update_a_nonexistent_affinity_returns_404()
-    {
-        var f = await FichaAsync();
-
-        var updateResponse = await UpdateAsync(f, f.Token, Guid.NewGuid().ToString(), new AtualizarAfinidade("Terra", 1, null, null, 1, 1));
-
-        updateResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
-    }
-
-    [Fact]
-    public async Task Update_does_not_flag_a_duplicate_against_its_own_row()
-    {
-        var f = await FichaAsync(); // Vocacao=Adepto
-
-        var addResponse = await AddAsync(f, new AdicionarAfinidade("Fogo", 3, "Vida", null, null, null));
-        var added = await addResponse.Content.ReadFromJsonAsync<AfinidadeLida>();
-
-        // Reenviar a mesma linha com o mesmo Sub-Elemento derivado não deve se auto-rejeitar como duplicata.
-        var updateResponse = await UpdateAsync(f, f.Token, added!.Id, new AtualizarAfinidade("Fogo", 5, "Vida", null, null, null));
-
-        updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-    }
-
-    [Fact]
-    public async Task Update_does_not_reject_a_pre_existing_duplicate_left_unchanged()
-    {
-        var f = await FichaAsync(); // Vocacao=Adepto
-
-        await AddAsync(f, new AdicionarAfinidade("Fogo", 3, "Vida", null, null, null));
-
-        // Simulate a pre-existing duplicate SubElemento inserted directly in the DB, bypassing the
-        // controller's own duplicate check entirely — the API now refuses to create this via HTTP.
-        var row2Id = Guid.NewGuid();
-        await InserirDiretoAsync(row2Id, f, Elemento.Fogo, EssenciaBasica.Vida, SubElemento.Curar);
-
-        // Re-send row2 with the same (now-colliding) SubElemento, changing only Experiencia — the
-        // pre-existing collision is not newly introduced, so it must be grandfathered through.
-        var updateResponse = await UpdateAsync(f, f.Token, row2Id.ToString(), new AtualizarAfinidade("Fogo", 1, "Vida", null, null, 7));
-
-        updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        (afinidades.SecaoVisivel, afinidades.Maximo).Should().Be((false, 0));
     }
 
     [Theory]
-    [InlineData("Ar", "Agua", "Gelo")]
-    [InlineData("Agua", "Ar", "Gelo")]
-    [InlineData("Terra", "Vida", "Aprimorar")]
-    [InlineData("Agua", "Mundano", "Hemomancia")]
-    public async Task Add_derives_the_SubElemento_from_the_two_essencias(string e1, string e2, string sub)
+    [InlineData(1, false)]
+    [InlineData(0, true)]
+    public async Task Review_Focus_5_Campeao_com_Afinidade_Adicional_ou_coracao_de_mana_ve_todos_os_elementos_sem_filtro(int afinidadeAdicional, bool coracaoDeMana)
     {
-        var f = await FichaAsync();
+        var f = await FichaDeJogadorAsync(Vocacao.Campeao, afinidadeAdicional, coracaoDeMana);
 
-        (await AddAsync(f, e1, e2)).StatusCode.Should().Be(HttpStatusCode.Created);
+        var afinidades = await GetAsync(f);
 
-        (await ListAsync(f)).Should().ContainSingle(a => a.Elemento == e1 && a.SegundaEssencia == e2 && a.SubElemento == sub);
-    }
-
-    /// <summary>Era o NPC <c>Add_derives_the_SubElemento_from_the_two_essencias</c> (um caso só, com valor).</summary>
-    [Fact]
-    public async Task Add_derives_the_SubElemento_and_keeps_the_SegundaEssenciaValor()
-    {
-        var f = await FichaAsync();
-
-        var response = await AddAsync(f, new AdicionarAfinidade("Fogo", null, "Terra", 2, null, null));
-        var list = await ListAsync(f);
-
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-        list.Should().ContainSingle(a => a.SubElemento == "Ferro" && a.SegundaEssencia == "Terra" && a.SegundaEssenciaValor == 2);
-    }
-
-    // ("Agua", "Vida") era o caso único do NPC.
-    [Theory]
-    [InlineData("Ar", "Terra")]
-    [InlineData("Agua", "Fogo")]
-    [InlineData("Fogo", "Fogo")]
-    [InlineData("Fogo", "Alma")]
-    [InlineData("Ar", "Vida")]
-    [InlineData("Agua", "Vida")]
-    public async Task Add_with_essencias_that_dont_cross_returns_400(string e1, string e2)
-    {
-        var f = await FichaAsync();
-
-        var response = await AddAsync(f, e1, e2);
-
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await response.Content.ReadAsStringAsync()).Should().Contain("Essas duas Essências não se cruzam na Matriz Elemental.");
+        afinidades.SecaoVisivel.Should().BeTrue();
+        afinidades.Maximo.Should().Be(afinidadeAdicional); // marcial: só a Afinidade Adicional
+        afinidades.Elementos.Should().HaveCount(19);
+        afinidades.Elementos.Where(e => e.Tipo != "SubElemento").Should().OnlyContain(e => !e.Bloqueado);
+        afinidades.Elementos.Single(e => e.Id == Necromancia).Motivo.Should().Be("Precisa de 1 em Fogo e 1 em Mundano");
     }
 
     [Fact]
-    public async Task Add_with_SegundaEssencia_but_no_Elemento_returns_400()
+    public async Task Um_elemento_nao_passa_do_teto()
     {
-        var f = await FichaAsync();
+        var f = await FichaDeJogadorAsync(Vocacao.Feiticeiro, afinidadeAdicional: 10);
 
-        var response = await AddAsync(f, null, "Mundano");
-
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await response.Content.ReadAsStringAsync()).Should().Contain("Escolha a Essência Básica 1 antes da 2.");
+        await ComCatalogoAsync(
+            db => db.ElementosDeAfinidade.Where(e => e.Id == Fogo).ExecuteUpdateAsync(e => e.SetProperty(x => x.Teto, 2)),
+            db => db.ElementosDeAfinidade.Where(e => e.Id == Fogo).ExecuteUpdateAsync(e => e.SetProperty(x => x.Teto, (int?)null)),
+            async () =>
+            {
+                await DeveRecusarAsync(await PutAsync(f, f.Token, Fogo, 3), "Fogo tem teto de 2 pontos.");
+                await PutOkAsync(f, Fogo, 2);
+                (await GetAsync(f)).Elementos.Single(e => e.Id == Fogo).Teto.Should().Be(2);
+            });
     }
 
     [Fact]
-    public async Task Add_rejects_a_second_row_with_the_same_SubElemento_but_allows_repeating_Essencia1()
+    public async Task O_gasto_nao_passa_do_maximo_e_baixar_o_maximo_so_deixa_tirar_pontos()
     {
-        var f = await FichaAsync();
-        await AddAsync(f, "Fogo", "Vida");
+        var f = await FichaDeJogadorAsync(Vocacao.Feiticeiro, afinidadeAdicional: 0);
+        await PutOkAsync(f, Fogo, 3);
 
-        var sameSub = await AddAsync(f, "Fogo", "Vida");
-        var sameE1 = await AddAsync(f, "Fogo", "Mundano");
+        await DeveRecusarAsync(await PutAsync(f, f.Token, Ar, 1), "Pontos acima do máximo de 3.");
 
-        sameSub.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await sameSub.Content.ReadAsStringAsync()).Should().Contain("Já existe uma linha de Afinidade com esse Sub-Elemento.");
-        sameE1.StatusCode.Should().Be(HttpStatusCode.Created);
-    }
-
-    /// <summary>Era o caso do NPC: o mesmo Sub-Elemento com as Essências trocadas.</summary>
-    [Fact]
-    public async Task Add_rejects_a_duplicate_SubElemento()
-    {
-        var f = await FichaAsync();
-        await AddAsync(f, "Ar", "Agua");
-
-        var response = await AddAsync(f, "Agua", "Ar");
-
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("Campeao")]
-    [InlineData("Feiticeiro")]
-    public async Task Any_Vocacao_can_pick_any_essencias(string? vocacao)
-    {
-        var f = await FichaAsync();
-        var setVocacao = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/{Tipo.Rota}/{f.SheetId}", f.GmToken, AtualizacaoComVocacao(vocacao, 100)));
-        setVocacao.StatusCode.Should().Be(HttpStatusCode.NoContent);
-
-        (await AddAsync(f, "Terra", "Mundano")).StatusCode.Should().Be(HttpStatusCode.Created);
-        (await AddAsync(f, "Agua", "Alma")).StatusCode.Should().Be(HttpStatusCode.Created);
+        await DefinirAsync(f, Vocacao.Campeao, afinidadeAdicional: 1); // máximo 1, gasto 3: baixar o máximo não é bloqueado
+        await DeveRecusarAsync(await PutAsync(f, f.Token, Ar, 1), "Pontos acima do máximo de 1.");
+        await PutOkAsync(f, Fogo, 2);
+        (await GetAsync(f)).Should().Match<AfinidadesDaFichaResponse>(a => a.Gasto == 2 && a.Maximo == 1);
     }
 
     [Fact]
-    public async Task Update_changing_only_values_keeps_a_legacy_SubElemento()
+    public async Task O_total_do_Circulo_vem_da_tabela_do_Auditor()
     {
-        var f = await FichaAsync();
-        var legacyId = Guid.NewGuid();
-        await InserirDiretoAsync(legacyId, f, Elemento.Ar, null, SubElemento.Curar);
+        var f = await FichaDeJogadorAsync(Vocacao.Feiticeiro, afinidadeAdicional: 1);
 
-        var response = await UpdateAsync(f, f.Token, legacyId.ToString(), new AtualizarAfinidade("Ar", 5, null, null, 3, 7));
+        await ComCatalogoAsync(
+            db => db.TotaisDeAfinidadePorCirculo.Where(t => t.Circulo == 0).ExecuteUpdateAsync(t => t.SetProperty(x => x.Total, 8)),
+            db => db.TotaisDeAfinidadePorCirculo.Where(t => t.Circulo == 0).ExecuteUpdateAsync(t => t.SetProperty(x => x.Total, 3)),
+            async () => (await GetAsync(f)).Maximo.Should().Be(9));
+    }
+
+    [Fact]
+    public async Task A_visibilidade_vem_da_Vocacao_ou_da_Classe()
+    {
+        var f = await FichaDeJogadorAsync(Vocacao.Feiticeiro, afinidadeAdicional: 10, classe: "Elementalista");
+        await PutOkAsync(f, Fogo, 1);
+
+        await ComCatalogoAsync(
+            db => db.VisibilidadesDeElemento.Where(v => v.Chave == "Feiticeiro" && v.ElementoId == Necromancia).ExecuteDeleteAsync(),
+            async db =>
+            {
+                await db.VisibilidadesDeElemento.Where(v => v.Chave == "Elementalista").ExecuteDeleteAsync();
+                db.VisibilidadesDeElemento.Add(new VisibilidadeDeElemento { Origem = OrigemDaVisibilidade.Vocacao, Chave = "Feiticeiro", ElementoId = Necromancia });
+                await db.SaveChangesAsync();
+            },
+            async () =>
+            {
+                (await GetAsync(f)).Elementos.Should().NotContain(e => e.Id == Necromancia);
+                await DeveRecusarAsync(await PutAsync(f, f.Token, Necromancia, 1), "Necromancia não está disponível para esta Vocação/Classe.");
+
+                await using (var scope = Factory.Services.CreateAsyncScope())
+                {
+                    var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+                    db.VisibilidadesDeElemento.Add(new VisibilidadeDeElemento { Origem = OrigemDaVisibilidade.Classe, Chave = "Elementalista", ElementoId = Necromancia });
+                    await db.SaveChangesAsync();
+                }
+                (await GetAsync(f)).Elementos.Should().Contain(e => e.Id == Necromancia);
+            });
+    }
+
+    [Fact]
+    public async Task Um_elemento_fora_da_Vocacao_com_pontos_aparece_marcado_e_so_desce()
+    {
+        var f = await FichaDeJogadorAsync(Vocacao.Feiticeiro, afinidadeAdicional: 10);
+        await InserirPontosAsync(f, (Alma, 2));
+        await DefinirAsync(f, Vocacao.Bruxo, afinidadeAdicional: 10);
+
+        await ComCatalogoAsync(
+            db => db.VisibilidadesDeElemento.Where(v => v.Chave == "Bruxo" && v.ElementoId == Alma).ExecuteDeleteAsync(),
+            async db =>
+            {
+                db.VisibilidadesDeElemento.Add(new VisibilidadeDeElemento { Origem = OrigemDaVisibilidade.Vocacao, Chave = "Bruxo", ElementoId = Alma });
+                await db.SaveChangesAsync();
+            },
+            async () =>
+            {
+                (await GetAsync(f)).Elementos.Single(e => e.Id == Alma).Should().Match<ElementoDaFichaResponse>(e =>
+                    e.Pontos == 2 && e.Bloqueado && e.Motivo == "Indisponível para esta Vocação/Classe");
+                await DeveRecusarAsync(await PutAsync(f, f.Token, Alma, 3), "Alma não está disponível para esta Vocação/Classe.");
+                await PutOkAsync(f, Alma, 1);
+            });
+    }
+
+    [Fact]
+    public async Task A_Experiencia_muda_sem_mexer_nos_pontos_mesmo_num_elemento_bloqueado()
+    {
+        var f = await FichaDeJogadorAsync(Vocacao.Feiticeiro, afinidadeAdicional: 0);
+        await InserirPontosAsync(f, (Gelo, 2)); // sem Ar nem Água: Gelo bloqueado
+
+        var response = await PutAsync(f, f.Token, Gelo, 2, experiencia: 7);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        (await ListAsync(f)).Should().ContainSingle(a => a.SubElemento == "Curar" && a.ElementoValor == 5 && a.SubElementoValor == 3 && a.Experiencia == 7);
+        (await GetAsync(f)).Elementos.Single(e => e.Id == Gelo).Should().Match<ElementoDaFichaResponse>(e => e.Pontos == 2 && e.Experiencia == 7 && e.Bloqueado);
+    }
+
+    [Theory]
+    [InlineData(Fogo, -1, null, "O valor não pode ser negativo.")]
+    [InlineData(99, 1, null, "Elemento inexistente.")]
+    [InlineData(Fogo, 1, -1, "A Experiência não pode ser negativa.")]
+    public async Task Valores_invalidos_sao_recusados(int elemento, int pontos, int? experiencia, string texto)
+    {
+        var f = await FichaDeJogadorAsync(Vocacao.Feiticeiro, afinidadeAdicional: 10);
+
+        await DeveRecusarAsync(await PutAsync(f, f.Token, elemento, pontos, experiencia), texto);
     }
 
     [Fact]
-    public async Task Update_changing_an_essencia_recomputes_the_SubElemento()
+    public async Task Sem_acesso_a_leitura_e_404_e_a_escrita_o_status_negado()
     {
-        var f = await FichaAsync();
-        var added = await (await AddAsync(f, "Fogo", "Vida")).Content.ReadFromJsonAsync<AfinidadeLida>();
+        var f = await FichaDeJogadorAsync(Vocacao.Feiticeiro, afinidadeAdicional: 10);
+        var intruso = await Tipo.CriarIntrusoAsync(this, f);
 
-        await UpdateAsync(f, f.Token, added!.Id, new AtualizarAfinidade("Fogo", null, "Mundano", null, null, null));
-        var afterChange = (await ListAsync(f)).Single();
-        await UpdateAsync(f, f.Token, added.Id, new AtualizarAfinidade("Fogo", null, null, null, null, null));
-        var afterClear = (await ListAsync(f)).Single();
-
-        afterChange.SubElemento.Should().Be("Necromancia");
-        afterClear.SubElemento.Should().BeNull();
-        afterClear.SegundaEssencia.Should().BeNull();
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Get, Url(f, "afinidades"), intruso))).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await PutAsync(f, intruso, Fogo, 1)).StatusCode.Should().Be(Tipo.StatusNegado);
     }
 
     [Fact]
-    public async Task Negative_AfinidadeAdicional_is_rejected()
+    public async Task O_cabecalho_da_ficha_mostra_o_mesmo_gasto_e_maximo()
     {
-        var f = await FichaAsync();
+        var f = await FichaDeJogadorAsync(Vocacao.Feiticeiro, afinidadeAdicional: 2);
+        await PutOkAsync(f, Fogo, 2);
+        await PutOkAsync(f, Terra, 1);
 
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/{Tipo.Rota}/{f.SheetId}", f.GmToken, AtualizacaoComVocacao("Feiticeiro", -1)));
+        var ficha = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/{Tipo.Rota}/{f.SheetId}", f.Token));
+        var json = await ficha.Content.ReadFromJsonAsync<JsonElement>();
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (json.GetProperty("vocacaoArcanaGasta").GetInt32(), json.GetProperty("vocacaoArcanaMaxima").GetInt32()).Should().Be((3, 5));
+    }
+
+    // Ficha de Personagem 2.b: Eficiência e Dano Elemental vêm da Tabela de Afinidades com os pontos do elemento
+    // escolhido como Afinidade (7 pontos → linha 7: Eficiência 4, Dano 3).
+    [Theory]
+    [InlineData(Gelo)] // um Sub-Elemento
+    [InlineData(Agua)] // um elemento que na lista antiga só aparecia como Essência 2
+    public async Task Eficiencia_e_Dano_Elemental_saem_dos_pontos_do_elemento_escolhido_como_Afinidade(int afinidade)
+    {
+        var f = await FichaDeJogadorAsync(Vocacao.Feiticeiro, afinidadeAdicional: 10);
+        await InserirPontosAsync(f, (afinidade, 7), (Fogo, 2));
+        await DefinirAsync(f, Vocacao.Feiticeiro, afinidadeAdicional: 10, afinidade: afinidade);
+
+        var sub = await Client.SendAsync(AuthedRequest(HttpMethod.Get, Url(f, "sub-attributes"), f.Token));
+        var body = (await sub.Content.ReadFromJsonAsync<SubAttributesResponse>())!;
+
+        (body.EficienciaElemental, body.DanoElemental).Should().Be((4, 3));
+    }
+
+    [Fact]
+    public async Task Sem_pontos_no_elemento_da_Afinidade_Eficiencia_e_Dano_Elemental_valem_0()
+    {
+        var f = await FichaDeJogadorAsync(Vocacao.Feiticeiro, afinidadeAdicional: 10);
+        await InserirPontosAsync(f, (Fogo, 7));
+        await DefinirAsync(f, Vocacao.Feiticeiro, afinidadeAdicional: 10, afinidade: Gelo);
+
+        var body = (await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, Url(f, "sub-attributes"), f.Token)))
+            .Content.ReadFromJsonAsync<SubAttributesResponse>())!;
+
+        (body.EficienciaElemental, body.DanoElemental).Should().Be((0, 0));
     }
 }
 
-/// <summary>Só o Personagem tem o limite da Vocação Arcana (2.c); o NPC aceita além dele e só informa.</summary>
 public sealed class AfinidadesDaFichaTestesPersonagem(ApiFixture fixture) : AfinidadesDaFichaTestes<TipoDeTestePersonagem>(fixture)
 {
-    protected override object AtualizacaoComVocacao(string? vocacao, int afinidadeAdicional) =>
-        new UpdateCharacterSheetRequest(null, "Ficha de Teste", null, null, vocacao, null, null, null,
-            false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, 0, null, null, 0, null, null, afinidadeAdicional);
+    protected override async Task<IFichaComAfinidades> FichaNoBancoAsync(RuinaRpgDbContext db, Guid id) => (await db.CharacterSheets.FindAsync(id))!;
 
-    protected override IAfinidadeDaFicha NovaLinha() => new RuinaRPG.Infrastructure.CharacterSheets.CharacterAffinity();
-
-    // Vocação Arcana (2.c): Feiticeiro sem coração de mana está no Círculo 0 → máximo 3 + adicional.
-    private async Task SetVocacaoAsync(FichaDeTeste f, string? vocacao, int afinidadeAdicional)
-    {
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{f.SheetId}", f.GmToken, AtualizacaoComVocacao(vocacao, afinidadeAdicional)));
-        response.EnsureSuccessStatusCode();
-    }
-
-    private Task<HttpResponseMessage> AddValoresAsync(FichaDeTeste f, string elemento, int elementoValor, string? segunda, int? segundaValor, int? subValor) =>
-        AddAsync(f, new AddAffinityRequest(elemento, elementoValor, segunda, segundaValor, subValor, null));
-
-    private async Task<CharacterSheetResponse> GetSheetAsync(FichaDeTeste f) =>
-        (await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{f.SheetId}", f.Token)))
-            .Content.ReadFromJsonAsync<CharacterSheetResponse>())!;
+    protected override IPontosDeAfinidadeDaFicha NovosPontos() => new CharacterPontosDeAfinidade();
 
     [Fact]
-    public async Task Add_up_to_the_vocacao_arcana_maximum_is_accepted_and_beyond_it_is_rejected()
+    public async Task O_Mestre_da_campanha_tambem_segue_as_regras_no_Personagem()
     {
-        var f = await FichaAsync();
-        await SetVocacaoAsync(f, "Feiticeiro", 0);
+        var f = await FichaDeJogadorAsync(Vocacao.Feiticeiro, afinidadeAdicional: 0);
 
-        var within = await AddValoresAsync(f, "Fogo", 2, "Terra", 1, 0);
-        var beyond = await AddValoresAsync(f, "Ar", 1, null, null, null);
-
-        within.StatusCode.Should().Be(HttpStatusCode.Created);
-        beyond.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await beyond.Content.ReadAsStringAsync()).Should().Contain("Vocação Arcana");
-        (await ListAsync(f)).Should().ContainSingle();
-    }
-
-    [Fact]
-    public async Task A_repeated_essencia_only_costs_its_highest_value()
-    {
-        var f = await FichaAsync();
-        await SetVocacaoAsync(f, "Feiticeiro", 0);
-
-        (await AddValoresAsync(f, "Fogo", 2, null, null, null)).StatusCode.Should().Be(HttpStatusCode.Created);
-        // Fogo 1 na Essência 2 não custa nada além do Fogo 2 já pago; Mundano 1 leva o gasto a 3.
-        (await AddValoresAsync(f, "Terra", 0, "Fogo", 1, null)).StatusCode.Should().Be(HttpStatusCode.Created);
-        (await AddValoresAsync(f, "Agua", 0, "Mundano", 1, null)).StatusCode.Should().Be(HttpStatusCode.Created);
-
-        (await GetSheetAsync(f)).VocacaoArcanaGasta.Should().Be(3);
-    }
-
-    [Fact]
-    public async Task AfinidadeAdicional_raises_the_maximum()
-    {
-        var f = await FichaAsync();
-        await SetVocacaoAsync(f, "Feiticeiro", 2);
-
-        (await AddValoresAsync(f, "Fogo", 5, null, null, null)).StatusCode.Should().Be(HttpStatusCode.Created);
-
-        var sheet = await GetSheetAsync(f);
-        sheet.AfinidadeAdicional.Should().Be(2);
-        sheet.VocacaoArcanaMaxima.Should().Be(5);
-        sheet.VocacaoArcanaGasta.Should().Be(5);
-    }
-
-    [Fact]
-    public async Task A_martial_vocacao_only_has_the_afinidade_adicional()
-    {
-        var f = await FichaAsync();
-        await SetVocacaoAsync(f, "Campeao", 0);
-
-        var costly = await AddValoresAsync(f, "Fogo", 1, null, null, null);
-        var free = await AddAsync(f, "Fogo", null);
-
-        costly.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        free.StatusCode.Should().Be(HttpStatusCode.Created);
-        (await GetSheetAsync(f)).VocacaoArcanaMaxima.Should().Be(0);
-    }
-
-    [Fact]
-    public async Task Lowering_the_maximum_is_allowed_and_then_only_updates_that_lower_the_gasto_go_through()
-    {
-        var f = await FichaAsync();
-        await SetVocacaoAsync(f, "Feiticeiro", 3);
-        var added = await (await AddValoresAsync(f, "Fogo", 6, null, null, null)).Content.ReadFromJsonAsync<AffinityResponse>();
-
-        await SetVocacaoAsync(f, "Feiticeiro", 0); // gasto 6 > máximo 3, mas baixar o máximo não é bloqueado
-
-        var lower = await UpdateAsync(f, f.Token, added!.Id, new UpdateAffinityRequest("Fogo", 5, null, null, null, null));
-        var higher = await UpdateAsync(f, f.Token, added.Id, new UpdateAffinityRequest("Fogo", 6, null, null, null, null));
-
-        lower.StatusCode.Should().Be(HttpStatusCode.OK);
-        higher.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await GetSheetAsync(f)).VocacaoArcanaGasta.Should().Be(5);
+        await DeveRecusarAsync(await PutAsync(f, f.GmToken, Fogo, 4), "Pontos acima do máximo de 3.");
     }
 }
 
 public sealed class AfinidadesDaFichaTestesNpc(ApiFixture fixture) : AfinidadesDaFichaTestes<TipoDeTesteNpc>(fixture)
 {
-    private static UpdateNpcSheetRequest ValidUpdate() => new(null, "Ficha de Teste", null, null, "Adepto", null, null, null,
-        1, false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, null, null, 0, null, null, 0);
+    protected override async Task<IFichaComAfinidades> FichaNoBancoAsync(RuinaRpgDbContext db, Guid id) => (await db.NpcSheets.FindAsync(id))!;
 
-    protected override object AtualizacaoComVocacao(string? vocacao, int afinidadeAdicional) =>
-        ValidUpdate() with { Vocacao = vocacao, AfinidadeAdicional = afinidadeAdicional };
+    protected override IPontosDeAfinidadeDaFicha NovosPontos() => new NpcPontosDeAfinidade();
 
-    protected override IAfinidadeDaFicha NovaLinha() => new RuinaRPG.Infrastructure.NpcSheets.NpcAffinity();
-
+    /// <summary>Ficha de NPCs R0010: o GM não é bloqueado por nenhuma regra de 2.c; a ficha só mostra.</summary>
     [Fact]
-    public async Task Npc_affinities_beyond_the_vocacao_arcana_maximum_are_accepted_and_reported()
+    public async Task O_GM_do_NPC_nao_e_recusado_pelas_regras_e_a_ficha_mostra_o_que_ficou_fora_delas()
     {
-        var f = await FichaAsync();
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{f.SheetId}", f.GmToken, ValidUpdate() with { AfinidadeAdicional = 1 }));
+        var f = await NovaFichaAsync();
+        await DefinirAsync(f, Vocacao.Feiticeiro, afinidadeAdicional: 0);
 
-        var response = await AddAsync(f, new AddAffinityRequest("Fogo", 3, "Terra", 2, 1, null));
+        await ComCatalogoAsync(
+            db => db.ElementosDeAfinidade.Where(e => e.Id == Fogo).ExecuteUpdateAsync(e => e.SetProperty(x => x.Teto, 2)),
+            db => db.ElementosDeAfinidade.Where(e => e.Id == Fogo).ExecuteUpdateAsync(e => e.SetProperty(x => x.Teto, (int?)null)),
+            async () =>
+            {
+                await PutOkAsync(f, Fogo, 5);  // acima do teto e do máximo
+                await PutOkAsync(f, Gelo, 1);  // sem o requisito
+                await PutOkAsync(f, Ar, 1);
+                await PutOkAsync(f, Agua, 1);
+                await PutOkAsync(f, Ar, 0);    // baixar o requisito de um Sub-Elemento com pontos
 
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var sheet = (await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{f.SheetId}", f.GmToken)))
-            .Content.ReadFromJsonAsync<NpcSheetResponse>())!;
-        sheet.AfinidadeAdicional.Should().Be(1);
-        sheet.VocacaoArcanaMaxima.Should().Be(4); // Adepto sem coração de mana → Círculo 0 → 3, + 1
-        sheet.VocacaoArcanaGasta.Should().Be(6);
+                var afinidades = await GetAsync(f);
+                (afinidades.Gasto, afinidades.Maximo).Should().Be((7, 3));
+                afinidades.Elementos.Single(e => e.Id == Fogo).Motivo.Should().Be("Acima do teto (2)");
+                afinidades.Elementos.Single(e => e.Id == Gelo).Bloqueado.Should().BeTrue();
+            });
     }
 
-    // Ficha de Personagem 2.b, igual no NPC: Eficiência e Dano Elemental vêm da Tabela de Afinidades
-    // (7 pontos no elemento da Afinidade → linha 7).
     [Fact]
-    public async Task SubAttributes_derive_EficienciaElemental_and_DanoElemental_from_the_points_in_the_Afinidade()
+    public async Task O_GM_de_um_NPC_concedido_tambem_nao_e_recusado_mas_o_jogador_e()
     {
-        var f = await FichaAsync();
-        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{f.SheetId}", f.GmToken,
-            ValidUpdate() with { Afinidade = 2, AfinidadeAdicional = 10 }));
-        var added = await AddAsync(f, new AddAffinityRequest("Fogo", 7, null, null, null, null));
-        added.StatusCode.Should().Be(HttpStatusCode.Created);
+        var f = await FichaDeJogadorAsync(Vocacao.Feiticeiro, afinidadeAdicional: 0);
 
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{f.SheetId}/sub-attributes", f.GmToken));
-        var body = await response.Content.ReadFromJsonAsync<SubAttributesResponse>();
-
-        body!.EficienciaElemental.Should().Be(4);
-        body.DanoElemental.Should().Be(3);
+        await DeveRecusarAsync(await PutAsync(f, f.Token, Fogo, 4), "Pontos acima do máximo de 3.");
+        (await PutAsync(f, f.GmToken, Fogo, 4)).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await GetAsync(f)).Gasto.Should().Be(4);
     }
 }

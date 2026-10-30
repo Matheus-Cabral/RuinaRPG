@@ -483,44 +483,6 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.ToTable("CharacterAffections");
                 });
 
-            modelBuilder.Entity("RuinaRPG.Infrastructure.CharacterSheets.CharacterAffinity", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int?>("Elemento")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("ElementoValor")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("Experiencia")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("SegundaEssencia")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("SegundaEssenciaValor")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("SheetId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("CharacterSheetId");
-
-                    b.Property<int?>("SubElemento")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("SubElementoValor")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SheetId");
-
-                    b.ToTable("CharacterAffinities");
-                });
-
             modelBuilder.Entity("RuinaRPG.Infrastructure.CharacterSheets.CharacterArmorSlot", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2257,44 +2219,6 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.ToTable("NpcAffections");
                 });
 
-            modelBuilder.Entity("RuinaRPG.Infrastructure.NpcSheets.NpcAffinity", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int?>("Elemento")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("ElementoValor")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("Experiencia")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("SegundaEssencia")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("SegundaEssenciaValor")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("SheetId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("NpcSheetId");
-
-                    b.Property<int?>("SubElemento")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("SubElementoValor")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SheetId");
-
-                    b.ToTable("NpcAffinities");
-                });
-
             modelBuilder.Entity("RuinaRPG.Infrastructure.NpcSheets.NpcArmorSlot", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3839,15 +3763,6 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("RuinaRPG.Infrastructure.CharacterSheets.CharacterAffinity", b =>
-                {
-                    b.HasOne("RuinaRPG.Infrastructure.CharacterSheets.CharacterSheet", null)
-                        .WithMany()
-                        .HasForeignKey("SheetId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("RuinaRPG.Infrastructure.CharacterSheets.CharacterArmorSlot", b =>
                 {
                     b.HasOne("RuinaRPG.Infrastructure.Items.Item", null)
@@ -4452,15 +4367,6 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.NpcSheets.NpcAffection", b =>
-                {
-                    b.HasOne("RuinaRPG.Infrastructure.NpcSheets.NpcSheet", null)
-                        .WithMany()
-                        .HasForeignKey("SheetId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("RuinaRPG.Infrastructure.NpcSheets.NpcAffinity", b =>
                 {
                     b.HasOne("RuinaRPG.Infrastructure.NpcSheets.NpcSheet", null)
                         .WithMany()

@@ -149,7 +149,7 @@ public class CemiterioEscritaTests(ApiFixture fixture) : TestesDeFicha(fixture)
         return c;
     }
 
-    /// <summary>A URL da ação na ficha dada: Guids novos nos outros ids, o primeiro valor do enum, uma Perícia existente.</summary>
+    /// <summary>A URL da ação na ficha dada: Guids novos nos outros ids, 0 nos inteiros, o primeiro valor do enum, uma Perícia existente.</summary>
     private async Task<string> UrlAsync(string template, string parametros, string sheetId)
     {
         var url = "/" + template;
@@ -159,6 +159,7 @@ public class CemiterioEscritaTests(ApiFixture fixture) : TestesDeFicha(fixture)
             var valor = nome is "id" or "sheetId" && Segmento(template, 2) == nome ? sheetId
                 : tipo == nameof(Guid) ? Guid.NewGuid().ToString()
                 : tipo == nameof(String) && nome == "pericia" ? await PericiaExistenteAsync()
+                : tipo == nameof(Int32) ? "0"
                 : tipo;
             url = System.Text.RegularExpressions.Regex.Replace(url, $@"\{{{nome}(:[^}}]*)?\}}", valor);
         }

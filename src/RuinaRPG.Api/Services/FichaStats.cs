@@ -340,16 +340,13 @@ public abstract class FichaStats<TSheet, TAtributo, TLinhaAtributo, TLinhaPerici
             .Select(x => (x.Qtd, x.Peso, x.CapacidadeExtra)).ToList();
 
     /// <summary>
-    /// Eficiência e Dano Elemental do Personagem e do NPC: saem dos pontos da ficha no elemento escolhido como Afinidade
-    /// (o id do catálogo), já com as Condições. Enquanto a ficha guarda linhas, os pontos são os da conversão delas.
+    /// Eficiência e Dano Elemental do Personagem e do NPC: saem dos pontos da ficha (2.c, a tabela de pontos do tipo) no
+    /// elemento escolhido como Afinidade (o id do catálogo), já com as Condições daquele elemento.
     /// </summary>
-    protected async Task<(int? Eficiencia, int? Dano)> ElementalDasAfinidadesAsync<TAfinidade>(Guid id, int? afinidade, EfeitosDeCondicao efeitos, TabelaDeAfinidadesProvider tabelaDeAfinidades)
-        where TAfinidade : class, IAfinidadeDaFicha
+    protected async Task<(int? Eficiencia, int? Dano)> ElementalDasAfinidadesAsync<TPontos>(Guid id, int? afinidade, EfeitosDeCondicao efeitos, TabelaDeAfinidadesProvider tabelaDeAfinidades)
+        where TPontos : class, IPontosDeAfinidadeDaFicha
     {
-        var linhasDeAfinidade = await Db.Set<TAfinidade>().Where(a => a.SheetId == id)
-            .Select(a => new LinhaDeAfinidade(a.Elemento, a.ElementoValor, a.SubElemento, a.SubElementoValor, a.SegundaEssencia, a.SegundaEssenciaValor))
-            .ToListAsync();
-        var pontos = ConversaoDeLinhas.Converter(linhasDeAfinidade).ToDictionary(p => p.Key, p => p.Value.Pontos);
+        var pontos = await Db.Set<TPontos>().AsNoTracking().Where(p => p.SheetId == id).ToDictionaryAsync(p => p.ElementoId, p => p.Pontos);
         var valorDaAfinidade = efeitos.NaAfinidade(afinidade, SubAttributeFormulas.ValorDaAfinidadeCorrespondente(afinidade, pontos)) ?? 0;
         var linhasDaTabelaDeAfinidades = await tabelaDeAfinidades.LinhasAsync();
         return (SubAttributeFormulas.EficienciaElemental(valorDaAfinidade, linhasDaTabelaDeAfinidades), SubAttributeFormulas.DanoElemental(valorDaAfinidade, linhasDaTabelaDeAfinidades));

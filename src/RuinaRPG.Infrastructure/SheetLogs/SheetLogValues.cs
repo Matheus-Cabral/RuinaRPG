@@ -24,7 +24,6 @@ public static class SheetLogValues
         [Variante.PhylacTai] = "Phylac'tai (Sol)", [Variante.EsPhylauc] = "Es'Phylauc (Lua)",
         [Variante.Koroanos] = "Koroanos (Sol)", [Variante.Yavos] = "Yavos (Lua)",
         [Variante.Alora] = "Alóra (Lua)", [Variante.AloraSolar] = "Alóra (Sol)",
-        [Elemento.Agua] = "Água", [EssenciaBasica.Agua] = "Água", [SubElemento.Invocacao] = "Invocação",
         [Arquetipo.Fisico] = "Físico",
         [TipoDeRuna.Arcana] = "Runa Arcana", [TipoDeRuna.Negra] = "Runa Negra",
         [CategoriaDePassiva.Livre] = "Passiva Livre", [CategoriaDePassiva.Vocacional] = "Passiva Vocacional",

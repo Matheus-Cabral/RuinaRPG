@@ -1,5 +1,4 @@
 @using MudBlazor
-@using RuinaRPG.Domain.CharacterSheets
 
 @* Cabeçalho da seção Afinidades (Ficha de Personagem 2.c): pontos de Vocação Arcana gastos
    sobre o máximo, mais a Afinidade Adicional que aumenta esse máximo. Compartilhado entre
@@ -16,10 +15,21 @@
     [Parameter] public int AfinidadeAdicional { get; set; }
     [Parameter] public EventCallback<int> AfinidadeAdicionalChanged { get; set; }
 
-    // As linhas já carregadas na página, para o contador acompanhar cada edição sem recarregar a ficha.
-    public static int CalcularGasto(IEnumerable<(string? Elemento, int? ElementoValor, string? SegundaEssencia, int? SegundaEssenciaValor, int? SubElementoValor)> linhas) =>
-        VocacaoArcanaCalculator.Gasto(linhas.Select(l => new LinhaDeAfinidade(
-            Enum.TryParse<Elemento>(l.Elemento, out var e1) ? e1 : null, l.ElementoValor,
-            null, l.SubElementoValor,
-            Enum.TryParse<EssenciaBasica>(l.SegundaEssencia, out var e2) ? e2 : null, l.SegundaEssenciaValor)));
+    // As linhas já carregadas na página, para o contador acompanhar cada edição sem recarregar a ficha: cada
+    // Essência conta uma vez, pelo maior valor (como 1 ou 2), e os Sub-Elementos somam. A Api conta pontos por
+    // elemento desde a 2.2.0; esta conta só vive enquanto a seção de linhas existe.
+    public static int CalcularGasto(IEnumerable<(string? Elemento, int? ElementoValor, string? SegundaEssencia, int? SegundaEssenciaValor, int? SubElementoValor)> linhas)
+    {
+        var maiorPorEssencia = new Dictionary<string, int>();
+        var subElementos = 0;
+        foreach (var l in linhas)
+        {
+            if (l.Elemento is { } e)
+                maiorPorEssencia[e] = Math.Max(maiorPorEssencia.GetValueOrDefault(e), l.ElementoValor ?? 0);
+            if (l.SegundaEssencia is { } s)
+                maiorPorEssencia[s] = Math.Max(maiorPorEssencia.GetValueOrDefault(s), l.SegundaEssenciaValor ?? 0);
+            subElementos += l.SubElementoValor ?? 0;
+        }
+        return maiorPorEssencia.Values.Sum() + subElementos;
+    }
 }

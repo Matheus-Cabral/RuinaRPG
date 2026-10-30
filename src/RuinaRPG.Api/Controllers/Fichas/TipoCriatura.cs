@@ -47,4 +47,7 @@ public sealed class TipoCriatura(RuinaRpgDbContext db, CondicoesAtivasDaFicha co
     public bool SoPericiasDeCriatura => true;
 
     public bool RecusaAtributosAcimaDoOrcamento => false;
+
+    /// <summary>Sem Afinidades por pontos (só o campo <i>Afinidade</i> de 1.a): nenhum controller pergunta.</summary>
+    public bool AfinidadesRecusamForaDasRegras(CreatureSheet sheet, Guid userId) => false;
 }

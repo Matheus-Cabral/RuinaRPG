@@ -298,7 +298,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 
 *(Modificador e Total não são colunas — são calculados.)*
 
-**CharacterPontosDeAfinidade** — pontos por elemento (2.c), uma linha por (ficha, elemento) com pontos ou Experiência. Substitui a antiga `CharacterAffinities` (linhas Essência 1/Essência 2/Sub-Elemento), convertida pela migration `AfinidadesPorElemento` da 2.2.0.
+**CharacterPontosDeAfinidade** — pontos por elemento (2.c), uma linha por (ficha, elemento) com pontos ou Experiência. Substitui a antiga `CharacterAffinities` (linhas Essência 1/Essência 2/Sub-Elemento), convertida pela migration `AfinidadesPorElemento` da 2.2.0 e removida, com `NpcAffinities`, pela `RemoverLinhasDeAfinidade`.
 
 | Coluna | Tipo |
 |---|---|
@@ -308,7 +308,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Pontos | int, >= 0 |
 | Experiencia | int, nullable |
 
-Único por (CharacterSheetId, ElementoId); `ElementoId` com `Restrict` (um elemento com pontos não sai do catálogo). O gasto da ficha é a soma de `Pontos`.
+Único por (CharacterSheetId, ElementoId); `ElementoId` com `Restrict` (um elemento com pontos não sai do catálogo). O gasto da ficha é a soma de `Pontos`. Uma linha que volta a 0 pontos sem Experiência é apagada: a tabela só guarda os elementos em que a ficha tem algo.
 
 **ElementosDeAfinidade** — o catálogo de elementos, mantido pelo Auditor ("[[Requisitos - Auditoria de Regras]]" R0018/R0019). Um só catálogo para a ficha, a Criatura, as Condições e as Passivas.
 

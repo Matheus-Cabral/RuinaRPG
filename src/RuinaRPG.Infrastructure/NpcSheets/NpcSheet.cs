@@ -3,7 +3,7 @@ using RuinaRPG.Domain.CharacterSheets;
 
 namespace RuinaRPG.Infrastructure.NpcSheets;
 
-public class NpcSheet : IFichaComLinhagem, IFichaComEquipagem, IFichaConcedivel
+public class NpcSheet : IFichaComLinhagem, IFichaComEquipagem, IFichaConcedivel, IFichaComAfinidades
 {
     // 1.a Identidade
     public Guid Id { get; set; }

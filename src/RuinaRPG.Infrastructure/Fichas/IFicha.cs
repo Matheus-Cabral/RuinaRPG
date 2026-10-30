@@ -173,16 +173,30 @@ public interface IRunaDaFicha : ILinhaDaFicha
     Guid? SourceBankEntryId { get; set; }
 }
 
-/// <summary>Uma linha de Afinidade da ficha (CharacterAffinity, NpcAffinity).</summary>
-public interface IAfinidadeDaFicha : ILinhaDaFicha
+/// <summary>
+/// Uma ficha com Afinidades por pontos (2.c; Personagem e NPC — a Criatura só tem o campo <i>Afinidade</i>): o que as
+/// regras de Afinidade leem dela — Vocação e Classe (visibilidade), Círculo (Nível, Âmbares e coração de mana), Afinidade
+/// Adicional (máximo) e o elemento escolhido como <i>Afinidade</i> (Eficiência e Dano Elemental).
+/// </summary>
+public interface IFichaComAfinidades : IFicha
 {
-    Elemento? Elemento { get; set; }
-    int? ElementoValor { get; set; }
-    SubElemento? SubElemento { get; set; }
-    int? SubElementoValor { get; set; }
-    EssenciaBasica? SegundaEssencia { get; set; }
-    int? SegundaEssenciaValor { get; set; }
-    int? Experiencia { get; set; }
+    Vocacao? Vocacao { get; set; }
+
+    /// <summary>A Classe da ficha.</summary>
+    string? SubVocacao { get; set; }
+
+    /// <summary>Id do elemento do catálogo escolhido como <i>Afinidade</i> (2.b).</summary>
+    int? Afinidade { get; set; }
+
+    bool PossuiCoracaoDeMana { get; set; }
+    int AfinidadeAdicional { get; set; }
+    int NucleosRankF { get; set; }
+    int NucleosRankE { get; set; }
+    int NucleosRankD { get; set; }
+    int NucleosRankC { get; set; }
+    int NucleosRankB { get; set; }
+    int NucleosRankA { get; set; }
+    int NucleosRankS { get; set; }
 }
 
 /// <summary>

@@ -64,4 +64,11 @@ public interface ITipoDeFicha<TSheet> where TSheet : class, IFicha
     /// Só Personagem: no NPC e na Criatura o orçamento só informa (Ficha de NPCs R0007).
     /// </summary>
     bool RecusaAtributosAcimaDoOrcamento { get; }
+
+    /// <summary>
+    /// As regras das Afinidades (2.c e R0007: máximo, teto, requisito, visibilidade, baixar um requisito) recusam a
+    /// edição deste usuário? Personagem sempre; NPC só para quem não é o GM da ficha — o jogador de um NPC concedido
+    /// (Ficha de NPCs R0010: para o GM a ficha só mostra). A Criatura não tem Afinidades por pontos.
+    /// </summary>
+    bool AfinidadesRecusamForaDasRegras(TSheet sheet, Guid userId);
 }

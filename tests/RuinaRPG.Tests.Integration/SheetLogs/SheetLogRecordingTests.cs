@@ -337,6 +337,24 @@ public partial class SheetLogRecordingTests(ApiFixture fixture) : ApiTestBase(fi
     }
 
     [Fact]
+    public async Task Affinity_points_are_logged_under_the_catalog_name_of_the_element()
+    {
+        var c = await CenarioAsync("Pontos");
+        await PutSheetAsync(c.GmToken, c.SheetId, ValidUpdate() with { Vocacao = "Feiticeiro", SubVocacao = null, AfinidadeAdicional = 5 });
+
+        var aoAdicionar = await NovasAsync(c.SheetId, () =>
+            SendOkAsync(HttpMethod.Put, $"/api/character-sheets/{c.SheetId}/afinidades/1", c.PlayerToken, new AtualizarAfinidadeRequest(1, null)));
+        var aoAlterar = await NovasAsync(c.SheetId, () =>
+            SendOkAsync(HttpMethod.Put, $"/api/character-sheets/{c.SheetId}/afinidades/1", c.PlayerToken, new AtualizarAfinidadeRequest(2, null)));
+
+        var adicionou = aoAdicionar.Should().ContainSingle().Subject;
+        (adicionou.Acao, adicionou.Secao, adicionou.ItemNome).Should().Be((SheetLogAcao.Adicionou, "Afinidades", "Água"));
+        var alterou = aoAlterar.Should().ContainSingle().Subject;
+        (alterou.Acao, alterou.ItemNome, alterou.Campo, alterou.ValorAntes, alterou.ValorDepois)
+            .Should().Be((SheetLogAcao.Alterou, "Água", Rotulo<CharacterPontosDeAfinidade>("Pontos"), "1", "2"));
+    }
+
+    [Fact]
     public async Task A_reference_value_is_rendered_by_name()
     {
         var c = await CenarioAsync("Historico");
