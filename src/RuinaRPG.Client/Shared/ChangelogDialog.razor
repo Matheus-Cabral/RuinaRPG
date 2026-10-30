@@ -3,10 +3,14 @@
 <MudDialog @bind-Visible="_visible" @bind-Visible:after="OnVisibilityChangedAsync" Options="@(new DialogOptions { CloseOnEscapeKey = true })">
     <DialogContent>
         <MudText Typo="Typo.h6">Novidades da Versão @Version</MudText>
-        @* Texto da versão 2.0.0 (AppVersionInfo.Current) — atualize esta lista junto com a constante ao lançar uma nova versão. *@
+        @* Texto da versão 2.1.0 (AppVersionInfo.Current) — atualize esta lista junto com a constante ao lançar uma nova versão. *@
         <ul class="mt-2">
-            <li><b>Mais rapidez:</b> o site e as fichas carregam mais depressa.</li>
-            <li><b>Melhorias e correções:</b> ajustes internos que deixam o sistema mais estável e preparado para as próximas versões.</li>
+            <li><b>Cemitério de fichas:</b> o GM pode marcar um personagem como morto. A ficha vai para o cemitério, continua visível para o GM e para o dono, mas ninguém mais a edita. A campanha ganhou a aba "Cemitério", e o painel do jogador, uma seção própria.</li>
+            <li><b>Remover jogador da campanha:</b> as fichas do jogador vão para o cemitério, e os NPCs e Criaturas que eram dele voltam ao GM, que pode passá-los para outro jogador.</li>
+            <li><b>Contas de jogador:</b> o GM pode desativar a conta de um jogador que vai se ausentar, reativá-la depois, ou excluí-la de vez.</li>
+            <li><b>Maestrias</b> agora podem ser editadas também nas fichas de NPC e de Criatura.</li>
+            <li><b>Peso da Criatura:</b> passa a contar só os itens desequipados, como nas outras fichas. A Movimentação de algumas Criaturas pode mudar.</li>
+            <li><b>Correções:</b> uma edição dos Pontos de Ignição que podia se perder; mensagens de erro que não apareciam; o caminho de navegação das fichas; textos dos seletores de item; a ortografia do Livro de Regras.</li>
         </ul>
         @* Sem o bloco "Para Auditores" nesta versão: nenhuma página de Auditoria mudou. Quando uma versão mexer
            numa página de Auditoria, volte com o bloco, mostrado só com IsRulesAuditor:
