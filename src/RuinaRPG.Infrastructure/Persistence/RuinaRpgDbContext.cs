@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Domain.Afinidades;
 using RuinaRPG.Infrastructure.Afinidades;
 using RuinaRPG.Infrastructure.Campaigns;
 using RuinaRPG.Domain.Condicoes;
@@ -435,6 +436,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
 
         builder.Entity<CharacterPontosDeAfinidade>(entity =>
         {
+            entity.ToTable(t => t.HasCheckConstraint("CK_CharacterPontosDeAfinidade_Pontos", "\"Pontos\" >= 0"));
             entity.Property(e => e.SheetId).HasColumnName("CharacterSheetId");
             entity.HasIndex(p => new { p.SheetId, p.ElementoId }).IsUnique();
             entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(p => p.SheetId).OnDelete(DeleteBehavior.Cascade);
@@ -647,6 +649,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
 
         builder.Entity<NpcPontosDeAfinidade>(entity =>
         {
+            entity.ToTable(t => t.HasCheckConstraint("CK_NpcPontosDeAfinidade_Pontos", "\"Pontos\" >= 0"));
             entity.Property(e => e.SheetId).HasColumnName("NpcSheetId");
             entity.HasIndex(p => new { p.SheetId, p.ElementoId }).IsUnique();
             entity.HasOne<NpcSheet>().WithMany().HasForeignKey(p => p.SheetId).OnDelete(DeleteBehavior.Cascade);

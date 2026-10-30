@@ -1,10 +1,6 @@
-namespace RuinaRPG.Infrastructure.Afinidades;
+using RuinaRPG.Domain.Afinidades;
 
-public enum OrigemDaVisibilidade
-{
-    Vocacao,
-    Classe
-}
+namespace RuinaRPG.Infrastructure.Afinidades;
 
 /// <summary>
 /// Um Caminho ou Sub-Elemento que uma Vocação ou Classe vê (Auditoria de Regras R0021). <see cref="Chave"/> é o

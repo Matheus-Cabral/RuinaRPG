@@ -685,7 +685,10 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.HasIndex("SheetId", "ElementoId")
                         .IsUnique();
 
-                    b.ToTable("CharacterPontosDeAfinidade");
+                    b.ToTable("CharacterPontosDeAfinidade", t =>
+                        {
+                            t.HasCheckConstraint("CK_CharacterPontosDeAfinidade_Pontos", "\"Pontos\" >= 0");
+                        });
                 });
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.CharacterSheets.CharacterRune", b =>
@@ -2452,7 +2455,10 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.HasIndex("SheetId", "ElementoId")
                         .IsUnique();
 
-                    b.ToTable("NpcPontosDeAfinidade");
+                    b.ToTable("NpcPontosDeAfinidade", t =>
+                        {
+                            t.HasCheckConstraint("CK_NpcPontosDeAfinidade_Pontos", "\"Pontos\" >= 0");
+                        });
                 });
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.NpcSheets.NpcRune", b =>

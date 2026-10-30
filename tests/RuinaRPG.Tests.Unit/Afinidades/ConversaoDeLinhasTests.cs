@@ -95,4 +95,15 @@ public class ConversaoDeLinhasTests
         Assert.Equal(2, r[3].Pontos);
         Assert.Equal(3, r[1].Pontos);
     }
+
+    [Fact]
+    public void Sub_elemento_que_soma_abaixo_de_0_fica_com_0_pontos_e_mantem_a_experiencia()
+    {
+        var r = ConversaoDeLinhas.Converter(
+        [
+            new LinhaDeAfinidade(Elemento.Agua, 1, SubElemento.Gelo, -3, null, null, 4),
+            new LinhaDeAfinidade(Elemento.Ar, 1, SubElemento.Gelo, 1, null, null, null),
+        ]);
+        Assert.Equal((0, (int?)4), r[4]);
+    }
 }

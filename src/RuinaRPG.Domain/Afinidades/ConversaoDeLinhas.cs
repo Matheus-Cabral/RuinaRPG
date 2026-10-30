@@ -5,7 +5,7 @@ namespace RuinaRPG.Domain.Afinidades;
 /// <summary>
 /// Converte as linhas de Afinidade do formato antigo (2.1.0) em pontos por elemento do catálogo.
 /// Cada Elemento/Caminho fica com o maior valor em que aparecia; cada Sub-Elemento soma os valores das suas
-/// linhas (o gasto da ficha não muda); a Experiência vai ao Sub-Elemento da linha ou, sem ele, à Essência 1,
+/// linhas, nunca abaixo de 0 (o gasto da ficha não muda); a Experiência vai ao Sub-Elemento da linha ou, sem ele, à Essência 1,
 /// e duas linhas para o mesmo elemento ficam com a maior.
 /// </summary>
 public static class ConversaoDeLinhas
@@ -29,7 +29,7 @@ public static class ConversaoDeLinhas
                 Maior(experiencia, destino, exp);
         }
 
-        foreach (var (id, valor) in somaDeSub) pontos[id] = valor;
+        foreach (var (id, valor) in somaDeSub) pontos[id] = Math.Max(0, valor);
         foreach (var id in experiencia.Keys) pontos.TryAdd(id, 0);
 
         return pontos

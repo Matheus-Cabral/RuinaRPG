@@ -10,6 +10,7 @@ using RuinaRPG.Infrastructure.Campaigns;
 using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.Condicoes;
 using RuinaRPG.Infrastructure.Encounters;
+using RuinaRPG.Infrastructure.Fichas;
 using RuinaRPG.Infrastructure.Identity;
 using RuinaRPG.Infrastructure.NpcSheets;
 using RuinaRPG.Infrastructure.Persistence;
@@ -44,6 +45,14 @@ public sealed class BancoComAfinidadesAntigas : IAsyncLifetime
         new(Elemento.Ar, 1, SubElemento.Raio, 1, EssenciaBasica.Fogo, 2, null),
     ];
 
+    public static readonly LinhaDeAfinidade[] SubElementoNegativo =
+    [
+        new(Elemento.Agua, 1, SubElemento.Gelo, -3, null, null, 4),
+        new(Elemento.Ar, 1, SubElemento.Gelo, 1, null, null, null),
+    ];
+
+    public Guid PersonagemComSubElementoNegativo { get; private set; }
+
     public static readonly LinhaDeAfinidade[][] Casos =
     [
         ReviewFocus1,
@@ -76,6 +85,8 @@ public sealed class BancoComAfinidadesAntigas : IAsyncLifetime
         [new(Elemento.Ar, 1, null, null, EssenciaBasica.Alma, 5, null), new(null, null, SubElemento.Alma, 2, null, null, 1)],
         // Valores negativos (a API antiga não os recusava).
         [new(Elemento.Fogo, -2, SubElemento.Raio, 3, EssenciaBasica.Ar, -1, -4), new(Elemento.Terra, -3, null, null, null, null, 2)],
+        // Sub-Elemento cujas linhas somam abaixo de 0, com Experiência: fica com 0 pontos e a Experiência.
+        SubElementoNegativo,
     ];
 
     public async Task InitializeAsync()
@@ -113,6 +124,8 @@ public sealed class BancoComAfinidadesAntigas : IAsyncLifetime
             }));
             Npcs[npc.Id] = caso;
 
+            if (ReferenceEquals(caso, SubElementoNegativo))
+                PersonagemComSubElementoNegativo = ficha.Id;
             if (ReferenceEquals(caso, ReviewFocus1))
             {
                 PersonagemDoReviewFocus1 = ficha.Id;
@@ -129,7 +142,9 @@ public sealed class BancoComAfinidadesAntigas : IAsyncLifetime
             new CondicaoModificador { Id = Guid.NewGuid(), CondicaoId = condicao.Id, Ordem = 2, Alvo = AlvoDeCondicao.AfinidadeElemental, AlvoEspecifico = null, TipoDeValor = TipoDeValorDeCondicao.Fixo, Valor = 1 },
             new CondicaoModificador { Id = Guid.NewGuid(), CondicaoId = condicao.Id, Ordem = 3, Alvo = AlvoDeCondicao.Atributo, AlvoEspecifico = "Vigor", TipoDeValor = TipoDeValorDeCondicao.Fixo, Valor = -2 },
             new CondicaoModificador { Id = Guid.NewGuid(), CondicaoId = condicao.Id, Ordem = 4, Alvo = AlvoDeCondicao.DanoElemental, AlvoEspecifico = "Ar", TipoDeValor = TipoDeValorDeCondicao.Percentual, Valor = 50 },
-            new CondicaoModificador { Id = Guid.NewGuid(), CondicaoId = condicao.Id, Ordem = 5, Alvo = AlvoDeCondicao.AfinidadeElemental, AlvoEspecifico = "Fogo", TipoDeValor = TipoDeValorDeCondicao.Fixo, Valor = 3 });
+            new CondicaoModificador { Id = Guid.NewGuid(), CondicaoId = condicao.Id, Ordem = 5, Alvo = AlvoDeCondicao.AfinidadeElemental, AlvoEspecifico = "Fogo", TipoDeValor = TipoDeValorDeCondicao.Fixo, Valor = 3 },
+            // Nome fora do enum (minúsculo): a migration o deixa como está, sem falhar.
+            new CondicaoModificador { Id = Guid.NewGuid(), CondicaoId = condicao.Id, Ordem = 6, Alvo = AlvoDeCondicao.AfinidadeElemental, AlvoEspecifico = "agua", TipoDeValor = TipoDeValorDeCondicao.Fixo, Valor = 1 });
 
         var encontro = new Encounter { Id = Guid.NewGuid(), CampaignId = campanha.Id };
         var participante = new EncounterParticipant { Id = Guid.NewGuid(), EncounterId = encontro.Id, Nome = "Goblin" };
@@ -166,23 +181,20 @@ public class AfinidadesPorElementoMigrationTests : IClassFixture<BancoComAfinida
 
     private RuinaRpgDbContext Db() => new(_banco.Options);
 
-    private static async Task<Dictionary<int, (int Pontos, int? Experiencia)>> PontosAsync(RuinaRpgDbContext db, string tabela, string coluna, Guid ficha)
-    {
-        var linhas = await db.Database.SqlQueryRaw<string>(
-            $"SELECT \"ElementoId\" || ':' || \"Pontos\" || ':' || COALESCE(\"Experiencia\"::text, '') AS \"Value\" FROM \"{tabela}\" WHERE \"{coluna}\" = {{0}}", ficha).ToListAsync();
-        return linhas.Select(l => l.Split(':')).ToDictionary(
-            p => int.Parse(p[0]), p => (int.Parse(p[1]), p[2] == "" ? (int?)null : int.Parse(p[2])));
-    }
+    private static async Task<Dictionary<int, (int Pontos, int? Experiencia)>> PontosAsync<T>(IQueryable<T> pontos, Guid ficha)
+        where T : class, IPontosDeAfinidadeDaFicha =>
+        (await pontos.AsNoTracking().Where(p => p.SheetId == ficha).ToListAsync())
+            .ToDictionary(p => p.ElementoId, p => (p.Pontos, p.Experiencia));
 
     [Fact]
     public async Task A_conversao_em_SQL_e_igual_a_ConversaoDeLinhas_em_Personagem_e_NPC()
     {
         await using var db = Db();
         foreach (var (ficha, linhas) in _banco.Personagens)
-            (await PontosAsync(db, "CharacterPontosDeAfinidade", "CharacterSheetId", ficha))
+            (await PontosAsync(db.CharacterPontosDeAfinidade, ficha))
                 .Should().BeEquivalentTo(ConversaoDeLinhas.Converter(linhas), $"Personagem {string.Join(" | ", linhas)}");
         foreach (var (ficha, linhas) in _banco.Npcs)
-            (await PontosAsync(db, "NpcPontosDeAfinidade", "NpcSheetId", ficha))
+            (await PontosAsync(db.NpcPontosDeAfinidade, ficha))
                 .Should().BeEquivalentTo(ConversaoDeLinhas.Converter(linhas), $"NPC {string.Join(" | ", linhas)}");
     }
 
@@ -198,13 +210,31 @@ public class AfinidadesPorElementoMigrationTests : IClassFixture<BancoComAfinida
             [7] = (1, null), // Raio
         };
         await using var db = Db();
-        var personagem = await PontosAsync(db, "CharacterPontosDeAfinidade", "CharacterSheetId", _banco.PersonagemDoReviewFocus1);
-        var npc = await PontosAsync(db, "NpcPontosDeAfinidade", "NpcSheetId", _banco.NpcDoReviewFocus1);
+        var personagem = await PontosAsync(db.CharacterPontosDeAfinidade, _banco.PersonagemDoReviewFocus1);
+        var npc = await PontosAsync(db.NpcPontosDeAfinidade, _banco.NpcDoReviewFocus1);
 
         personagem.Should().BeEquivalentTo(esperado);
         npc.Should().BeEquivalentTo(esperado);
         var gastoAntes = VocacaoArcanaCalculator.Gasto(_banco.Personagens[_banco.PersonagemDoReviewFocus1]);
         personagem.Values.Sum(v => v.Pontos).Should().Be(gastoAntes).And.Be(9);
+    }
+
+    [Fact]
+    public async Task Sub_Elemento_que_somava_abaixo_de_0_fica_com_0_pontos_e_a_Experiencia()
+    {
+        await using var db = Db();
+        (await PontosAsync(db.CharacterPontosDeAfinidade, _banco.PersonagemComSubElementoNegativo))[4].Should().Be((0, 4));
+    }
+
+    [Theory]
+    [InlineData("CharacterPontosDeAfinidade")]
+    [InlineData("NpcPontosDeAfinidade")]
+    public async Task As_tabelas_de_pontos_recusam_pontos_negativos(string tabela)
+    {
+        await using var db = Db();
+        var checks = await db.Database.SqlQuery<string>(
+            $"SELECT pg_get_constraintdef(oid) AS \"Value\" FROM pg_constraint WHERE conrelid = to_regclass({'"' + tabela + '"'}) AND contype = 'c'").ToListAsync();
+        checks.Should().ContainSingle().Which.Should().Be("CHECK ((\"Pontos\" >= 0))");
     }
 
     [Fact]
@@ -277,7 +307,7 @@ public class AfinidadesPorElementoMigrationTests : IClassFixture<BancoComAfinida
         var linhas = await db.CondicaoModificadores.Where(m => m.CondicaoId == _banco.CondicaoId).OrderBy(m => m.Ordem)
             .Select(m => m.AlvoEspecifico).ToListAsync();
 
-        linhas.Should().Equal("1", "0", null, "Vigor", "3", "2");
+        linhas.Should().Equal("1", "0", null, "Vigor", "3", "2", "agua");
     }
 
     [Fact]
@@ -310,7 +340,7 @@ public class AfinidadesPorElementoMigrationDownTests : IClassFixture<BancoComAfi
 
         await using var depois = new RuinaRpgDbContext(_banco.Options);
         (await depois.CondicaoModificadores.Where(m => m.CondicaoId == _banco.CondicaoId).OrderBy(m => m.Ordem).Select(m => m.AlvoEspecifico).ToListAsync())
-            .Should().Equal("Agua", "Terra", null, "Vigor", "Ar", "Fogo");
+            .Should().Equal("Agua", "Terra", null, "Vigor", "Ar", "Fogo", "agua");
         (await depois.EncounterParticipantCondicoes.SingleAsync(c => c.Id == _banco.AplicadaId)).Modificadores.Select(m => m.AlvoEspecifico)
             .Should().Equal("Agua", "Vigor", "Fogo", null);
         (await depois.Database.SqlQueryRaw<string>(

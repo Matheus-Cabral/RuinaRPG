@@ -54,6 +54,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_CharacterPontosDeAfinidade", x => x.Id);
+                    table.CheckConstraint("CK_CharacterPontosDeAfinidade_Pontos", "\"Pontos\" >= 0");
                     table.ForeignKey(
                         name: "FK_CharacterPontosDeAfinidade_CharacterSheets_CharacterSheetId",
                         column: x => x.CharacterSheetId,
@@ -117,6 +118,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_NpcPontosDeAfinidade", x => x.Id);
+                    table.CheckConstraint("CK_NpcPontosDeAfinidade_Pontos", "\"Pontos\" >= 0");
                     table.ForeignKey(
                         name: "FK_NpcPontosDeAfinidade_ElementosDeAfinidade_ElementoId",
                         column: x => x.ElementoId,
@@ -281,7 +283,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
         /// <summary>
         /// Linhas antigas → pontos por elemento, exatamente como <c>ConversaoDeLinhas.Converter</c> (Domain): cada
         /// Elemento/Caminho fica com o maior valor (nunca abaixo de 0) entre Essência 1 e 2 de todas as linhas; cada
-        /// Sub-Elemento com a soma dos valores das suas linhas, prevalecendo sobre uma Essência de mesmo id; a
+        /// Sub-Elemento com a soma dos valores das suas linhas (nunca abaixo de 0), prevalecendo sobre uma Essência de mesmo id; a
         /// Experiência vai ao Sub-Elemento da linha ou, sem ele, à Essência 1, ficando a maior (nunca abaixo de 0);
         /// fica a linha com pontos &gt; 0 ou com Experiência. Os enums antigos mapeiam pelo nome:
         /// Elemento Ar=0 Agua=1 Fogo=2 Terra=3; EssenciaBasica Ar=0 Agua=1 Fogo=2 Terra=3 Alma=4 Vida=5 Mundano=6;
@@ -324,7 +326,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     GROUP BY ficha, id
                 ),
                 subs AS (
-                    SELECT ficha, sub AS id, SUM(vs) AS v FROM linhas WHERE sub IS NOT NULL GROUP BY ficha, sub
+                    SELECT ficha, sub AS id, GREATEST(SUM(vs), 0) AS v FROM linhas WHERE sub IS NOT NULL GROUP BY ficha, sub
                 ),
                 pontos AS (
                     SELECT ficha, id, v FROM subs
