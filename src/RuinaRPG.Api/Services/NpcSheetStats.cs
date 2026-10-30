@@ -14,8 +14,8 @@ namespace RuinaRPG.Api.Services;
 /// Estatísticas da Ficha de NPC sobre o núcleo comum (FichaStats) — as mesmas contas do Personagem, sem bônus de
 /// carga de campanha (o NPC não pertence a uma).
 /// </summary>
-public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis, EquipmentPenaltyService penalidades, TabelaDeAfinidadesProvider tabelaDeAfinidades)
-    : FichaStats<NpcSheet, Atributo, NpcAttribute, NpcSkill, NpcShield, NpcArmorSlot, NpcArtifact>(db, rules, pericias, penalidades)
+public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis, EquipmentPenaltyService penalidades, TabelaDeAfinidadesProvider tabelaDeAfinidades, CatalogoDeAfinidadesService afinidades)
+    : FichaStats<NpcSheet, Atributo, NpcAttribute, NpcSkill, NpcShield, NpcArmorSlot, NpcArtifact>(db, rules, pericias, penalidades, afinidades)
 {
     /// <summary>
     /// VIS/EAP Atual do NPC: base do Nível + Âmbares Absorvidos, exatamente como na Ficha de Personagem.

@@ -63,8 +63,13 @@ public sealed class EfeitosDeCondicao
     }
 
     /// <param name="nomeDaMaestria">O nome de uma linha de Maestria da ficha; null se não a conhece.</param>
-    public IReadOnlyList<ExplicacaoDeCondicao> Explicar(Func<string, string>? nomeDaPericia = null, Func<Guid, string?>? nomeDaMaestria = null) =>
-        _ativas.Select(c => new ExplicacaoDeCondicao(c.Nome, LinhasDe(c, nomeDaPericia ?? (k => k), nomeDaMaestria ?? (_ => null)))).ToList();
+    /// <param name="nomeDoElemento">O nome do elemento do catálogo a partir do alvo específico (o id em texto); sem ela, o próprio valor.</param>
+    public IReadOnlyList<ExplicacaoDeCondicao> Explicar(Func<string, string>? nomeDaPericia = null, Func<Guid, string?>? nomeDaMaestria = null,
+        Func<string, string>? nomeDoElemento = null) =>
+        _ativas.Select(c => new ExplicacaoDeCondicao(c.Nome,
+            LinhasDe(c, new Nomes(nomeDaPericia ?? (k => k), nomeDaMaestria ?? (_ => null), nomeDoElemento ?? (e => e))))).ToList();
+
+    private sealed record Nomes(Func<string, string> Pericia, Func<Guid, string?> Maestria, Func<string, string> Elemento);
 
     public IReadOnlyList<(CondicaoAtiva Condicao, ModificadorDeCondicao Linha)> AjustesDeRecursoAtual(MomentoDeCondicao momento) =>
         _ativas
@@ -85,9 +90,9 @@ public sealed class EfeitosDeCondicao
         return numerador % divisor != 0 && (numerador < 0) != (divisor < 0) ? q - 1 : q;
     }
 
-    private static List<string> LinhasDe(CondicaoAtiva condicao, Func<string, string> nomeDaPericia, Func<Guid, string?> nomeDaMaestria)
+    private static List<string> LinhasDe(CondicaoAtiva condicao, Nomes nomes)
     {
-        var linhas = condicao.Modificadores.Select(m => TextoDaLinha(m, nomeDaPericia, nomeDaMaestria)).ToList();
+        var linhas = condicao.Modificadores.Select(m => TextoDaLinha(m, nomes)).ToList();
 
         var categorias = condicao.Desabilitacoes.OrderBy(d => d.Key).Select(d =>
             d.Value.Count == 0 ? RotulosPt.Plural(d.Key) : $"{RotulosPt.Plural(d.Key)} (itens escolhidos)").ToList();
@@ -96,16 +101,17 @@ public sealed class EfeitosDeCondicao
         return linhas;
     }
 
-    private static string TextoDaLinha(ModificadorDeCondicao m, Func<string, string> nomeDaPericia, Func<Guid, string?> nomeDaMaestria)
+    private static string TextoDaLinha(ModificadorDeCondicao m, Nomes nomes)
     {
+        var nomeDaPericia = nomes.Pericia;
         var valor = Formatar(m);
         var e = m.AlvoEspecifico;
         if (m.Alvo == AlvoDeCondicao.Maestria && m.Maestrias is { } escolhidas)
         {
             // Restrita na aplicação: cita as Maestrias da ficha pelo nome (em ordem alfabética), quando os conhece.
-            var nomes = escolhidas.Select(nomeDaMaestria).OfType<string>().Order(StringComparer.CurrentCulture).ToList();
-            return nomes.Count == 0 ? $"Maestrias escolhidas {valor}"
-                : $"{(nomes.Count == 1 ? "Maestria" : "Maestrias")} {string.Join(", ", nomes)} {valor}";
+            var maestrias = escolhidas.Select(nomes.Maestria).OfType<string>().Order(StringComparer.CurrentCulture).ToList();
+            return maestrias.Count == 0 ? $"Maestrias escolhidas {valor}"
+                : $"{(maestrias.Count == 1 ? "Maestria" : "Maestrias")} {string.Join(", ", maestrias)} {valor}";
         }
         return m.Alvo switch
         {
@@ -116,9 +122,9 @@ public sealed class EfeitosDeCondicao
             AlvoDeCondicao.RecursoTotal => $"{RotulosPt.Recurso(e)} total {valor}",
             // O percentual de um valor atual é uma fração do total do recurso (DuracaoDeCondicao.ValorDoAjuste).
             AlvoDeCondicao.RecursoAtual => $"{RotulosPt.Recurso(e)} atual {valor}{(m.TipoDeValor == TipoDeValorDeCondicao.Percentual ? " do total" : "")} {(m.Momento == MomentoDeCondicao.ACadaVez ? "a cada vez" : "ao aplicar")}",
-            AlvoDeCondicao.AfinidadeElemental => e is null ? $"Todas as Afinidades {valor}" : $"Afinidade de {RotulosPt.Elemento(e)} {valor}",
+            AlvoDeCondicao.AfinidadeElemental => e is null ? $"Todas as Afinidades {valor}" : $"Afinidade de {nomes.Elemento(e)} {valor}",
             // "dos ataques": o modificador do dano que a ficha causa, não a Vitalidade dela (isso é o valor atual).
-            AlvoDeCondicao.DanoElemental => e is null ? $"Todo dano elemental dos ataques {valor}" : $"Dano de {RotulosPt.Elemento(e)} dos ataques {valor}",
+            AlvoDeCondicao.DanoElemental => e is null ? $"Todo dano elemental dos ataques {valor}" : $"Dano de {nomes.Elemento(e)} dos ataques {valor}",
             AlvoDeCondicao.Dano => e is null ? $"Dano dos ataques {valor}" : $"Dano {RotulosPt.TipoDeDano(e)} dos ataques {valor}",
             _ => $"{e} {valor}"
         };
@@ -146,14 +152,6 @@ public sealed class EfeitosDeCondicao
             [CharacterSheets.Atributo.Influencia] = "Influência"
         };
 
-        private static readonly Dictionary<Elemento, string> Elementos = new()
-        {
-            [CharacterSheets.Elemento.Ar] = "Ar",
-            [CharacterSheets.Elemento.Agua] = "Água",
-            [CharacterSheets.Elemento.Fogo] = "Fogo",
-            [CharacterSheets.Elemento.Terra] = "Terra"
-        };
-
         private static readonly Dictionary<TipoDeDano, string> TiposDeDano = new()
         {
             [Items.TipoDeDano.Cortante] = "Cortante",
@@ -178,9 +176,6 @@ public sealed class EfeitosDeCondicao
 
         public static string Atributo(string? nome) =>
             Enum.TryParse<Atributo>(nome, out var a) && Atributos.TryGetValue(a, out var t) ? t : nome ?? "";
-
-        public static string Elemento(string nome) =>
-            Enum.TryParse<Elemento>(nome, out var e) && Elementos.TryGetValue(e, out var t) ? t : nome;
 
         public static string TipoDeDano(string nome) =>
             Enum.TryParse<TipoDeDano>(nome, out var d) && TiposDeDano.TryGetValue(d, out var t) ? t : nome;

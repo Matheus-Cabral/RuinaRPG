@@ -54,6 +54,8 @@ public class AuditoriaCondicoesTests : MudBunitContext
                 _calls.Add((request.Method, path, body));
             if (request.Method == HttpMethod.Get && path.EndsWith("/auth/me"))
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new MeResponse("u1", "Usuario", "GM", _auditor, null, false)) };
+            if (ElementosDeTeste.EhCatalogo(request))
+                return ElementosDeTeste.Resposta();
             if (request.Method == HttpMethod.Get && path.EndsWith("/pericias"))
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(Pericias) };
             if (request.Method == HttpMethod.Get && path.EndsWith("/condicoes"))
@@ -172,7 +174,8 @@ public class AuditoriaCondicoesTests : MudBunitContext
         Opcoes(cut, "Específico").Should().Equal("Todas", "Atletismo", "Furtividade");
 
         await Escolher(cut, "Alvo", 0, "DanoElemental");
-        Opcoes(cut, "Específico").Should().Equal("Todos", "Ar", "Água", "Fogo", "Terra");
+        // Os elementos do catálogo que não são Caminho, na ordem do catálogo (os ids).
+        Opcoes(cut, "Específico").Should().Equal(["Todos", .. ElementosDeTeste.Semeados.Where(e => e.Tipo != "Caminho").Select(e => e.Nome)]);
     }
 
     [Fact]

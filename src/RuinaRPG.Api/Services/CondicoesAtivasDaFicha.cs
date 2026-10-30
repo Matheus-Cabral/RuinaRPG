@@ -16,7 +16,7 @@ namespace RuinaRPG.Api.Services;
 /// NPC e Criatura do GM (sem dono) nunca têm Condição na ficha: as de um participante deles só valem no resumo do
 /// encontro, por <see cref="DoParticipanteAsync"/>, que nenhum endpoint de ficha chama.
 /// </summary>
-public class CondicoesAtivasDaFicha(RuinaRpgDbContext db, IPericiaCatalogo pericias)
+public class CondicoesAtivasDaFicha(RuinaRpgDbContext db, IPericiaCatalogo pericias, CatalogoDeAfinidadesService afinidades)
 {
     private enum Origem { Personagem, Npc, Criatura, Participante }
 
@@ -108,7 +108,9 @@ public class CondicoesAtivasDaFicha(RuinaRpgDbContext db, IPericiaCatalogo peric
             .Concat(await db.NpcMasteries.Where(m => ids.Contains(m.Id)).Select(m => new { m.Id, m.Nome }).ToListAsync())
             .Concat(await db.CreatureMasteries.Where(m => ids.Contains(m.Id)).Select(m => new { m.Id, m.Nome }).ToListAsync())
             .ToDictionary(m => m.Id, m => m.Nome);
-        var explicacoes = Efeitos(ativas).Explicar(chave => nomes.GetValueOrDefault(chave, chave), id => maestrias.GetValueOrDefault(id));
+        // O elemento de uma linha de Afinidade/Dano elemental aparece pelo nome atual do catálogo.
+        var catalogo = await afinidades.CarregarAsync();
+        var explicacoes = Efeitos(ativas).Explicar(chave => nomes.GetValueOrDefault(chave, chave), id => maestrias.GetValueOrDefault(id), catalogo.NomeDoAlvo);
 
         // Explicar devolve uma explicação por Condição, na mesma ordem.
         return ativas.Select((a, i) => new CondicaoAtivaNaFichaResponse(a.Condicao.Nome, a.Condicao.Descricao, a.Condicao.Icone,

@@ -100,6 +100,5 @@ public static class RegrasDeAfinidade
         return $"Precisa de {primeiro.MinimoA} em {NomeDe(c, primeiro.ElementoA)} e {primeiro.MinimoB} em {NomeDe(c, primeiro.ElementoB)}";
     }
 
-    private static string NomeDe(CatalogoDeAfinidades c, int id) =>
-        c.Elementos.FirstOrDefault(e => e.Id == id)?.Nome ?? id.ToString();
+    private static string NomeDe(CatalogoDeAfinidades c, int id) => c.NomeDe(id);
 }

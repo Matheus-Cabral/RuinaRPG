@@ -1,5 +1,6 @@
 @inject HttpClient Http
 @inject PericiaCatalogo Pericias
+@inject CatalogoDeElementos Elementos
 @using System.Net.Http.Json
 @using MudBlazor
 @using RuinaRPG.Client.Services
@@ -34,7 +35,7 @@
                 var indice = i;
                 var linha = _condicao.Modificadores[indice];
                 <div class="d-flex align-center mt-2" style="gap:12px">
-                    <MudText Typo="Typo.body2" Style="flex:1">@CondicaoResumo.Linha(linha, _valores[indice], Pericias.Label)</MudText>
+                    <MudText Typo="Typo.body2" Style="flex:1">@CondicaoResumo.Linha(linha, _valores[indice], Pericias.Label, Elementos.NomeDoAlvo)</MudText>
                     <MudNumericField T="int" Label="Valor" Value="_valores[indice]" ValueChanged="@(v => _valores[indice] = v)"
                                      Style="max-width:8rem" aria-label="@($"Valor da linha {indice + 1}")" />
                 </div>
@@ -128,7 +129,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await Task.WhenAll(Pericias.CarregarAsync(), CarregarCatalogoAsync(), CarregarItensAsync());
+        await Task.WhenAll(Pericias.CarregarAsync(), Elementos.CarregarAsync(), CarregarCatalogoAsync(), CarregarItensAsync());
     }
 
     private async Task CarregarCatalogoAsync()

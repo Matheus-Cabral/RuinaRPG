@@ -867,6 +867,8 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Afinidade");
+
                     b.HasIndex("CampaignId");
 
                     b.HasIndex("EquipmentKitId");
@@ -1442,6 +1444,8 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Afinidade");
 
                     b.HasIndex("GmId");
 
@@ -2627,6 +2631,8 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Afinidade");
 
                     b.HasIndex("EquipmentKitId");
 
@@ -3941,6 +3947,11 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.CharacterSheets.CharacterSheet", b =>
                 {
+                    b.HasOne("RuinaRPG.Infrastructure.Afinidades.ElementoDeAfinidade", null)
+                        .WithMany()
+                        .HasForeignKey("Afinidade")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("RuinaRPG.Infrastructure.Campaigns.Campaign", null)
                         .WithMany()
                         .HasForeignKey("CampaignId")
@@ -4162,6 +4173,11 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", b =>
                 {
+                    b.HasOne("RuinaRPG.Infrastructure.Afinidades.ElementoDeAfinidade", null)
+                        .WithMany()
+                        .HasForeignKey("Afinidade")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("RuinaRPG.Infrastructure.Identity.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("GmId")
@@ -4552,6 +4568,11 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.NpcSheets.NpcSheet", b =>
                 {
+                    b.HasOne("RuinaRPG.Infrastructure.Afinidades.ElementoDeAfinidade", null)
+                        .WithMany()
+                        .HasForeignKey("Afinidade")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("RuinaRPG.Infrastructure.Rules.EquipmentKit", null)
                         .WithMany()
                         .HasForeignKey("EquipmentKitId")

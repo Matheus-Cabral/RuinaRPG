@@ -38,7 +38,8 @@ public sealed class FormularioDaFicha(TipoDeFichaCliente tipo)
     public string? SubArquetipo { get; set; }
     public string? Rank { get; set; }
 
-    public string? Afinidade { get; set; }
+    /// <summary>Id do elemento do catálogo de Afinidades.</summary>
+    public int? Afinidade { get; set; }
     public string? Estrela { get; set; }
     public int SinaAtual { get; set; }
     public string? HistoricoId { get; set; }

@@ -56,6 +56,7 @@ DELETE /api/tabela-de-afinidades/{id:guid} (id:Guid:Path) -> Task<IActionResult>
 DELETE /api/tabela-de-niveis/colunas/{id:guid} (id:Guid:Path) -> Task<IActionResult> [authorize(policy=,roles=)]
 DELETE /api/tabela-de-niveis/niveis/ultimo () -> Task<IActionResult> [authorize(policy=,roles=)]
 DELETE /api/traits/{id} (id:Guid:Path) -> Task<IActionResult> [authorize(policy=,roles=)]
+GET /api/afinidades/catalogo () -> Task<ActionResult<List<ElementoDeAfinidadeResponse>>> [authorize(policy=,roles=)]
 GET /api/arcas () -> Task<ActionResult<List<ArcaEntryResponse>>> [authorize(policy=,roles=GM)]
 GET /api/arcas/dado () -> Task<ActionResult<ArcaDadoResponse>> [authorize(policy=,roles=GM)]
 GET /api/auth/me () -> Task<ActionResult<MeResponse>> [authorize(policy=,roles=)]

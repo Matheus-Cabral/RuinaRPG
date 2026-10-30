@@ -98,67 +98,22 @@ public class SubAttributeFormulasTests
         SubAttributeFormulas.ReducaoMagica(artefato: 1, armaduraMagica: 4).Should().Be(5);
     }
 
-    [Fact]
-    public void ValorDaAfinidadeCorrespondente_is_0_when_Afinidade_is_null()
-    {
-        var linhas = new List<LinhaDeAfinidade> { new(Elemento.Fogo, 7, null, null) };
-
-        SubAttributeFormulas.ValorDaAfinidadeCorrespondente(null, linhas).Should().Be(0);
-    }
+    // Ids do catálogo de elementos: Fogo = 2, Terra = 0, Vida = 14.
+    private static readonly Dictionary<int, int> Pontos = new() { [2] = 7, [14] = 2 };
 
     [Fact]
-    public void ValorDaAfinidadeCorrespondente_finds_the_matching_Elemento_row()
-    {
-        var linhas = new List<LinhaDeAfinidade> { new(Elemento.Fogo, 7, SubElemento.Vida, 2) };
-
-        SubAttributeFormulas.ValorDaAfinidadeCorrespondente(AfinidadeElemental.Fogo, linhas).Should().Be(7);
-    }
+    public void ValorDaAfinidadeCorrespondente_is_0_when_Afinidade_is_null() =>
+        SubAttributeFormulas.ValorDaAfinidadeCorrespondente(null, Pontos).Should().Be(0);
 
     [Fact]
-    public void ValorDaAfinidadeCorrespondente_finds_the_matching_SubElemento_row()
-    {
-        var linhas = new List<LinhaDeAfinidade> { new(Elemento.Fogo, 7, SubElemento.Vida, 2) };
-
-        SubAttributeFormulas.ValorDaAfinidadeCorrespondente(AfinidadeElemental.Vida, linhas).Should().Be(2);
-    }
+    public void ValorDaAfinidadeCorrespondente_is_the_points_of_the_chosen_element() =>
+        SubAttributeFormulas.ValorDaAfinidadeCorrespondente(2, Pontos).Should().Be(7);
 
     [Fact]
-    public void ValorDaAfinidadeCorrespondente_is_0_when_no_row_matches()
-    {
-        var linhas = new List<LinhaDeAfinidade> { new(Elemento.Fogo, 7, null, null) };
-
-        SubAttributeFormulas.ValorDaAfinidadeCorrespondente(AfinidadeElemental.Terra, linhas).Should().Be(0);
-    }
+    public void ValorDaAfinidadeCorrespondente_works_for_any_catalog_element() =>
+        SubAttributeFormulas.ValorDaAfinidadeCorrespondente(14, Pontos).Should().Be(2);
 
     [Fact]
-    public void ValorDaAfinidadeCorrespondente_is_0_with_an_empty_list_of_linhas()
-    {
-        SubAttributeFormulas.ValorDaAfinidadeCorrespondente(AfinidadeElemental.Fogo, []).Should().Be(0);
-    }
-
-    [Fact]
-    public void ValorDaAfinidadeCorrespondente_uses_the_highest_Valor_among_rows_with_that_Elemento_regardless_of_order()
-    {
-        var comValorPrimeiro = new List<LinhaDeAfinidade>
-        {
-            new(Elemento.Fogo, 5, SubElemento.Curar, null),
-            new(Elemento.Fogo, null, SubElemento.Necromancia, null),
-        };
-        var comValorPorUltimo = new List<LinhaDeAfinidade> { comValorPrimeiro[1], comValorPrimeiro[0] };
-
-        SubAttributeFormulas.ValorDaAfinidadeCorrespondente(AfinidadeElemental.Fogo, comValorPrimeiro).Should().Be(5);
-        SubAttributeFormulas.ValorDaAfinidadeCorrespondente(AfinidadeElemental.Fogo, comValorPorUltimo).Should().Be(5);
-    }
-
-    [Fact]
-    public void ValorDaAfinidadeCorrespondente_picks_the_max_when_two_rows_share_the_Elemento()
-    {
-        var linhas = new List<LinhaDeAfinidade>
-        {
-            new(Elemento.Fogo, 2, SubElemento.Curar, null),
-            new(Elemento.Fogo, 7, SubElemento.Necromancia, null),
-        };
-
-        SubAttributeFormulas.ValorDaAfinidadeCorrespondente(AfinidadeElemental.Fogo, linhas).Should().Be(7);
-    }
+    public void ValorDaAfinidadeCorrespondente_is_0_when_the_element_has_no_points() =>
+        SubAttributeFormulas.ValorDaAfinidadeCorrespondente(0, Pontos).Should().Be(0);
 }

@@ -126,7 +126,7 @@ public abstract class RedeCabecalhoEInformacoesBasicasTests : RedeDeSegurancaBas
         return tipo switch
         {
             "Personagem" =>
-                "{\"adrenalinaAtual\":3,\"adrenalinaAtualCarregada\":3,\"afinidade\":\"Fogo\",\"afinidadeAdicional\":0,\"arcaRolada\":null,\"ciclos\":4,"
+                "{\"adrenalinaAtual\":3,\"adrenalinaAtualCarregada\":3,\"afinidade\":2,\"afinidadeAdicional\":0,\"arcaRolada\":null,\"ciclos\":4,"
                 + "\"cobertura\":\"Nenhuma\",\"eapAtual\":7,\"equipmentKitId\":null,\"estrela\":null,\"estresseAtual\":1,\"estresseAtualCarregado\":1,"
                 + "\"experienciaAtual\":120,\"focoAtual\":10,\"focoAtualCarregado\":10,\"historicoId\":null,"
                 + $"\"imageId\":{img},\"linhagem\":{Texto(linhagem, "Humano")},\"nome\":\"{nome}\","
@@ -135,7 +135,7 @@ public abstract class RedeCabecalhoEInformacoesBasicasTests : RedeDeSegurancaBas
                 + $"\"propriedade\":\"Uma casa\",\"sinaAtual\":1,\"subVocacao\":\"Piromante\",\"variante\":{Texto(variante, "Sinir")},"
                 + "\"vitalidadeAtual\":20,\"vitalidadeAtualCarregada\":20,\"vocacao\":\"Feiticeiro\"}",
             "NPC" =>
-                "{\"adrenalinaAtual\":4,\"adrenalinaAtualCarregada\":4,\"afinidade\":\"Terra\",\"afinidadeAdicional\":0,\"arcaRolada\":null,\"ciclos\":2,"
+                "{\"adrenalinaAtual\":4,\"adrenalinaAtualCarregada\":4,\"afinidade\":0,\"afinidadeAdicional\":0,\"arcaRolada\":null,\"ciclos\":2,"
                 + "\"cobertura\":\"Nenhuma\",\"eapAtual\":8,\"equipmentKitId\":null,\"estrela\":null,\"estresseAtual\":2,\"estresseAtualCarregado\":2,"
                 + "\"experienciaAtual\":200,\"focoAtual\":6,\"focoAtualCarregado\":6,\"historicoId\":null,"
                 + $"\"imageId\":{img},\"linhagem\":{Texto(linhagem, "Nephrytes")},\"nivel\":4,\"nome\":\"{nome}\","
@@ -144,7 +144,7 @@ public abstract class RedeCabecalhoEInformacoesBasicasTests : RedeDeSegurancaBas
                 + $"\"propriedade\":\"Uma forja\",\"sinaAtual\":2,\"subVocacao\":\"Duelista\",\"variante\":{Texto(variante, "Koroanos")},"
                 + "\"vitalidadeAtual\":30,\"vitalidadeAtualCarregada\":30,\"vocacao\":\"Campeao\"}",
             _ =>
-                "{\"adrenalinaAtual\":2,\"adrenalinaAtualCarregada\":2,\"afinidade\":\"Ar\",\"arquetipo\":\"Fisico\",\"cobertura\":\"Nenhuma\","
+                "{\"adrenalinaAtual\":2,\"adrenalinaAtualCarregada\":2,\"afinidade\":3,\"arquetipo\":\"Fisico\",\"cobertura\":\"Nenhuma\","
                 + "\"experienciaAtual\":60,\"focoAtual\":4,\"focoAtualCarregado\":4,"
                 + $"\"imageId\":{img},\"nivel\":2,\"nome\":\"{nome}\",\"pontosDeIgnicao\":5,\"raca\":\"Lobo\",\"rank\":\"D\",\"subArquetipo\":\"Caçador\","
                 + "\"vitalidadeAtual\":18,\"vitalidadeAtualCarregada\":18}",
@@ -232,7 +232,7 @@ public abstract class RedeCabecalhoEInformacoesBasicasTests : RedeDeSegurancaBas
 
     protected static string SemCoracao() =>
         "{\"id\":\"s1\",\"ownerId\":null,\"campaignId\":null,\"imageUrl\":\"/img/um.png\",\"imageId\":\"img1\",\"nome\":\"Borin\",\"linhagem\":\"Nephrytes\",\"variante\":\"Koroanos\","
-        + "\"vocacao\":\"Feiticeiro\",\"subVocacao\":\"Piromante\",\"afinidade\":\"Terra\",\"propriedade\":\"Uma forja\",\"nivel\":4,\"circulo\":1,\"grau\":0,\"possuiCoracaoDeMana\":false,"
+        + "\"vocacao\":\"Feiticeiro\",\"subVocacao\":\"Piromante\",\"afinidade\":0,\"propriedade\":\"Uma forja\",\"nivel\":4,\"circulo\":1,\"grau\":0,\"possuiCoracaoDeMana\":false,"
         + "\"experienciaAtual\":200,\"eapAtual\":8,\"nucleosRankF\":0,\"nucleosRankE\":1,\"nucleosRankD\":1,\"nucleosRankC\":0,\"nucleosRankB\":0,\"nucleosRankA\":0,\"nucleosRankS\":0,"
         + "\"pontosDeIgnicaoAtual\":9,\"pontosDeIgnicaoTotal\":30,\"vitalidadeAtual\":30,\"focoAtual\":6,\"adrenalinaAtual\":4,\"estresseAtual\":2,\"cobertura\":\"Nenhuma\",\"ciclos\":2,"
         + "\"graduacao\":1,\"graduacaoLabel\":\"Círculo\",\"vitalidadeMaximo\":32,\"focoMaximo\":8,\"adrenalinaMaximo\":6,\"estresseMaximo\":10,\"sinaAtual\":2,\"afinidadeAdicional\":0,"
@@ -350,16 +350,19 @@ public abstract class RedeCabecalhoEInformacoesBasicasTests : RedeDeSegurancaBas
             AbaAberta(cut).QuerySelector(".mud-avatar svg").Should().NotBeNull();
         }
 
-        // As três primeiras são em sequência (a ficha diz a campanha, que escolhe a galeria de imagens); o resto
-        // a página pede em paralelo, então a rede fixa o conjunto (cada uma exatamente uma vez), não a ordem.
+        // Primeiro os dois catálogos (Perícias e elementos de Afinidade, juntos: vale o conjunto), depois a ficha e a
+        // galeria em sequência (a ficha diz a campanha, que escolhe a galeria de imagens); o resto a página pede em
+        // paralelo, então a rede fixa o conjunto (cada uma exatamente uma vez), não a ordem.
         [Theory]
         [MemberData(nameof(TiposEPapeis))]
         public async Task A_carga_da_pagina_faz_estas_requisicoes(string tipo, string papel)
         {
             await RenderFichaAsync(tipo, papel);
 
-            Requisicoes.Take(3).Should().Equal(InicioDaCarga(tipo, papel));
-            Requisicoes.Skip(3).Should().BeEquivalentTo(CargaInicial(tipo, papel));
+            var inicio = InicioDaCarga(tipo, papel);
+            Requisicoes.Take(2).Should().BeEquivalentTo(inicio.Take(2));
+            Requisicoes.Skip(2).Take(2).Should().Equal(inicio.Skip(2));
+            Requisicoes.Skip(4).Should().BeEquivalentTo(CargaInicial(tipo, papel));
         }
     }
 

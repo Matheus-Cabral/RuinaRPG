@@ -14,8 +14,8 @@ namespace RuinaRPG.Api.Services;
 /// Estatísticas da Ficha de Personagem sobre o núcleo comum (FichaStats): /sub-attributes, as listas de Atributos e
 /// Perícias, os máximos de recurso e o retrato dos requisitos de Passiva compartilham uma só conta ao vivo.
 /// </summary>
-public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, TabelaDeAfinidadesProvider tabelaDeAfinidades)
-    : FichaStats<CharacterSheet, Atributo, CharacterAttribute, CharacterSkill, CharacterShield, CharacterArmorSlot, CharacterArtifact>(db, rules, pericias, penalidades)
+public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, TabelaDeAfinidadesProvider tabelaDeAfinidades, CatalogoDeAfinidadesService afinidades)
+    : FichaStats<CharacterSheet, Atributo, CharacterAttribute, CharacterSkill, CharacterShield, CharacterArmorSlot, CharacterArtifact>(db, rules, pericias, penalidades, afinidades)
 {
     protected override Guid? HistoricoId(CharacterSheet sheet) => sheet.HistoricoId;
 

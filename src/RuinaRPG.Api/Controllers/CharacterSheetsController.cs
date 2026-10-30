@@ -21,7 +21,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/character-sheets")]
-public sealed class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<CharacterSheetsController> logger, CharacterSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, ITipoDeFicha<CharacterSheet> tipo, CemiterioDaFicha cemiterio, IHubContext<NotificationHub> notificacoes)
+public sealed class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<CharacterSheetsController> logger, CharacterSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, ITipoDeFicha<CharacterSheet> tipo, CemiterioDaFicha cemiterio, IHubContext<NotificationHub> notificacoes, CatalogoDeAfinidadesService afinidades)
     : FichaComLinhagemController<CharacterSheet, CharacterSheetStats, CharacterSheetHistoriaImage>(db, tabelaDeNiveis, tipo, stats, penalidades, hub, logger)
 {
     [HttpPost("/api/campaigns/{campaignId}/character-sheets")]
@@ -183,10 +183,9 @@ public sealed class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataPr
             return BadRequest("Essa Variante ainda não foi liberada pelo GM.");
         if (!TryParseEnum<Vocacao>(request.Vocacao, out var vocacao))
             return BadRequest("Vocação inválida.");
-        if (!TryParseEnum<AfinidadeElemental>(request.Afinidade, out var afinidade))
-            return BadRequest("Afinidade inválida.");
-        if (afinidade is not null && afinidade != sheet.Afinidade && CaminhoSubElementoRules.EhCaminho(afinidade.Value))
-            return BadRequest("Alma e Vida são Caminhos, não Afinidades.");
+        var afinidade = request.Afinidade;
+        if ((await afinidades.CarregarAsync()).MotivoParaRecusarAfinidade(afinidade, sheet.Afinidade) is { } afinidadeRecusada)
+            return BadRequest(afinidadeRecusada);
         if (!Enum.TryParse<Cobertura>(request.Cobertura, out var cobertura))
             return BadRequest("Cobertura inválida.");
         if (!TryParseEnum<Estrela>(request.Estrela, out var estrela))
@@ -326,7 +325,7 @@ public sealed class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataPr
 
         return new CharacterSheetResponse(
             s.Id.ToString(), s.CampaignId.ToString(), s.OwnerId.ToString(), imageUrl,
-            s.Nome, s.Linhagem?.ToString(), s.Variante?.ToString(), s.Vocacao?.ToString(), s.SubVocacao, s.Afinidade?.ToString(), s.Propriedade,
+            s.Nome, s.Linhagem?.ToString(), s.Variante?.ToString(), s.Vocacao?.ToString(), s.SubVocacao, s.Afinidade, s.Propriedade,
             s.Nivel, s.Circulo, s.Grau, s.PossuiCoracaoDeMana, s.ExperienciaAtual, eapAtual,
             s.NucleosRankF, s.NucleosRankE, s.NucleosRankD, s.NucleosRankC, s.NucleosRankB, s.NucleosRankA, s.NucleosRankS,
             s.PontosDeIgnicaoAtual, pontosDeIgnicaoTotal,

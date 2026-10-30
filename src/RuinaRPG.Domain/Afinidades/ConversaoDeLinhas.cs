@@ -40,7 +40,13 @@ public static class ConversaoDeLinhas
     private static void Maior(Dictionary<int, int> d, int id, int valor) =>
         d[id] = Math.Max(d.GetValueOrDefault(id), valor);
 
-    // Ids do catálogo (= AfinidadeElemental; Mundano = 18).
+    /// <summary>
+    /// O id no catálogo da Essência 1 de uma linha antiga — usado só pelas linhas de Afinidade que ainda existem até
+    /// a ficha passar a pontos por elemento.
+    /// </summary>
+    public static int IdDoElemento(Elemento e) => IdDe(e);
+
+    // Ids do catálogo (os inteiros do antigo enum AfinidadeElemental; Mundano = 18).
     private static int IdDe(Elemento e) => e switch
     {
         Elemento.Terra => 0, Elemento.Agua => 1, Elemento.Fogo => 2, Elemento.Ar => 3,

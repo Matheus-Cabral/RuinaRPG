@@ -1,3 +1,4 @@
+using RuinaRPG.Api.Services;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -19,7 +20,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/rulebook/passivas")]
-public class RulebookPassivasController(RuinaRpgDbContext db, IPericiaCatalogo pericias) : ControllerBase
+public class RulebookPassivasController(RuinaRpgDbContext db, IPericiaCatalogo pericias, CatalogoDeAfinidadesService afinidades) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<PassivaDoLivroResponse>>> Get([FromQuery] Guid? campaignId)
@@ -47,11 +48,12 @@ public class RulebookPassivasController(RuinaRpgDbContext db, IPericiaCatalogo p
         var porId = await pericias.PorIdAsync();
         // Uma Perícia removida some dos requisitos, como em RequisitosDePassivaMapper.ToDto.
         string? NomeDaPericia(int periciaId) => porId.TryGetValue(periciaId, out var p) && !p.IsDeleted ? p.Nome : null;
+        var catalogoDeAfinidades = await afinidades.CarregarAsync();
 
         return entries.Select(e => new PassivaDoLivroResponse(
             e.Id.ToString(), e.Nome, e.Categoria!.Value.ToString(), e.Descricao,
             PassivaRequisitosEvaluator.Descrever(e.Requisitos,
-                e.Requisitos?.HistoricoId is { } h ? historicos.GetValueOrDefault(h) : null, NomeDaPericia).ToList(),
+                e.Requisitos?.HistoricoId is { } h ? historicos.GetValueOrDefault(h) : null, NomeDaPericia, catalogoDeAfinidades.NomeDe).ToList(),
             e.Requisitos?.Vocacao is { } vocacao ? RequisitoLabels.Vocacao(vocacao) : null,
             string.IsNullOrWhiteSpace(e.Requisitos?.Classe) ? null : e.Requisitos!.Classe!.Trim())).ToList();
     }

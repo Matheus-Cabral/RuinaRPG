@@ -324,13 +324,13 @@ public abstract class FichaDePersonagemOuNpcTestes<TTipo>(ApiFixture fixture) : 
         var f = await NovaFichaAsync();
 
         // Vocacao=Campeao não liberava Fogo (Dobra) pelo mapa antigo — a restrição foi removida.
-        var update = AtualizacaoValidaCom(new { Vocacao = "Campeao", Afinidade = "Fogo" });
+        var update = AtualizacaoValidaCom(new { Vocacao = "Campeao", Afinidade = 2 });
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/{Tipo.Rota}/{f.SheetId}", f.Token, update));
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
         var getResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/{Tipo.Rota}/{f.SheetId}", f.Token));
         var body = await getResponse.Content.ReadFromJsonAsync<FichaLida>();
-        body!.Afinidade.Should().Be("Fogo");
+        body!.Afinidade.Should().Be(2);
     }
 
     [Fact]

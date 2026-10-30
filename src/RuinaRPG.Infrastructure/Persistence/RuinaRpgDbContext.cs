@@ -360,6 +360,8 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
 
         builder.Entity<CharacterSheet>(entity =>
         {
+            // Afinidade (1.a/2.b) referencia o catálogo de elementos: um elemento escolhido não pode ser removido.
+            entity.HasOne<ElementoDeAfinidade>().WithMany().HasForeignKey(s => s.Afinidade).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<Campaign>()
                 .WithMany()
                 .HasForeignKey(s => s.CampaignId)
@@ -600,6 +602,8 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
 
         builder.Entity<NpcSheet>(entity =>
         {
+            // Afinidade (1.a/2.b) referencia o catálogo de elementos: um elemento escolhido não pode ser removido.
+            entity.HasOne<ElementoDeAfinidade>().WithMany().HasForeignKey(s => s.Afinidade).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(s => s.GmId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(s => s.OwnerId).OnDelete(DeleteBehavior.SetNull);
             entity.HasOne<Image>().WithMany().HasForeignKey(s => s.ImageId).OnDelete(DeleteBehavior.SetNull);
@@ -609,6 +613,8 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
 
         builder.Entity<CreatureSheet>(entity =>
         {
+            // Afinidade (1.a/2.b) referencia o catálogo de elementos: um elemento escolhido não pode ser removido.
+            entity.HasOne<ElementoDeAfinidade>().WithMany().HasForeignKey(s => s.Afinidade).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(s => s.GmId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(s => s.OwnerId).OnDelete(DeleteBehavior.SetNull);
             entity.HasOne<Image>().WithMany().HasForeignKey(s => s.ImageId).OnDelete(DeleteBehavior.SetNull);

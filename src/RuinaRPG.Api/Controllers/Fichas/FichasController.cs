@@ -99,7 +99,7 @@ public abstract class FichasController<TSheet, TStats>(RuinaRpgDbContext db, ITa
             return erro;
 
         var efeitos = await Tipo.CondicoesAsync(sheet);
-        return efeitos.NoModificadorDeDano(await Stats.ModificadoresAsync(sheet, efeitos));
+        return await Stats.ModificadorDeDanoAsync(sheet, efeitos);
     }
 
     /// <summary>

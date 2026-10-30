@@ -210,7 +210,7 @@ public class NpcSheetsControllerTests(ApiFixture fixture) : FichaDePersonagemOuN
         var gmToken = await RegisterGmAndGetTokenAsync("NpcGmAfin2", "npcafin2@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
 
-        var update = ValidUpdate() with { Vocacao = "Bruxo", Afinidade = "Necromancia" };
+        var update = ValidUpdate() with { Vocacao = "Bruxo", Afinidade = 16 };
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken, update));
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -223,15 +223,15 @@ public class NpcSheetsControllerTests(ApiFixture fixture) : FichaDePersonagemOuN
         var sheetId = await CreateSheetAsync(gmToken);
 
         await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken,
-            ValidUpdate() with { Vocacao = "Bruxo", Afinidade = "Necromancia" }));
+            ValidUpdate() with { Vocacao = "Bruxo", Afinidade = 16 }));
 
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken,
-            ValidUpdate() with { Vocacao = "Adepto", Afinidade = "Necromancia" }));
+            ValidUpdate() with { Vocacao = "Adepto", Afinidade = 16 }));
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
         var getResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}", gmToken));
         var body = await getResponse.Content.ReadFromJsonAsync<NpcSheetResponse>();
-        body!.Afinidade.Should().Be("Necromancia");
+        body!.Afinidade.Should().Be(16);
     }
 
     [Fact]
@@ -630,11 +630,12 @@ public class NpcSheetsControllerTests(ApiFixture fixture) : FichaDePersonagemOuN
         body.EstresseMaximo.Should().Be(10); // flat
     }
 
-    // Alma e Vida são Caminhos, não Afinidades — Requisitos - Ficha de Personagem 1.a.
+    // Os Caminhos (Alma, Vida, Mundano) não são Afinidades — Requisitos - Ficha de Personagem 1.a.
     [Theory]
-    [InlineData("Alma")]
-    [InlineData("Vida")]
-    public async Task Update_rejects_a_new_Afinidade_of_Alma_or_Vida(string afinidade)
+    [InlineData(9)]  // Alma
+    [InlineData(14)] // Vida
+    [InlineData(18)] // Mundano
+    public async Task Update_rejects_a_new_Afinidade_that_is_a_Caminho(int afinidade)
     {
         var gmToken = await RegisterGmAndGetTokenAsync($"CaminhoAfinGmANpcSheets{afinidade}", $"caminhoafinANpcSheets{afinidade}@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
@@ -655,12 +656,12 @@ public class NpcSheetsControllerTests(ApiFixture fixture) : FichaDePersonagemOuN
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
             var entity = await db.NpcSheets.SingleAsync(s => s.Id == Guid.Parse(sheetId));
-            entity.Afinidade = RuinaRPG.Domain.CharacterSheets.AfinidadeElemental.Vida;
+            entity.Afinidade = 14;
             await db.SaveChangesAsync();
         }
 
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}", gmToken,
-            ValidUpdate() with { Vocacao = "Adepto", Afinidade = "Vida" }));
+            ValidUpdate() with { Vocacao = "Adepto", Afinidade = 14 }));
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }

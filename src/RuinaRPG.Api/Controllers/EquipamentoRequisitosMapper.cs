@@ -1,5 +1,6 @@
 using RuinaRPG.Contracts.Items;
 using RuinaRPG.Contracts.SpellsAndAbilities;
+using RuinaRPG.Domain.Afinidades;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Items;
 using RuinaRPG.Domain.SpellsAndAbilities;
@@ -16,7 +17,7 @@ namespace RuinaRPG.Api.Controllers;
 public static class EquipamentoRequisitosMapper
 {
     public static bool TryParse(ItemTipo tipo, RequisitosDePassivaDto? requisitosDto, PenalidadeDeEquipamentoDto? penalidadeDto,
-        IReadOnlyList<PericiaDefinicao> pericias, out RequisitosDePassiva? requisitos, out PenalidadeDeEquipamento? penalidade, out string? erro)
+        IReadOnlyList<PericiaDefinicao> pericias, CatalogoDeAfinidades afinidades, out RequisitosDePassiva? requisitos, out PenalidadeDeEquipamento? penalidade, out string? erro)
     {
         requisitos = null;
         penalidade = null;
@@ -25,7 +26,7 @@ public static class EquipamentoRequisitosMapper
             return true;
 
         var soAceitos = requisitosDto is null ? null : requisitosDto with { Nivel = null, Linhagem = null, Variante = null, Graduacao = null, CoracaoDeMana = null, HistoricoId = null };
-        if (!RequisitosDePassivaMapper.TryParse(soAceitos, pericias, out var parsed, out erro))
+        if (!RequisitosDePassivaMapper.TryParse(soAceitos, pericias, afinidades, out var parsed, out erro))
             return false;
         requisitos = EstaVazio(parsed) ? null : parsed;
 

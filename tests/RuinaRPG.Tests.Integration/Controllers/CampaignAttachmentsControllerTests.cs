@@ -66,7 +66,7 @@ public class CampaignAttachmentsControllerTests(ApiFixture fixture) : ApiTestBas
         5, true, 750, 120, 0, 0, 0, 0, 0, 0, 0, 20, 40, 30, 15, 8, 3, "Parcial", 100, null, null, 0, null, null, 0);
 
     private static RuinaRPG.Contracts.CreatureSheets.UpdateCreatureSheetRequest CreatureUpdateWithImage(string? imageId) => new(
-        imageId, "Lobo das Ruínas", "Lobo", "Fisico", "Predador", "Terra",
+        imageId, "Lobo das Ruínas", "Lobo", "Fisico", "Predador", 0,
         "F", 3, 200, 5, 12, 8, 10, "Parcial");
 
     private async Task<string> CreateNpcSheetAsync(string gmToken)

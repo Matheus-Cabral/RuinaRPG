@@ -20,7 +20,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Route("api/npc-sheets")]
 [Authorize]
-public sealed class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<NpcSheetsController> logger, NpcSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, ITipoDeFicha<NpcSheet> tipo)
+public sealed class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<NpcSheetsController> logger, NpcSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, ITipoDeFicha<NpcSheet> tipo, CatalogoDeAfinidadesService afinidades)
     : FichaComLinhagemController<NpcSheet, NpcSheetStats, NpcSheetHistoriaImage>(db, tabelaDeNiveis, tipo, stats, penalidades, hub, logger)
 {
     // Creating a fresh (un-granted) NPC is GM roster curation, not something a player who's been
@@ -80,10 +80,9 @@ public sealed class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider
             return BadRequest("Essa Variante ainda não foi liberada pelo GM.");
         if (!TryParseEnum<Vocacao>(request.Vocacao, out var vocacao))
             return BadRequest("Vocação inválida.");
-        if (!TryParseEnum<AfinidadeElemental>(request.Afinidade, out var afinidade))
-            return BadRequest("Afinidade inválida.");
-        if (afinidade is not null && afinidade != sheet.Afinidade && CaminhoSubElementoRules.EhCaminho(afinidade.Value))
-            return BadRequest("Alma e Vida são Caminhos, não Afinidades.");
+        var afinidade = request.Afinidade;
+        if ((await afinidades.CarregarAsync()).MotivoParaRecusarAfinidade(afinidade, sheet.Afinidade) is { } afinidadeRecusada)
+            return BadRequest(afinidadeRecusada);
         if (!Enum.TryParse<Cobertura>(request.Cobertura, out var cobertura))
             return BadRequest("Cobertura inválida.");
         if (!TryParseEnum<Estrela>(request.Estrela, out var estrela))
@@ -249,7 +248,7 @@ public sealed class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider
 
         return new NpcSheetResponse(
             s.Id.ToString(), s.OwnerId?.ToString(), imageUrl,
-            s.Nome, s.Linhagem?.ToString(), s.Variante?.ToString(), s.Vocacao?.ToString(), s.SubVocacao, s.Afinidade?.ToString(), s.Propriedade,
+            s.Nome, s.Linhagem?.ToString(), s.Variante?.ToString(), s.Vocacao?.ToString(), s.SubVocacao, s.Afinidade, s.Propriedade,
             s.Nivel, s.Circulo, s.Grau, s.PossuiCoracaoDeMana, s.ExperienciaAtual, eapAtual,
             s.NucleosRankF, s.NucleosRankE, s.NucleosRankD, s.NucleosRankC, s.NucleosRankB, s.NucleosRankA, s.NucleosRankS,
             s.PontosDeIgnicaoAtual, s.PontosDeIgnicaoTotal,

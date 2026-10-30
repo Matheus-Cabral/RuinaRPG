@@ -142,6 +142,19 @@ public partial class SheetLogRecordingTests(ApiFixture fixture) : ApiTestBase(fi
     }
 
     [Fact]
+    public async Task The_Afinidade_is_logged_by_the_current_catalog_name_of_the_element()
+    {
+        var c = await CenarioAsync("Afinidade");
+        await PutSheetAsync(c.GmToken, c.SheetId, ValidUpdate());
+
+        var novas = await NovasAsync(c.SheetId, () => PutSheetAsync(c.GmToken, c.SheetId, ValidUpdate() with { Afinidade = 1 }));
+
+        var linha = novas.Should().ContainSingle(l => l.Campo == Rotulo<CharacterSheet>("Afinidade")).Subject;
+        linha.ValorAntes.Should().Be("—");
+        linha.ValorDepois.Should().Be("Água");
+    }
+
+    [Fact]
     public async Task A_gm_edit_is_flagged_ActorIsGm()
     {
         var c = await CenarioAsync("GmEdita");

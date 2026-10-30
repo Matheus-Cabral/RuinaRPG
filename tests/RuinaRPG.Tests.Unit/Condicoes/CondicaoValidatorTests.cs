@@ -8,11 +8,14 @@ public class CondicaoValidatorTests
 {
     private static bool Existe(string chave) => chave == "Furtividade";
 
+    // Ids de elementos do catálogo que valem como alvo (Fogo = 2, Gelo = 4); Caminhos ficam de fora.
+    private static bool ElementoExiste(string id) => id is "2" or "4";
+
     private static ModificadorDeCondicao Mod(AlvoDeCondicao alvo, string? especifico, int valor = -2, TipoDeValorDeCondicao tipo = TipoDeValorDeCondicao.Fixo, MomentoDeCondicao? momento = null) =>
         new(alvo, especifico, tipo, valor, momento);
 
     private static string? Validar(string nome = "Envenenado", ModificadorDeCondicao[]? mods = null, CategoriaDesabilitavel[]? desab = null, int? duracao = null) =>
-        CondicaoValidator.Validar(nome, mods ?? [Mod(AlvoDeCondicao.Atributo, "Forca")], desab ?? [], duracao, Existe);
+        CondicaoValidator.Validar(nome, mods ?? [Mod(AlvoDeCondicao.Atributo, "Forca")], desab ?? [], duracao, Existe, ElementoExiste);
 
     [Fact]
     public void A_fully_valid_multi_line_condition_passes()
@@ -26,7 +29,8 @@ public class CondicaoValidatorTests
             Mod(AlvoDeCondicao.RecursoTotal, "Vitalidade", -10, TipoDeValorDeCondicao.Percentual),
             Mod(AlvoDeCondicao.RecursoAtual, "Vitalidade", -3, momento: MomentoDeCondicao.ACadaVez),
             Mod(AlvoDeCondicao.AfinidadeElemental, null, 1),
-            Mod(AlvoDeCondicao.DanoElemental, "Fogo", 2),
+            Mod(AlvoDeCondicao.DanoElemental, "2", 2),
+            Mod(AlvoDeCondicao.AfinidadeElemental, "4", 1),
             Mod(AlvoDeCondicao.Dano, "Arcano", 1),
             Mod(AlvoDeCondicao.Maestria, null, 1),
         };
@@ -94,7 +98,10 @@ public class CondicaoValidatorTests
     [InlineData(AlvoDeCondicao.RecursoTotal, null)]
     [InlineData(AlvoDeCondicao.RecursoTotal, "Mana")]
     [InlineData(AlvoDeCondicao.AfinidadeElemental, "Luz")]
+    [InlineData(AlvoDeCondicao.AfinidadeElemental, "Fogo")]
+    [InlineData(AlvoDeCondicao.AfinidadeElemental, "9")]
     [InlineData(AlvoDeCondicao.DanoElemental, "Luz")]
+    [InlineData(AlvoDeCondicao.DanoElemental, "99")]
     [InlineData(AlvoDeCondicao.Dano, "Sagrado")]
     [InlineData(AlvoDeCondicao.Maestria, "Inexistente")]
     public void An_invalid_AlvoEspecifico_is_rejected(AlvoDeCondicao alvo, string? especifico) =>

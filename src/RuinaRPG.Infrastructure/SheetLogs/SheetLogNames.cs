@@ -5,7 +5,7 @@ namespace RuinaRPG.Infrastructure.SheetLogs;
 
 /// <summary>
 /// Como um valor de coluna de ficha aparece no log quando a coluna é uma referência: pelo nome do que ela aponta
-/// (item do Catálogo, Perícia, Característica, Histórico, Equipagem). Vale por um salvamento: cada referência
+/// (item do Catálogo, Perícia, Característica, Histórico, Equipagem, elemento do catálogo de Afinidades). Vale por um salvamento: cada referência
 /// distinta custa uma consulta, sem rastrear nada no contexto.
 /// </summary>
 internal sealed class SheetLogNames(RuinaRpgDbContext db)
@@ -26,7 +26,7 @@ internal sealed class SheetLogNames(RuinaRpgDbContext db)
     }
 
     private static bool EhReferencia(string propriedade) => propriedade is "ImageId" or "ItemId" or "ArtifactItemId" or "PericiaId"
-        or "TraitId" or "CreatureExclusiveTraitId" or "HistoricoId" or "EquipmentKitId";
+        or "TraitId" or "CreatureExclusiveTraitId" or "HistoricoId" or "EquipmentKitId" or "Afinidade";
 
     private Task<string?> BuscarAsync(string propriedade, object id, CancellationToken ct) => (propriedade, id) switch
     {
@@ -35,6 +35,7 @@ internal sealed class SheetLogNames(RuinaRpgDbContext db)
         ("TraitId", Guid g) => db.Traits.AsNoTracking().Where(t => t.Id == g).Select(t => t.Nome).FirstOrDefaultAsync(ct),
         ("CreatureExclusiveTraitId", Guid g) => db.CreatureExclusiveTraits.AsNoTracking().Where(t => t.Id == g).Select(t => t.Nome).FirstOrDefaultAsync(ct),
         ("HistoricoId", Guid g) => db.Historicos.AsNoTracking().Where(h => h.Id == g).Select(h => h.Nome).FirstOrDefaultAsync(ct),
+        ("Afinidade", int a) => db.ElementosDeAfinidade.AsNoTracking().Where(e => e.Id == a).Select(e => e.Nome).FirstOrDefaultAsync(ct),
         ("EquipmentKitId", Guid g) => db.EquipmentKits.AsNoTracking().Where(k => k.Id == g).Select(k => k.Nome).FirstOrDefaultAsync(ct),
         _ => Task.FromResult<string?>(null),
     };

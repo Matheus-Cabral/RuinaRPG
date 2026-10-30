@@ -3,7 +3,7 @@ namespace RuinaRPG.Contracts.SpellsAndAbilities;
 /// <summary>Um item das listas de requisito: Alvo é o nome do enum (Atributo, SubAtributo) ou a Chave de uma Perícia.</summary>
 public record RequisitoMinimoDto(string Alvo, int Minimo);
 
-/// <summary>Requisitos de uma Passiva. Campo nulo/vazio = não é requisito. Enums trafegam como texto.</summary>
+/// <summary>Requisitos de uma Passiva. Campo nulo/vazio = não é requisito. Enums trafegam como texto; a Afinidade é o id do elemento no catálogo (GET api/afinidades/catalogo).</summary>
 public record RequisitosDePassivaDto(
     int? Nivel = null,
     string? Vocacao = null,
@@ -12,7 +12,7 @@ public record RequisitosDePassivaDto(
     string? Variante = null,
     int? Graduacao = null,
     bool? CoracaoDeMana = null,
-    string? Afinidade = null,
+    int? Afinidade = null,
     string? Estrela = null,
     string? HistoricoId = null,
     List<RequisitoMinimoDto>? Atributos = null,

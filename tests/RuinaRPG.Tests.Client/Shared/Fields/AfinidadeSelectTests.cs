@@ -1,51 +1,56 @@
 using Bunit;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using RuinaRPG.Client.Shared.Fields;
+using RuinaRPG.Contracts.Rules;
 using Xunit;
 
 namespace RuinaRPG.Tests.Client.Shared.Fields;
 
+/// <summary>O campo Afinidade lê o catálogo de elementos do Auditor (GET afinidades/catalogo); o valor é o id.</summary>
 public class AfinidadeSelectTests : MudBunitContext
 {
+    private static List<int?> Valores(IRenderedComponent<AfinidadeSelect> cut) =>
+        cut.FindComponents<MudSelectItem<int?>>().Select(i => i.Instance.Value).ToList();
+
     [Fact]
-    public void Without_OpcoesPermitidas_shows_every_one_of_the_18_values()
+    public void Lists_the_16_catalog_elements_that_are_not_Caminhos()
     {
         var cut = Render<AfinidadeSelect>();
 
-        cut.FindComponents<MudSelectItem<string>>().Should().HaveCount(AfinidadeSelect.Afinidades.Length);
+        cut.WaitForAssertion(() => Valores(cut).Should().HaveCount(16));
+        Valores(cut).Should().NotContain([9, 14, 18]);
     }
 
     [Fact]
-    public void With_OpcoesPermitidas_shows_only_the_given_subset()
+    public void Elemento_criado_aparece_nos_pickers()
     {
-        var subset = new[] { ("Fogo", "Fogo"), ("Necromancia", "Necromancia") };
+        Services.AddSingleton(ElementosDeTeste.Cliente([.. ElementosDeTeste.Semeados, new ElementoDeAfinidadeResponse(19, "Luz", "SubElemento", null)]));
 
-        var cut = Render<AfinidadeSelect>(p => p.Add(x => x.OpcoesPermitidas, subset));
+        var root = RenderWithPopover<AfinidadeSelect>();
 
-        cut.FindComponents<MudSelectItem<string>>().Should().HaveCount(2);
+        root.WaitForAssertion(() => root.FindComponents<MudSelectItem<int?>>().Should().HaveCount(17));
+        root.FindComponent<MudSelect<int?>>().Find(".mud-input-control").MouseDown();
+        root.FindAll(".mud-list-item").Select(li => li.TextContent.Trim()).Should().Contain(["Água", "Invocação", "Luz"]);
     }
 
     [Fact]
-    public void Afinidades_has_16_values_without_Alma_and_Vida_which_are_Caminhos()
+    public void A_saved_Caminho_is_still_listed_with_its_catalog_name_so_the_select_is_not_blank()
     {
-        AfinidadeSelect.Afinidades.Should().HaveCount(16);
-        AfinidadeSelect.Afinidades.Select(a => a.Valor).Should().NotContain(["Alma", "Vida"]);
+        var root = RenderWithPopover<AfinidadeSelect>(("Value", (int?)14));
+
+        root.WaitForAssertion(() => root.FindComponents<MudSelectItem<int?>>().Select(i => i.Instance.Value).Should().Contain(14));
+        root.FindComponent<MudSelect<int?>>().Find(".mud-input-control").MouseDown();
+        root.FindAll(".mud-list-item").Select(li => li.TextContent.Trim()).Should().Contain("Vida");
     }
 
     [Fact]
-    public void A_legacy_saved_Alma_or_Vida_is_still_listed_so_the_select_is_not_blank()
+    public void Without_a_saved_Caminho_no_Caminho_appears()
     {
-        var cut = Render<AfinidadeSelect>(p => p.Add(x => x.Value, "Vida"));
+        var cut = Render<AfinidadeSelect>(p => p.Add(x => x.Value, 2));
 
-        cut.FindComponents<MudSelectItem<string>>().Select(i => i.Instance.Value).Should().Contain("Vida");
-    }
-
-    [Fact]
-    public void Without_a_legacy_value_no_Caminho_appears()
-    {
-        var cut = Render<AfinidadeSelect>(p => p.Add(x => x.Value, "Fogo"));
-
-        cut.FindComponents<MudSelectItem<string>>().Select(i => i.Instance.Value).Should().NotContain(["Alma", "Vida"]);
+        cut.WaitForAssertion(() => Valores(cut).Should().HaveCount(16));
+        Valores(cut).Should().NotContain([9, 14, 18]);
     }
 }

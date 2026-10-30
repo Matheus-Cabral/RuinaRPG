@@ -8,7 +8,7 @@ public record UpdateNpcSheetRequest(
     string? Variante,
     string? Vocacao,
     string? SubVocacao,
-    string? Afinidade,
+    int? Afinidade,
     string? Propriedade,
     int Nivel,
     bool PossuiCoracaoDeMana,

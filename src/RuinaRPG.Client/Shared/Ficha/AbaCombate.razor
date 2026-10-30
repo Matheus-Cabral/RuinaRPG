@@ -1,5 +1,6 @@
 @using MudBlazor
 @inject PericiaCatalogo Catalogo
+@inject CatalogoDeElementos Elementos
 
 @* A aba Combate das três fichas: os recursos (com a Sina e o Estresse onde o tipo os tem), os Sub-Atributos, o
    Modificador de Dano, as Armas (a arma manual onde o tipo a tem: ArmaManualForm), as Maestrias (editadas na linha: MaestriasNaLinha), as Armaduras e os Escudos. Os recursos, a Sina, a Cobertura e a Afinidade são do
@@ -40,7 +41,7 @@
         <MudText>Perfurante: @modificador.Perfurante</MudText>
         <MudText>Contundente: @modificador.Contundente</MudText>
         <MudText>Mágico: @modificador.Arcano</MudText>
-        @foreach (var linha in CondicaoResumo.LinhasDeDanoElemental(modificador.DanoElemental))
+        @foreach (var linha in CondicaoResumo.LinhasDeDanoElemental(modificador.DanoElemental, Elementos.Nome))
         {
             <MudText>@linha</MudText>
         }
@@ -294,13 +295,15 @@
         return SalvarAgora.InvokeAsync();
     }
 
+    protected override Task OnInitializedAsync() => Elementos.CarregarAsync();
+
     private Task MudarCoberturaAsync(string? valor)
     {
         Formulario.Cobertura = valor ?? "Nenhuma";
         return SalvarERecarregar.InvokeAsync();
     }
 
-    private Task MudarAfinidadeAsync(string? valor)
+    private Task MudarAfinidadeAsync(int? valor)
     {
         Formulario.Afinidade = valor;
         return SalvarERecarregar.InvokeAsync();

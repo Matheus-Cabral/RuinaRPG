@@ -25,6 +25,7 @@ public abstract class PaginaDeFicha<TFicha> : ComponentBase, IDisposable where T
     [Inject] protected IJSRuntime JS { get; set; } = default!;
     [Inject] protected SecretNoteNotifier Notifier { get; set; } = default!;
     [Inject] protected PericiaCatalogo Pericias { get; set; } = default!;
+    [Inject] protected CatalogoDeElementos Elementos { get; set; } = default!;
     [Inject] protected AuthenticationStateProvider AuthProvider { get; set; } = default!;
 
     /// <summary>O formulário da página (o tipo vem com ele; o valor inicial de cada campo antes da carga é da página).</summary>
@@ -66,7 +67,8 @@ public abstract class PaginaDeFicha<TFicha> : ComponentBase, IDisposable where T
 
     protected override async Task OnInitializedAsync()
     {
-        await Pericias.CarregarAsync();
+        // Os dois catálogos que as abas leem (Perícias; elementos de Afinidade, para a Afinidade e o Dano elemental), uma vez.
+        await Task.WhenAll(Pericias.CarregarAsync(), Elementos.CarregarAsync());
         var authState = await AuthProvider.GetAuthenticationStateAsync();
         Estado.IsGmCaller = authState.User.IsInRole("GM");
 

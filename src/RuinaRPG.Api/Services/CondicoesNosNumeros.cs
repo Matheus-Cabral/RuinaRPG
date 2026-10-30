@@ -1,3 +1,4 @@
+using System.Globalization;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Condicoes;
@@ -48,27 +49,24 @@ public static class CondicoesNosNumeros
         efeitos.NoRecursoTotal(RecursoDeCondicao.Estresse, ResourceMaximumCalculator.Estresse()));
 
     /// <summary>
-    /// O valor exibido da Essência 1 de uma linha de Afinidade (2.c). Linha sem Elemento ou sem valor fica como está.
-    /// Nunca abaixo de 0 (nem do próprio valor guardado, se ele já for negativo).
+    /// O valor exibido de um elemento (<paramref name="elementoId"/>, id do catálogo) com as linhas de Afinidade elemental.
+    /// Sem elemento ou sem valor fica como está. Nunca abaixo de 0 (nem do próprio valor guardado, se ele já for negativo).
     /// </summary>
-    public static int? NaAfinidade(this EfeitosDeCondicao efeitos, Elemento? elemento, int? valor) =>
-        elemento is null || valor is null
+    public static int? NaAfinidade(this EfeitosDeCondicao efeitos, int? elementoId, int? valor) =>
+        elementoId is null || valor is null
             ? valor
-            : Math.Max(Math.Min(valor.Value, 0), efeitos.Ajustar(AlvoDeCondicao.AfinidadeElemental, elemento.Value.ToString(), valor.Value));
-
-    /// <summary>As linhas de Afinidade com a Essência 1 ajustada — entrada da Eficiência e do Dano Elemental (2.b).</summary>
-    public static List<LinhaDeAfinidade> NasAfinidades(this EfeitosDeCondicao efeitos, List<LinhaDeAfinidade> linhas) =>
-        efeitos.Vazio ? linhas : linhas.Select(l => l with { ElementoValor = efeitos.NaAfinidade(l.Elemento, l.ElementoValor) }).ToList();
+            : Math.Max(Math.Min(valor.Value, 0), efeitos.Ajustar(AlvoDeCondicao.AfinidadeElemental, elementoId.Value.ToString(CultureInfo.InvariantCulture), valor.Value));
 
     /// <summary>
     /// 3.f: por Tipo de Dano, a soma dos modificadores (Artefatos e penalidades) e então as linhas de Dano; por
-    /// Elemento, só o que as linhas de Dano elemental dão (parte de 0).
+    /// elemento do catálogo que pode ser Afinidade (<paramref name="elementos"/>, ids), só o que as linhas de Dano
+    /// elemental dão (parte de 0).
     /// </summary>
-    public static ModificadorDeDanoResponse NoModificadorDeDano(this EfeitosDeCondicao efeitos, IReadOnlyList<ArtifactBonusInput> modificadores)
+    public static ModificadorDeDanoResponse NoModificadorDeDano(this EfeitosDeCondicao efeitos, IReadOnlyList<ArtifactBonusInput> modificadores, IEnumerable<int> elementos)
     {
         int De(TipoDeDano tipo) => efeitos.Ajustar(AlvoDeCondicao.Dano, tipo.ToString(), ArtifactBonusCalculator.Sum(modificadores, TipoDeAlvo.Dano, tipo.ToString()));
 
         return new ModificadorDeDanoResponse(De(TipoDeDano.Cortante), De(TipoDeDano.Perfurante), De(TipoDeDano.Contundente), De(TipoDeDano.Arcano),
-            Enum.GetValues<Elemento>().ToDictionary(e => e.ToString(), e => efeitos.Ajustar(AlvoDeCondicao.DanoElemental, e.ToString(), 0)));
+            elementos.ToDictionary(id => id, id => efeitos.Ajustar(AlvoDeCondicao.DanoElemental, id.ToString(CultureInfo.InvariantCulture), 0)));
     }
 }

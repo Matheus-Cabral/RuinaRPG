@@ -54,7 +54,7 @@ public class FichaSubAtributosTests : MudBunitContext
             if (path.EndsWith("/level-up-notice"))
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             if (Regex.IsMatch(path, "-sheets/[^/]+$"))
-                return Json(new { Afinidade = "Fogo" });
+                return Json(new { Afinidade = 2 });
             if (path.EndsWith("/sub-attributes"))
                 return Json(new { DefesaNatural = 15, EficienciaElemental = 3, DanoElemental = 2 });
             return SingleObjectSuffixes.Any(path.EndsWith) ? Json(new { }) : Json(new List<object>());
@@ -67,7 +67,7 @@ public class FichaSubAtributosTests : MudBunitContext
     private static void AssertAfinidadeNosSubAtributos(IRenderedComponent<SubAtributosSection> secao)
     {
         secao.Instance.ComAfinidade.Should().BeTrue();
-        secao.Instance.Afinidade.Should().Be("Fogo");
+        secao.Instance.Afinidade.Should().Be(2);
         secao.Find(".subatributo-eficiencia .subatributo-valor").TextContent.Trim().Should().Be("3");
         secao.Find(".subatributo-dano .subatributo-valor").TextContent.Trim().Should().Be("2");
     }

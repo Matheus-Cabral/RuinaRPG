@@ -168,7 +168,7 @@ public sealed class TipoDeTesteCriatura : ITipoDeTeste
         await db.SaveChangesAsync();
     }
 
-    public object AtualizacaoComPi(int pi) => new UpdateCreatureSheetRequest(null, "Lobo das Ruínas", "Lobo", "Fisico", "Predador", "Terra", "F", 1, 0, pi, 0, 0, 0, "Nenhuma");
+    public object AtualizacaoComPi(int pi) => new UpdateCreatureSheetRequest(null, "Lobo das Ruínas", "Lobo", "Fisico", "Predador", 0, "F", 1, 0, pi, 0, 0, 0, "Nenhuma");
 
     public bool MagiasDeCriatura => true;
 }
@@ -293,5 +293,5 @@ public sealed record EscudoLido(string Id, string ItemId, string Nome, int? Bonu
     string? ImageUrl, string? Descricao, List<string>? RequisitosPendentes);
 public sealed record ArtefatoLido(string Id, string Nome, List<string>? Penalidade);
 public sealed record FichaLida(string Id, string? EquipmentKitId, int Ciclos, string? Nome, int Nivel, int ExperienciaAtual, string? CampaignId, string? OwnerId, int AdrenalinaMaximo,
-    string? Afinidade, string? HistoricoId, string? CampaignName = null);
+    int? Afinidade, string? HistoricoId, string? CampaignName = null);
 public sealed record ResumoDeFichaLido(string Id, string? OwnerNickname);

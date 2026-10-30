@@ -249,8 +249,10 @@ public class FichaCondicoesTests : MudBunitContext
     [Fact]
     public async Task Elemental_damage_from_conditions_shows_only_for_the_non_zero_elements()
     {
-        Prepare(r => r.RequestUri!.AbsolutePath.EndsWith("/modificador-de-dano")
-            ? Json(new { Cortante = 1, Perfurante = 0, Contundente = 0, Arcano = 0, DanoElemental = new Dictionary<string, int> { ["Fogo"] = 3, ["Agua"] = 0, ["Ar"] = -2 } })
+        // A chave é o id do elemento no catálogo (Fogo = 2, Água = 1, Ar = 3); o nome vem do catálogo.
+        Prepare(r => ElementosDeTeste.EhCatalogo(r) ? ElementosDeTeste.Resposta()
+            : r.RequestUri!.AbsolutePath.EndsWith("/modificador-de-dano")
+            ? Json(new { Cortante = 1, Perfurante = 0, Contundente = 0, Arcano = 0, DanoElemental = new Dictionary<int, int> { [2] = 3, [1] = 0, [3] = -2 } })
             : null);
         var cut = await RenderPersonagemAsync();
         await GoToTabAsync(cut, "Combate");

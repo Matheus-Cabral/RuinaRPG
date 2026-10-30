@@ -502,7 +502,7 @@ public sealed class AfinidadesDaFichaTestesNpc(ApiFixture fixture) : AfinidadesD
     {
         var f = await FichaAsync();
         await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{f.SheetId}", f.GmToken,
-            ValidUpdate() with { Afinidade = "Fogo", AfinidadeAdicional = 10 }));
+            ValidUpdate() with { Afinidade = 2, AfinidadeAdicional = 10 }));
         var added = await AddAsync(f, new AddAffinityRequest("Fogo", 7, null, null, null, null));
         added.StatusCode.Should().Be(HttpStatusCode.Created);
 

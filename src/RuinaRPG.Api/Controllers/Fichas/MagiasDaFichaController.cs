@@ -1,3 +1,4 @@
+using RuinaRPG.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.Fichas;
@@ -18,7 +19,7 @@ namespace RuinaRPG.Api.Controllers.Fichas;
 /// Magias e Habilidades da ficha (incluindo Passivas e Raciais), para os três tipos. A rota
 /// (<c>api/&lt;tipo&gt;-sheets/{sheetId}/spell-abilities</c>) fica na subclasse de cada tipo.
 /// </summary>
-public abstract class MagiasDaFichaController<TSheet, TLinha, TEfeito>(RuinaRpgDbContext db, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis, ITipoDeFicha<TSheet> tipo)
+public abstract class MagiasDaFichaController<TSheet, TLinha, TEfeito>(RuinaRpgDbContext db, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis, ITipoDeFicha<TSheet> tipo, CatalogoDeAfinidadesService afinidades)
     : FichaControllerBase<TSheet>(tipo)
     where TSheet : class, IFicha
     where TLinha : class, IMagiaDaFicha<TEfeito>
@@ -96,8 +97,7 @@ public abstract class MagiasDaFichaController<TSheet, TLinha, TEfeito>(RuinaRpgD
                 if (await Linhas.AnyAsync(e => e.SheetId == sheetId && e.SourceBankEntryId == bankEntryId))
                     return BadRequest("Esta Passiva já está na ficha.");
 
-                var pendencias = PassivaRequisitosEvaluator.Pendencias(bankEntry.Requisitos, await FichaParaRequisitosAsync(sheet),
-                    await RequisitosDePassivaMapper.NomeDoHistoricoAsync(Db, bankEntry.Requisitos), RequisitosDePassivaMapper.NomeDaPericia(await Pericias.PorIdAsync()));
+                var pendencias = await PendenciasAsync(bankEntry.Requisitos, await FichaParaRequisitosAsync(sheet));
                 if (pendencias.Count > 0)
                     return BadRequest("Requisitos não cumpridos: " + string.Join(", ", pendencias));
 
@@ -285,11 +285,16 @@ public abstract class MagiasDaFichaController<TSheet, TLinha, TEfeito>(RuinaRpgD
         return NoContent();
     }
 
+    /// <summary>O que falta para a ficha cumprir os requisitos de uma Passiva, com os nomes do Histórico, das Perícias e do elemento.</summary>
+    private async Task<IReadOnlyList<string>> PendenciasAsync(RequisitosDePassiva? requisitos, FichaParaRequisitos ficha) =>
+        PassivaRequisitosEvaluator.Pendencias(requisitos, ficha, await RequisitosDePassivaMapper.NomeDoHistoricoAsync(Db, requisitos),
+            RequisitosDePassivaMapper.NomeDaPericia(await Pericias.PorIdAsync()), (await afinidades.CarregarAsync()).NomeDe);
+
     private async Task<SpellAbilityResponse> RespostaAsync(TSheet sheet, TLinha e, FichaParaRequisitos? ficha)
     {
         List<string>? pendentes = null;
         if (e.Tipo == SpellAbilityTipo.Passiva && ficha is not null)
-            pendentes = PassivaRequisitosEvaluator.Pendencias(e.Requisitos, ficha, await RequisitosDePassivaMapper.NomeDoHistoricoAsync(Db, e.Requisitos), RequisitosDePassivaMapper.NomeDaPericia(await Pericias.PorIdAsync())).ToList();
+            pendentes = (await PendenciasAsync(e.Requisitos, ficha)).ToList();
         var efeitos = e.Efeitos.Select(ef => new SpellAbilityEffectResponse(ef.EfeitoNome, ef.Quantidade, ef.CustoPI)).ToList();
         return Resposta(e, efeitos, RequisitosDePassivaMapper.ToDto(e.Requisitos, await Pericias.PorIdAsync()), pendentes, await DesabilitadoPorAsync(sheet, e));
     }
@@ -300,7 +305,7 @@ public abstract class MagiasDaFichaController<TSheet, TLinha, TEfeito>(RuinaRpgD
         var result = new List<PassivaDisponivelResponse>();
         foreach (var e in entradas)
         {
-            var pendencias = PassivaRequisitosEvaluator.Pendencias(e.Requisitos, ficha, await RequisitosDePassivaMapper.NomeDoHistoricoAsync(Db, e.Requisitos), RequisitosDePassivaMapper.NomeDaPericia(await Pericias.PorIdAsync()));
+            var pendencias = await PendenciasAsync(e.Requisitos, ficha);
             result.Add(new PassivaDisponivelResponse(
                 new SpellAbilityEntryResponse(e.Id.ToString(), e.Nome, e.Tipo.ToString(), e.Grau, e.GastoEmPI, e.Custo, e.Descricao, [], e.DeCriatura,
                     e.Categoria?.ToString(), RequisitosDePassivaMapper.ToDto(e.Requisitos, await Pericias.PorIdAsync())),

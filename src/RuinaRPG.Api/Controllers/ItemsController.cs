@@ -1,3 +1,4 @@
+using RuinaRPG.Api.Services;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -15,7 +16,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Route("api/items")]
 [Authorize]
-public class ItemsController(RuinaRpgDbContext db, DurabilidadePorRankProvider durabilidades, IPericiaCatalogo pericias) : ControllerBase
+public class ItemsController(RuinaRpgDbContext db, DurabilidadePorRankProvider durabilidades, IPericiaCatalogo pericias, CatalogoDeAfinidadesService afinidades) : ControllerBase
 {
     // Curating the Catálogo (create/edit/delete) stays GM-only; browsing it (List, below) doesn't
     // — a player needs to see their own GM's catalog to pick a weapon/item for their own sheet.
@@ -41,7 +42,7 @@ public class ItemsController(RuinaRpgDbContext db, DurabilidadePorRankProvider d
             return BadRequest("Imagem não encontrada.");
 
         var porId = await pericias.PorIdAsync();
-        if (!EquipamentoRequisitosMapper.TryParse(tipo, request.Requisitos, request.PenalidadeDeRequisitos, porId.Values.ToList(), out var requisitos, out var penalidade, out var erro))
+        if (!EquipamentoRequisitosMapper.TryParse(tipo, request.Requisitos, request.PenalidadeDeRequisitos, porId.Values.ToList(), await afinidades.CarregarAsync(), out var requisitos, out var penalidade, out var erro))
             return BadRequest(erro);
 
         var item = ItemFactory.Criar(tipo, request, rank, requisitos, penalidade);
@@ -154,7 +155,7 @@ public class ItemsController(RuinaRpgDbContext db, DurabilidadePorRankProvider d
         {
             Requisitos = RequisitosDePassivaMapper.ToDto(item.Requisitos, porId),
             PenalidadeDeRequisitos = EquipamentoRequisitosMapper.ToDto(item.PenalidadeDeRequisitos, porId),
-            RequisitosPorExtenso = PassivaRequisitosEvaluator.Descrever(item.Requisitos, null, NomeDaPericia).ToList(),
+            RequisitosPorExtenso = PassivaRequisitosEvaluator.Descrever(item.Requisitos, null, NomeDaPericia, (await afinidades.CarregarAsync()).NomeDe).ToList(),
             PenalidadePorExtenso = PenalidadesDeEquipamento.Descrever(item.PenalidadeDeRequisitos, NomeDaPericia).ToList(),
         };
     }
@@ -180,7 +181,7 @@ public class ItemsController(RuinaRpgDbContext db, DurabilidadePorRankProvider d
 
         var tipo = ItemFactory.TipoDe(item);
         var porId = await pericias.PorIdAsync();
-        if (!EquipamentoRequisitosMapper.TryParse(tipo, request.Requisitos, request.PenalidadeDeRequisitos, porId.Values.ToList(), out var requisitos, out var penalidade, out var erro))
+        if (!EquipamentoRequisitosMapper.TryParse(tipo, request.Requisitos, request.PenalidadeDeRequisitos, porId.Values.ToList(), await afinidades.CarregarAsync(), out var requisitos, out var penalidade, out var erro))
             return BadRequest(erro);
 
         ItemFactory.Aplicar(item, request, rank, requisitos, penalidade);

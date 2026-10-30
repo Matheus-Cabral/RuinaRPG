@@ -1,3 +1,4 @@
+using RuinaRPG.Api.Services;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -19,7 +20,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Route("api/condicoes")]
 [Authorize]
-public class CondicoesController(RuinaRpgDbContext db, IPericiaCatalogo pericias) : ControllerBase
+public class CondicoesController(RuinaRpgDbContext db, IPericiaCatalogo pericias, CatalogoDeAfinidadesService afinidades) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<CondicaoResponse>>> List([FromQuery] string? nome)
@@ -154,7 +155,7 @@ public class CondicoesController(RuinaRpgDbContext db, IPericiaCatalogo pericias
             return ("Ícone inválido.", modificadores, desabilitacoes);
 
         var chaves = (await pericias.TodasAsync()).Where(p => !p.IsDeleted).Select(p => p.Chave).ToHashSet();
-        return (CondicaoValidator.Validar(request.Nome, modificadores, desabilitacoes, request.DuracaoPadraoTurnos, chaves.Contains), modificadores, desabilitacoes);
+        return (CondicaoValidator.Validar(request.Nome, modificadores, desabilitacoes, request.DuracaoPadraoTurnos, chaves.Contains, (await afinidades.CarregarAsync()).EhAfinidade), modificadores, desabilitacoes);
     }
 
     private void AddFilhos(Guid condicaoId, List<ModificadorDeCondicao> modificadores, List<CategoriaDesabilitavel> desabilitacoes)

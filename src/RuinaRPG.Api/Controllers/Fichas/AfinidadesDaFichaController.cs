@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.Fichas;
+using RuinaRPG.Domain.Afinidades;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Infrastructure.Fichas;
@@ -182,5 +183,5 @@ public abstract class AfinidadesDaFichaController<TSheet, TLinha>(RuinaRpgDbCont
 
     // O valor guardado segue intacto em ElementoValor (é o que a tela edita e o contador de Vocação Arcana soma);
     // o que as Condições mudam vai à parte, só para exibir.
-    private AffinityResponse Resposta(TLinha a, EfeitosDeCondicao efeitos) => Resposta(a, efeitos.NaAfinidade(a.Elemento, a.ElementoValor));
+    private AffinityResponse Resposta(TLinha a, EfeitosDeCondicao efeitos) => Resposta(a, efeitos.NaAfinidade(a.Elemento is { } e ? ConversaoDeLinhas.IdDoElemento(e) : null, a.ElementoValor));
 }

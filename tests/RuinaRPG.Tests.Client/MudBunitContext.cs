@@ -31,6 +31,11 @@ public abstract class MudBunitContext : BunitContext, IAsyncLifetime
         // HistoricoSelect and RequisitosDePassivaEditor inject it. It resolves the HttpClient each test
         // registers, so a test whose page needs Perícia names answers GET pericias in its fake handler.
         Services.AddScoped<PericiaCatalogo>();
+        // O catálogo de elementos de Afinidade (AfinidadeSelect, Condições, Modificador de Dano): idem, GET afinidades/catalogo.
+        Services.AddScoped<CatalogoDeElementos>();
+        // Um HttpClient padrão que só responde o catálogo de elementos, para os componentes com AfinidadeSelect renderizarem
+        // sem um handler próprio; o teste que registra o seu HttpClient substitui este (o último registro vale).
+        Services.AddSingleton(ElementosDeTeste.Cliente());
         // Same registrations as the app's Program.cs: MainLayout, NavMenu and the player's campaign
         // pages inject SecretNoteNotifier. The connection is a fake — bUnit can't host SignalR.
         Services.AddSingleton<INotificationConnection>(NotificationConnection);

@@ -31,13 +31,6 @@ public static class RequisitoLabels
         _ => variante.ToString()
     };
 
-    public static string Afinidade(AfinidadeElemental afinidade) => afinidade switch
-    {
-        AfinidadeElemental.Agua => "Água",
-        AfinidadeElemental.Invocacao => "Invocação",
-        _ => afinidade.ToString()
-    };
-
     public static string Atributo(Atributo atributo) => atributo switch
     {
         CharacterSheets.Atributo.Influencia => "Influência",

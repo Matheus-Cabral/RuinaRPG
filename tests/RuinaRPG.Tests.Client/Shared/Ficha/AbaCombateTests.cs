@@ -576,7 +576,7 @@ public class AbaCombateTests : RedeDeSegurancaBase
     public async Task Changing_afinidade_saves_reloads_the_tabs_and_shows_the_new_efficiency(string tipo)
     {
         var cut = await AbrirAsync(tipo);
-        var ficha = await FichaMudadaAsync(tipo, f => f["afinidade"] = "Agua");
+        var ficha = await FichaMudadaAsync(tipo, f => f["afinidade"] = 1);
         Responder($"^/{Prefixo(tipo)}/s1$", ficha);
         Responder("/sub-attributes", new
         {
@@ -586,8 +586,8 @@ public class AbaCombateTests : RedeDeSegurancaBase
 
         await EscolherOpcaoAsync(cut, () => AbaAberta(cut), "Afinidade", "Água");
 
-        var antes = tipo == "Personagem" ? "\"afinidade\":\"Fogo\"" : "\"afinidade\":\"Terra\"";
-        var corpo = RedeCabecalhoEInformacoesBasicasTests.CorpoDaFicha(tipo, nome: tipo == "NPC" ? "Borin" : "Aria").Replace(antes, "\"afinidade\":\"Agua\"");
+        var antes = tipo == "Personagem" ? "\"afinidade\":2" : "\"afinidade\":0";
+        var corpo = RedeCabecalhoEInformacoesBasicasTests.CorpoDaFicha(tipo, nome: tipo == "NPC" ? "Borin" : "Aria").Replace(antes, "\"afinidade\":1");
         await EsperarSalvarERecarregarAsync(cut, tipo, corpo);
         cut.WaitForAssertion(() => Leitura(AbaAberta(cut)).Should().ContainInOrder("Água", "Eficiência Elemental", "7", "conforme a Tabela de Afinidades", "Dano Elemental", "4"), LimiteDeEspera);
     }

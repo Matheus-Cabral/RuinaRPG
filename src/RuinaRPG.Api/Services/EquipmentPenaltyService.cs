@@ -19,7 +19,7 @@ public record AvaliacaoDeEquipamento(List<string> Requisitos, List<string> Requi
 /// penalidades ativas. A ficha é sempre o retrato SEM penalidades — recebido como função para só ser
 /// calculado quando algum equipamento em uso tem requisitos.
 /// </summary>
-public class EquipmentPenaltyService(RuinaRpgDbContext db, IPericiaCatalogo pericias)
+public class EquipmentPenaltyService(RuinaRpgDbContext db, IPericiaCatalogo pericias, CatalogoDeAfinidadesService afinidades)
 {
     public async Task<List<PenalidadeAtiva>> AtivasAsync(IReadOnlyCollection<EquipamentoDaFicha> equipamentos, Func<Task<FichaParaRequisitos>> fichaSemPenalidades)
     {
@@ -36,7 +36,7 @@ public class EquipmentPenaltyService(RuinaRpgDbContext db, IPericiaCatalogo peri
         var emUso = equipamentos.Where(e => e.EmUso && porId.ContainsKey(e.ItemId))
             .Select(e => porId[e.ItemId])
             .Select(i => new EquipamentoEmUso(i.Nome, i.Requisitos, i.PenalidadeDeRequisitos));
-        return PenalidadesDeEquipamento.Ativas(emUso, await fichaSemPenalidades(), await NomeDaPericiaAsync());
+        return PenalidadesDeEquipamento.Ativas(emUso, await fichaSemPenalidades(), await NomeDaPericiaAsync(), await NomeDoElementoAsync());
     }
 
     public async Task<List<ArtifactBonusInput>> ComoModificadoresAsync(IEnumerable<PenalidadeAtiva> ativas)
@@ -61,11 +61,13 @@ public class EquipmentPenaltyService(RuinaRpgDbContext db, IPericiaCatalogo peri
         if (item.Requisitos is null)
             return new([], [], penalidade, outras);
         return new(
-            PassivaRequisitosEvaluator.Descrever(item.Requisitos, null, nome).ToList(),
-            PassivaRequisitosEvaluator.Pendencias(item.Requisitos, await fichaSemPenalidades(), null, await NomeDaPericiaAsync()).ToList(),
+            PassivaRequisitosEvaluator.Descrever(item.Requisitos, null, nome, await NomeDoElementoAsync()).ToList(),
+            PassivaRequisitosEvaluator.Pendencias(item.Requisitos, await fichaSemPenalidades(), null, await NomeDaPericiaAsync(), await NomeDoElementoAsync()).ToList(),
             penalidade,
             outras);
     }
+
+    private async Task<Func<int, string>> NomeDoElementoAsync() => (await afinidades.CarregarAsync()).NomeDe;
 
     private async Task<Func<int, string>> NomeDaPericiaAsync()
     {

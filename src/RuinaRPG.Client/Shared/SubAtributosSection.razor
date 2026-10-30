@@ -27,7 +27,7 @@
     {
         <MudPaper Outlined="true" Elevation="0" Class="pa-3 mt-3 subatributos-bloco-afinidade">
             <MudText Typo="Typo.subtitle2" Class="subatributos-bloco-titulo">Afinidade Elemental</MudText>
-            <AfinidadeSelect Value="@Afinidade" ValueChanged="AfinidadeChanged" OpcoesPermitidas="AfinidadeSelect.Afinidades" />
+            <AfinidadeSelect Value="@Afinidade" ValueChanged="AfinidadeChanged" />
             <div class="subatributos-elementais">
                 <div class="subatributo-eficiencia">
                     <MudText Typo="Typo.body2">Eficiência Elemental</MudText>
@@ -53,6 +53,7 @@
     /// <summary>True nas fichas que têm Eficiência/Dano Elemental (Personagem e NPC).</summary>
     [Parameter] public bool ComAfinidade { get; set; }
 
-    [Parameter] public string? Afinidade { get; set; }
-    [Parameter] public EventCallback<string?> AfinidadeChanged { get; set; }
+    /// <summary>Id do elemento do catálogo de Afinidades.</summary>
+    [Parameter] public int? Afinidade { get; set; }
+    [Parameter] public EventCallback<int?> AfinidadeChanged { get; set; }
 }

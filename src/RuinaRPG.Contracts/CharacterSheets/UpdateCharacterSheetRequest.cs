@@ -11,7 +11,7 @@ public record UpdateCharacterSheetRequest(
     string? Variante,
     string? Vocacao,
     string? SubVocacao,
-    string? Afinidade,
+    int? Afinidade,
     string? Propriedade,
     bool PossuiCoracaoDeMana,
     int ExperienciaAtual,
