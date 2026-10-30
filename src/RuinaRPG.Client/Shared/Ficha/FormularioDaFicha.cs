@@ -114,8 +114,17 @@ public sealed class FormularioDaFicha(TipoDeFichaCliente tipo)
     public int? AdrenalinaAtualCarregada { get; private set; }
     public int? EstresseAtualCarregado { get; private set; }
 
-    public void GuardarAtuaisCarregados() =>
-        (VitalidadeAtualCarregada, FocoAtualCarregado, AdrenalinaAtualCarregada, EstresseAtualCarregado) = (VitalidadeAtual, FocoAtual, AdrenalinaAtual, EstresseAtual);
+    /// <summary>Os Atuais como estão no formulário agora (os que um PUT montado agora envia).</summary>
+    public (int? Vitalidade, int? Foco, int? Adrenalina, int? Estresse) Atuais => (VitalidadeAtual, FocoAtual, AdrenalinaAtual, EstresseAtual);
+
+    public void GuardarAtuaisCarregados() => GuardarAtuaisCarregados(Atuais);
+
+    /// <summary>
+    /// Guarda como carregados os Atuais que o servidor acabou de gravar: um segundo PUT antes da releitura (adiada pelo
+    /// auto-save) não reenvia os carregados antigos.
+    /// </summary>
+    public void GuardarAtuaisCarregados((int? Vitalidade, int? Foco, int? Adrenalina, int? Estresse) atuais) =>
+        (VitalidadeAtualCarregada, FocoAtualCarregado, AdrenalinaAtualCarregada, EstresseAtualCarregado) = atuais;
 
     public string Cobertura { get; set; } = "Nenhuma";
     public int Ciclos { get; set; }

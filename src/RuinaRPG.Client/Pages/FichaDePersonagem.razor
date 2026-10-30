@@ -118,6 +118,8 @@
         });
     }
 
+    protected override bool LimpaOErroAntesDeSalvar => true;
+
     /// <summary>
     /// A falha de um salvamento, para lançar. A recusa do cemitério (409: o GM marcou "Morto" com um salvamento pendente)
     /// também vai ao alerta da página, para não sumir em silêncio.
@@ -213,7 +215,6 @@
             return false;
         }
 
-        Estado.Erro = null;
         var request = new UpdateCharacterSheetRequest(_form.ImageId, _form.Nome, _form.Linhagem, _form.Variante, _form.Vocacao, _form.SubVocacao,
             _form.Afinidade, _form.Propriedade, _form.PossuiCoracaoDeMana, _form.ExperienciaAtual!.Value, _form.EAPAtual ?? 0,
             _form.NucleosRankF!.Value, _form.NucleosRankE!.Value, _form.NucleosRankD!.Value, _form.NucleosRankC!.Value, _form.NucleosRankB!.Value, _form.NucleosRankA!.Value, _form.NucleosRankS!.Value,
@@ -221,11 +222,7 @@
             _form.Cobertura, _form.Ciclos, _form.PontosDePericiaBonusCritico, _form.ArcaRolada, _form.Estrela, _form.SinaAtual, _form.HistoricoId, null, _form.AfinidadeAdicional,
             _form.VitalidadeAtualCarregada, _form.FocoAtualCarregado, _form.AdrenalinaAtualCarregada, _form.EstresseAtualCarregado);
 
-        var response = await Http.PutAsJsonAsync(Tipo.Url(SheetId), request);
-        if (!response.IsSuccessStatusCode)
-            throw await FalhaAoSalvarAsync(response);
 
-        await RecarregarDepoisDeSalvarAsync();
-        return true;
+        return await SalvarFichaAsync(request);
     }
 }

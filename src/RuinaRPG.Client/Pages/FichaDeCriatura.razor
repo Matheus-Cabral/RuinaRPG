@@ -81,12 +81,7 @@
             _form.VitalidadeAtual!.Value, _form.FocoAtual!.Value, _form.AdrenalinaAtual!.Value, _form.Cobertura,
             _form.VitalidadeAtualCarregada, _form.FocoAtualCarregado, _form.AdrenalinaAtualCarregada);
 
-        var response = await Http.PutAsJsonAsync(Tipo.Url(SheetId), request);
-        if (!response.IsSuccessStatusCode)
-            throw await FalhaAoSalvarAsync(response);
 
-        Estado.Erro = null;
-        await RecarregarDepoisDeSalvarAsync();
-        return true;
+        return await SalvarFichaAsync(request);
     }
 }

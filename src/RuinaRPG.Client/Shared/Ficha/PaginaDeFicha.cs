@@ -13,7 +13,7 @@ namespace RuinaRPG.Client.Shared.Ficha;
 /// a carga, o auto-save, a recarga pelas Condições (aviso em tempo real), o alerta de erro e os salvamentos com endpoint
 /// próprio (Pontos de Ignição, Nível, Experiência). O que muda entre os tipos vem dos fatos de
 /// <see cref="TipoDeFichaCliente"/>, nunca do tipo em si. A página guarda só o que é dela: o record da ficha
-/// (<see cref="PreencherFormulario"/>), o PUT da ficha (<see cref="SaveIfValidAsync"/>), as abas e a coordenação exclusiva
+/// (<see cref="PreencherFormulario"/>), a validação e o pedido do PUT da ficha (<see cref="SaveIfValidAsync"/>), as abas e a coordenação exclusiva
 /// de um tipo (o cemitério do Personagem).
 /// </summary>
 /// <typeparam name="TFicha">O record que <c>GET {rota}/{id}</c> devolve.</typeparam>
@@ -230,7 +230,10 @@ public abstract class PaginaDeFicha<TFicha> : ComponentBase, IDisposable where T
 
     // ---------------- Salvamentos ----------------
 
-    /// <summary>O PUT da ficha inteira (o record do tipo); <c>false</c> sem salvar quando falta um campo obrigatório.</summary>
+    /// <summary>
+    /// Valida e monta o pedido do PUT da ficha inteira (o record do tipo) e o envia por <see cref="SalvarFichaAsync"/>;
+    /// <c>false</c> sem salvar quando falta um campo obrigatório.
+    /// </summary>
     protected abstract Task<bool> SaveIfValidAsync();
 
     protected Task NotifySavedAsync()
@@ -247,10 +250,39 @@ public abstract class PaginaDeFicha<TFicha> : ComponentBase, IDisposable where T
         new(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a ficha.");
 
     /// <summary>
+    /// O PUT da ficha inteira com o pedido que <see cref="SaveIfValidAsync"/> montou (a página só valida e monta): uma
+    /// recusa é lançada (<see cref="FalhaAoSalvarAsync"/>); no sucesso, os Atuais enviados passam a ser os carregados e
+    /// a ficha se relê (<see cref="RecarregarDepoisDeSalvarAsync"/>). Chamar logo depois de montar o pedido, sem await
+    /// no meio: os Atuais do formulário são então os do pedido.
+    /// </summary>
+    protected async Task<bool> SalvarFichaAsync<TRequest>(TRequest request)
+    {
+        var atuaisEnviados = Formulario.Atuais;
+        if (LimpaOErroAntesDeSalvar)
+            Estado.Erro = null;
+
+        var response = await Http.PutAsJsonAsync(Tipo.Url(SheetId), request);
+        if (!response.IsSuccessStatusCode)
+            throw await FalhaAoSalvarAsync(response);
+
+        Formulario.GuardarAtuaisCarregados(atuaisEnviados);
+        if (!LimpaOErroAntesDeSalvar)
+            Estado.Erro = null;
+        await RecarregarDepoisDeSalvarAsync();
+        return true;
+    }
+
+    /// <summary>
+    /// Onde o PUT da ficha limpa o alerta: antes de enviar (true) ou só depois do sucesso (false, o padrão). A página do
+    /// Personagem limpa antes: a recusa do cemitério (409) põe a mensagem dela no alerta.
+    /// </summary>
+    protected virtual bool LimpaOErroAntesDeSalvar => false;
+
+    /// <summary>
     /// Depois do PUT da ficha: relê a ficha, a escolha racial pendente (uma troca de Variante pode ter limpado ou criado
     /// uma) e tudo o que depende do Nível.
     /// </summary>
-    protected async Task RecarregarDepoisDeSalvarAsync()
+    private async Task RecarregarDepoisDeSalvarAsync()
     {
         await LoadSheetAsync();
         if (Tipo.TemTracosRaciais)
