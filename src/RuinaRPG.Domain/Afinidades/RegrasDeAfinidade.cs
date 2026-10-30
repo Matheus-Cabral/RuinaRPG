@@ -25,7 +25,8 @@ public static class RegrasDeAfinidade
         {
             var p = pontos.GetValueOrDefault(e.Id);
             var visivel = Visivel(c, v, classe, e);
-            if (!visivel && p == 0) continue;
+            // Um elemento que a ficha não vê só aparece se ela já guarda algo nele (pontos ou só Experiência).
+            if (!visivel && !pontos.ContainsKey(e.Id)) continue;
 
             var motivo = !visivel ? "Indisponível para esta Vocação/Classe"
                 : MotivoDeRequisito(c, e, pontos)
@@ -45,13 +46,19 @@ public static class RegrasDeAfinidade
         : experiencia < 0 ? "A Experiência não pode ser negativa."
         : null;
 
-    /// <summary>Null = permitido.</summary>
+    /// <summary>
+    /// Null = permitido. <paramref name="pontos"/> tem uma entrada por linha guardada na ficha (também as de 0 pontos
+    /// com Experiência).
+    /// </summary>
     public static string? MotivoParaRecusarMudanca(
         CatalogoDeAfinidades c, Vocacao? v, string? classe, IReadOnlyDictionary<int, int> pontos,
         int elementoId, int novoValor, int maximo)
     {
         if (MotivoDeValorInvalido(c, elementoId, novoValor, null) is { } invalido) return invalido;
         var elemento = c.Elementos.First(e => e.Id == elementoId);
+        // Nada se grava num elemento que a lista esconde (fora da Vocação/Classe e sem linha na ficha).
+        if (!pontos.ContainsKey(elementoId) && !Visivel(c, v, classe, elemento))
+            return $"{elemento.Nome} não está disponível para esta Vocação/Classe.";
 
         var atual = pontos.GetValueOrDefault(elementoId);
         if (novoValor == atual) return null;

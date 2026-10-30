@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.Fichas;
 using RuinaRPG.Domain.Afinidades;
@@ -25,7 +26,7 @@ public abstract class AfinidadesDaFichaController<TSheet, TPontos>(
         if ((await FichaParaLeituraAsync(sheetId)).Negado(out var erro, out var ficha))
             return erro;
 
-        return await RespostaAsync(ficha);
+        return await RespostaAsync(ficha, await catalogo.CarregarAsync());
     }
 
     /// <summary>
@@ -43,17 +44,39 @@ public abstract class AfinidadesDaFichaController<TSheet, TPontos>(
         if (RegrasDeAfinidade.MotivoDeValorInvalido(c, elementoId, request.Pontos, request.Experiencia) is { } invalido)
             return BadRequest(invalido);
 
-        var linhas = await afinidades.LinhasAsync<TPontos>(sheetId);
-        if (Tipo.AfinidadesRecusamForaDasRegras(ficha, CurrentUserId())
-            && RegrasDeAfinidade.MotivoParaRecusarMudanca(c, ficha.Vocacao, ficha.SubVocacao, Pontos(linhas), elementoId, request.Pontos,
-                await afinidades.MaximoAsync(ficha)) is { } recusa)
-            return BadRequest(recusa);
+        var aplicaRegras = Tipo.AfinidadesRecusamForaDasRegras(ficha, CurrentUserId());
+        // Dois PUTs simultâneos no mesmo elemento novo criam a mesma linha: o segundo bate no índice único
+        // (SheetId, ElementoId) e repete uma vez, relendo as linhas — aí a do outro já existe e vira atualização.
+        for (var tentativa = 1; ; tentativa++)
+        {
+            var linhas = await afinidades.LinhasAsync<TPontos>(sheetId);
+            var linha = linhas.GetValueOrDefault(elementoId);
+            if (await MotivoParaRecusarAsync(c, ficha, aplicaRegras, Pontos(linhas), elementoId, request.Pontos) is { } recusa)
+                return BadRequest(recusa);
 
-        Gravar(linhas.GetValueOrDefault(elementoId), sheetId, elementoId, request);
-        await db.SaveChangesAsync();
+            Gravar(linha, sheetId, elementoId, request);
+            try
+            {
+                await db.SaveChangesAsync();
+                break;
+            }
+            catch (DbUpdateException) when (linha is null && tentativa == 1)
+            {
+                db.ChangeTracker.Clear();
+            }
+        }
 
-        return await RespostaAsync(ficha);
+        return await RespostaAsync(ficha, c);
     }
+
+    /// <summary>
+    /// As regras de 2.c — inclusive não gravar num elemento que a lista esconde — só para quem o tipo diz. O GM de um
+    /// NPC grava mesmo num elemento escondido, e a linha passa a aparecer na lista, marcada: nenhuma linha fica oculta.
+    /// </summary>
+    private async Task<string?> MotivoParaRecusarAsync(CatalogoDeAfinidades c, TSheet ficha, bool aplicaRegras, Dictionary<int, int> pontos, int elementoId, int novoValor) =>
+        aplicaRegras
+            ? RegrasDeAfinidade.MotivoParaRecusarMudanca(c, ficha.Vocacao, ficha.SubVocacao, pontos, elementoId, novoValor, await afinidades.MaximoAsync(ficha))
+            : null;
 
     /// <summary>Uma linha zerada e sem Experiência sai da tabela: só ficam os elementos em que a ficha tem algo.</summary>
     private void Gravar(TPontos? linha, Guid sheetId, int elementoId, AtualizarAfinidadeRequest request)
@@ -74,9 +97,8 @@ public abstract class AfinidadesDaFichaController<TSheet, TPontos>(
         linha.Experiencia = request.Experiencia;
     }
 
-    private async Task<AfinidadesDaFichaResponse> RespostaAsync(TSheet ficha)
+    private async Task<AfinidadesDaFichaResponse> RespostaAsync(TSheet ficha, CatalogoDeAfinidades c)
     {
-        var c = await catalogo.CarregarAsync();
         var linhas = await afinidades.LinhasAsync<TPontos>(ficha.Id);
         var pontos = Pontos(linhas);
         var efeitos = await Tipo.CondicoesAsync(ficha);

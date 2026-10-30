@@ -72,9 +72,9 @@ public abstract class AfinidadesDaFichaTestes<TTipo>(ApiFixture fixture) : Teste
     protected Task<HttpResponseMessage> PutAsync(FichaDeTeste f, string token, int elemento, int pontos, int? experiencia = null) =>
         Client.SendAsync(AuthedRequest(HttpMethod.Put, Url(f, $"afinidades/{elemento}"), token, new AtualizarAfinidadeRequest(pontos, experiencia)));
 
-    protected async Task PutOkAsync(FichaDeTeste f, int elemento, int pontos)
+    protected async Task PutOkAsync(FichaDeTeste f, int elemento, int pontos, int? experiencia = null)
     {
-        var response = await PutAsync(f, f.Token, elemento, pontos);
+        var response = await PutAsync(f, f.Token, elemento, pontos, experiencia);
         response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
     }
 
@@ -316,6 +316,37 @@ public abstract class AfinidadesDaFichaTestes<TTipo>(ApiFixture fixture) : Teste
         (await GetAsync(f)).Elementos.Single(e => e.Id == Gelo).Should().Match<ElementoDaFichaResponse>(e => e.Pontos == 2 && e.Experiencia == 7 && e.Bloqueado);
     }
 
+    protected async Task<int> LinhasNoBancoAsync(FichaDeTeste f, int elemento)
+    {
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        var id = Guid.Parse(f.SheetId);
+        return await db.CharacterPontosDeAfinidade.CountAsync(p => p.SheetId == id && p.ElementoId == elemento)
+            + await db.NpcPontosDeAfinidade.CountAsync(p => p.SheetId == id && p.ElementoId == elemento);
+    }
+
+    [Fact]
+    public async Task O_jogador_nao_grava_nada_num_elemento_que_a_lista_esconde()
+    {
+        var f = await FichaDeJogadorAsync(vocacao: null, afinidadeAdicional: 10); // sem Vocação: só os 4 base
+
+        await DeveRecusarAsync(await PutAsync(f, f.Token, Gelo, 0, experiencia: 5), "Gelo não está disponível para esta Vocação/Classe.");
+
+        (await LinhasNoBancoAsync(f, Gelo)).Should().Be(0);
+        (await GetAsync(f)).Elementos.Should().NotContain(e => e.Id == Gelo);
+    }
+
+    [Fact]
+    public async Task PUTs_simultaneos_num_elemento_novo_gravam_uma_linha_so_e_nenhum_da_erro()
+    {
+        var f = await FichaDeJogadorAsync(Vocacao.Feiticeiro, afinidadeAdicional: 100);
+
+        var respostas = await Task.WhenAll(Enumerable.Range(1, 8).Select(i => PutAsync(f, f.Token, Fogo, i, experiencia: i)));
+
+        respostas.Select(r => r.StatusCode).Should().OnlyContain(s => s == HttpStatusCode.OK);
+        (await LinhasNoBancoAsync(f, Fogo)).Should().Be(1);
+    }
+
     [Theory]
     [InlineData(Fogo, -1, null, "O valor não pode ser negativo.")]
     [InlineData(99, 1, null, "Elemento inexistente.")]
@@ -425,6 +456,19 @@ public sealed class AfinidadesDaFichaTestesNpc(ApiFixture fixture) : AfinidadesD
                 afinidades.Elementos.Single(e => e.Id == Fogo).Motivo.Should().Be("Acima do teto (2)");
                 afinidades.Elementos.Single(e => e.Id == Gelo).Bloqueado.Should().BeTrue();
             });
+    }
+
+    /// <summary>Nenhuma linha fica escondida: o que o GM grava num elemento fora da Vocação aparece, marcado.</summary>
+    [Fact]
+    public async Task A_Experiencia_que_o_GM_grava_num_elemento_escondido_aparece_marcada_na_lista()
+    {
+        var f = await NovaFichaAsync();
+        await DefinirAsync(f, vocacao: null, afinidadeAdicional: 0);
+
+        await PutOkAsync(f, Gelo, 0, experiencia: 5);
+
+        (await GetAsync(f)).Elementos.Single(e => e.Id == Gelo).Should().Match<ElementoDaFichaResponse>(e =>
+            e.Pontos == 0 && e.Experiencia == 5 && e.Bloqueado && e.Motivo == "Indisponível para esta Vocação/Classe");
     }
 
     [Fact]

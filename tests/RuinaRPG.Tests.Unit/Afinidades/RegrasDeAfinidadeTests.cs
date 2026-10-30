@@ -198,4 +198,22 @@ public class RegrasDeAfinidadeTests
     [Fact]
     public void Valor_valido_mesmo_fora_das_regras_da_ficha_nao_e_invalido() =>
         Assert.Null(RegrasDeAfinidade.MotivoDeValorInvalido(Catalogo(tetoAr: 1), Ar, 5, 0));
+
+    // Uma linha guardada (pontos ou só Experiência) sempre aparece: nenhuma linha fica escondida da lista.
+    [Fact]
+    public void Elemento_escondido_com_linha_sem_pontos_aparece_bloqueado()
+    {
+        var mundano = RegrasDeAfinidade.Elementos(Catalogo(), Vocacao.Feiticeiro, null, P((Mundano, 0))).Single(e => e.Elemento.Id == Mundano);
+        Assert.True(mundano.Bloqueado);
+        Assert.Equal(0, mundano.Pontos);
+    }
+
+    [Fact]
+    public void Escrever_num_elemento_escondido_sem_linha_e_recusado_mesmo_sem_mudar_os_pontos() =>
+        Assert.Equal("Mundano não está disponível para esta Vocação/Classe.",
+            RegrasDeAfinidade.MotivoParaRecusarMudanca(Catalogo(), Vocacao.Feiticeiro, null, P(), Mundano, 0, 10));
+
+    [Fact]
+    public void Elemento_escondido_que_ja_tem_linha_aceita_manter_os_pontos() =>
+        Assert.Null(RegrasDeAfinidade.MotivoParaRecusarMudanca(Catalogo(), Vocacao.Feiticeiro, null, P((Mundano, 0)), Mundano, 0, 10));
 }

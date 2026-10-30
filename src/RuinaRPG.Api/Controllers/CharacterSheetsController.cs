@@ -21,7 +21,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/character-sheets")]
-public sealed class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<CharacterSheetsController> logger, CharacterSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, ITipoDeFicha<CharacterSheet> tipo, CemiterioDaFicha cemiterio, IHubContext<NotificationHub> notificacoes, CatalogoDeAfinidadesService afinidades, AfinidadesDaFicha afinidadesDaFicha)
+public sealed class CharacterSheetsController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<CharacterSheetsController> logger, CharacterSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, ITipoDeFicha<CharacterSheet> tipo, CemiterioDaFicha cemiterio, IHubContext<NotificationHub> notificacoes, CatalogoDeAfinidadesService afinidades, AfinidadesDaFicha afinidadesDaFicha, GraduacaoDaFicha graduacaoDaFicha)
     : FichaComLinhagemController<CharacterSheet, CharacterSheetStats, CharacterSheetHistoriaImage>(db, tabelaDeNiveis, tipo, stats, penalidades, hub, logger)
 {
     [HttpPost("/api/campaigns/{campaignId}/character-sheets")]
@@ -308,13 +308,12 @@ public sealed class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataPr
         // Círculo/Grau, which became a pure function instead of a directly-set column. "Segue a
         // tabela [XP/EAP por Nível] e é somado pelo resultado de Âmbares Absorvidos" (1.b).
         var tabela = await TabelaDeNiveis.ObterAsync();
-        var eapAtual = EapCalculator.Compute(s.Nivel, s.NucleosRankF, s.NucleosRankE, s.NucleosRankD, s.NucleosRankC, s.NucleosRankB, s.NucleosRankA, s.NucleosRankS, tabela.ComoEapPorNivel());
+        var (eapAtual, graduacao) = await graduacaoDaFicha.CalcularAsync(s);
 
-        var vocacao = s.Vocacao ?? RuinaRPG.Domain.CharacterSheets.Vocacao.Campeao; // no vocação chosen yet → Graduacao is meaningless but must not throw
-        var graduacao = s.Vocacao is null ? 0 : GraduacaoCalculator.Compute(vocacao, eapAtual, s.PossuiCoracaoDeMana, rules.CirculoGrauPorEap);
+        var vocacao = s.Vocacao ?? RuinaRPG.Domain.CharacterSheets.Vocacao.Campeao; // sem Vocação: o rótulo fica "Grau"
         var graduacaoLabel = vocacao is RuinaRPG.Domain.CharacterSheets.Vocacao.Campeao or RuinaRPG.Domain.CharacterSheets.Vocacao.Cacador ? "Grau" : "Círculo";
 
-        var (afinidadeGasta, afinidadeMaxima) = await afinidadesDaFicha.OrcamentoAsync<CharacterPontosDeAfinidade>(s);
+        var (afinidadeGasta, afinidadeMaxima) = await afinidadesDaFicha.OrcamentoAsync<CharacterPontosDeAfinidade>(s, graduacao);
 
         var maximos = await ComputeResourceMaximumsAsync(s, s.Vocacao, s.Nivel);
         var xpParaProximoNivel = NivelCalculator.XpParaProximoNivel(s.ExperienciaAtual, tabela.ComoXpPorNivel());

@@ -94,6 +94,7 @@ builder.Services.AddScoped<LivroDeRegrasEfeitosSync>();
 builder.Services.AddScoped<DurabilidadePorRankProvider>();
 builder.Services.AddScoped<TabelaDeAfinidadesProvider>();
 builder.Services.AddScoped<CatalogoDeAfinidadesService>();
+builder.Services.AddScoped<GraduacaoDaFicha>();
 builder.Services.AddScoped<AfinidadesDaFicha>();
 builder.Services.AddScoped<ITabelaDeNiveis, TabelaDeNiveis>();
 builder.Services.AddScoped<EquipmentKitGrantService>();
