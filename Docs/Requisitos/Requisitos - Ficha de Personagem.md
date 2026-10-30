@@ -38,7 +38,7 @@
 
 - *Trabalho*: campo previsto, não implementado.
 
-- *Afinidade*: Um dropdown com a afinidade elemental do personagem. O campo **não é exibido junto dos demais de 1.a**: fica no bloco *Afinidade Elemental* dos Sub-Atributos (2.b), ao lado da Eficiência Elemental e do Dano Elemental que derivam dele. Os valores correspondem aos 4 Elementos e aos 12 Sub-Elementos definidos na Matriz Elemental (ver 2.c, Afinidades): **Terra**, **Água**, **Fogo**, **Ar**, **Gelo**, **Flora**, **Ferro**, **Raio**, **Prever**, **Purificar**, **Ecomancia**, **Hemomancia**, **Curar**, **Aprimorar**, **Necromancia** e **Invocação**. *Alma* e *Vida* não estão aqui: na Matriz Elemental elas são **Caminhos** (ver 2.c), não Afinidades. Uma ficha que já tinha Alma ou Vida salvas continua exibindo o valor, mas não é possível escolhê-los de novo.
+- *Afinidade*: Um dropdown com a afinidade elemental do personagem. O campo **não é exibido junto dos demais de 1.a**: fica no bloco *Afinidade Elemental* dos Sub-Atributos (2.b), ao lado da Eficiência Elemental e do Dano Elemental que derivam dele. As opções vêm do **catálogo de elementos** mantido pelo Auditor de Regras (ver "[[Requisitos - Auditoria de Regras]]" R0018): os 4 Elementos base e os Sub-Elementos (hoje Terra, Água, Fogo, Ar, Gelo, Flora, Ferro, Raio, Prever, Purificar, Ecomancia, Hemomancia, Curar, Aprimorar, Necromancia e Invocação), mais qualquer elemento que o Auditor criar. Os **Caminhos** (hoje Alma, Vida e Mundano) não estão aqui: eles não são Afinidades (ver 2.c). Uma ficha que já tinha um Caminho salvo continua exibindo o valor, mas não é possível escolhê-lo de novo.
 
 - *Propriedade*: Um text input. Deve seguir a convenção de campos (valor do banco; placeholder em NULL).
 
@@ -122,7 +122,7 @@ Sub-atributos são valores derivados, calculados automaticamente (não editávei
 - *Cobertura*: uma "nota" de dois escudos (ícones), abaixo do rótulo "Cobertura" e acima do texto do estado atual: nenhum escudo aceso = sem cobertura (+0), um escudo aceso = **Parcial** (+5), dois acesos = **Completa** (+10). Clicar no escudo que já é o valor atual limpa a cobertura (volta a +0). Cada escudo tem nome acessível ("Cobertura parcial (+5)", "Cobertura completa (+10)"). Alimenta a fórmula de Defesa Natural acima.
 - *Redução Física*: `Artefato + Armadura`.
 - *Redução Mágica*: `Artefato + Armadura mágica`.
-- *Eficiência Elemental* e *Dano Elemental*: campos calculados a partir do *Valor* (do Elemento ou do Sub-Elemento, conforme o caso) da linha de Afinidades (2.c) cujo Elemento ou Sub-Elemento bate com a *Afinidade* escolhida. Os dois vêm da "[[Tabela de Afinidades]]", consultada com esse Valor da linha de Afinidades (2.c) correspondente à Afinidade escolhida em 1.a, e mantida pelo Auditor de Regras (ver "[[Requisitos - Auditoria de Regras]]" R0016; ver também "[[Formulas]]"). Quando mais de uma linha tem esse Elemento como Essência Básica 1, vale o maior Valor entre elas; o Valor da Essência Básica 2 não entra nessa conta. Sem Afinidade escolhida, ou sem uma linha correspondente em 2.c, os dois valem **0**. Dano Elemental é um bônus de dano exibido — mesmo tratamento que os Modificadores de Dano (3.f) já recebem: um número que o jogador aplica manualmente ao narrar um ataque elemental, sem integração automática com Efeitos/Magias. Eficiência Elemental reduz o Custo em Arcana/Foco de Magias elementais pelo mesmo raciocínio — também exibido, também aplicado manualmente.
+- *Eficiência Elemental* e *Dano Elemental*: campos calculados a partir dos **pontos** que a ficha tem, na lista de Afinidades (2.c), no elemento escolhido como *Afinidade*. Os dois vêm da "[[Tabela de Afinidades]]", consultada com esses pontos, e mantida pelo Auditor de Regras (ver "[[Requisitos - Auditoria de Regras]]" R0016; ver também "[[Formulas]]"). Cada elemento tem um valor só em 2.c, então não há mais "maior valor entre linhas". Sem Afinidade escolhida, ou com 0 ponto naquele elemento, os dois valem **0**. Dano Elemental é um bônus de dano exibido — mesmo tratamento que os Modificadores de Dano (3.f) já recebem: um número que o jogador aplica manualmente ao narrar um ataque elemental, sem integração automática com Efeitos/Magias. Eficiência Elemental reduz o Custo em Arcana/Foco de Magias elementais pelo mesmo raciocínio — também exibido, também aplicado manualmente.
 - *Dano de Briga*: campo previsto porém sem fórmula definida ainda. Não implementar até a regra existir.
 
 **Disposição**: dentro da seção Sub-Atributos, o que é relacionado fica agrupado. A **Defesa Natural** e a **Cobertura** que entra na sua conta formam uma coluna à direita dos demais Sub-Atributos, sem moldura e com uma coisa por linha: "Defesa Natural: x", o rótulo "Cobertura", os escudos e, por último, o estado da cobertura em texto menor, com fonte e cor próprias. O bloco **Afinidade Elemental** fica no fim da seção, ocupando toda a largura, e reúne o dropdown de *Afinidade* (1.a), a Eficiência Elemental e o Dano Elemental, cada um destes com a legenda "conforme a Tabela de Afinidades" abaixo do valor; trocar a Afinidade ali atualiza os dois valores. No celular, a coluna da Defesa desce para baixo dos demais. A mesma disposição vale para as fichas de NPC e de Criatura — esta sem o bloco Afinidade Elemental, pois não tem Eficiência nem Dano Elemental (o campo *Afinidade* dela continua em 1.a).
@@ -133,41 +133,19 @@ Os Sub-Atributos também refletem as Penalidades de equipamento ativas (R0014 do
 
 ### 2.c) Afinidades
 
-  
+As Afinidades são **pontos distribuídos por elemento**. A seção é uma **lista de elementos**; cada linha tem o nome do elemento, os botões **−** e **+**, o valor e uma **barra de segmentos** (um segmento por ponto possível, até o teto do elemento, preenchidos até o valor). O estilo segue o padrão do resto da aplicação (componentes e cores já usados). No topo da seção, o cabeçalho exibe **Distribuídos {gasto}/{máximo}** (ver R0007), uma mensagem de validação e o campo *Afinidade Adicional*.
 
-Ao contrário da lista fixa de Perícias, Afinidades é uma **lista incremental**: o jogador adiciona uma linha por vez, conforme necessário, para manter a ficha limpa. Segue o layout da tabela "- AFINIDADES -" da ficha em PDF (`Docs/Sistema RPG/Fichas/Ruína RPG - Ficha de personagem.pdf`): campos por linha, na ordem — Essência Básica 1, Essência Básica 2, Sub-Elemento e Experiência. Todos os campos abaixo são opcionais: uma linha pode ser adicionada só parcialmente preenchida (inclusive totalmente em branco) e completada depois — nenhum deles é obrigatório para adicionar ou manter a linha, e cada um permanece **NULL** até o jogador preencher.
+- **O que aparece**: os 4 Elementos base (Ar, Água, Fogo e Terra) **sempre**; os **Caminhos** (hoje Alma, Vida e Mundano) e os **Sub-Elementos** apenas quando estão ligados à **Vocação** ou à **Classe** da ficha, conforme configurado pelo Auditor ("[[Requisitos - Auditoria de Regras]]" R0021). Se o Auditor tirar todas as ligações de uma Vocação mágica, ela passa a ver só os 4 Elementos base. As Vocações **marciais** (Campeão e Caçador) veem **todos** os elementos, sem filtro, mas a seção só aparece quando a ficha tem *Afinidade Adicional* maior que 0 **ou** coração de mana.
+- **Sub-Elemento bloqueado**: o requisito de um Sub-Elemento é o **cruzamento** que o gera ("[[Requisitos - Auditoria de Regras]]" R0020): um mínimo de pontos em cada um dos dois elementos (padrão **1** em cada). Enquanto o requisito não está cumprido, o Sub-Elemento aparece **bloqueado** (sem **+**), com a dica `Precisa de {n} em {A} e {m} em {B}` (ex.: "Precisa de 1 em Ar e 1 em Água").
+- **Pontos**: inteiro ≥ 0 por elemento, padrão **0**; o **+** só sobe até o teto do elemento (R0019 da Auditoria; hoje sem limite) e enquanto o gasto não passa do máximo.
+- **Experiência**: um valor numérico ≥ 0 **por elemento** (opcional, NULL até o jogador preencher).
+- **Afinidade Adicional**: continua, como em R0007.
+- **Baixar um elemento** abaixo do requisito de um Sub-Elemento que tem pontos é recusado pelo servidor com `{Sub-Elemento} depende de {Elemento}: zere {Sub-Elemento} antes.`
+- **Ficha que ficou inconsistente**: se o Auditor muda uma regra (requisito maior, Sub-Elemento tirado da Vocação/Classe, teto menor) e a ficha passa a violá-la, os pontos **não somem**: o elemento aparece bloqueado/marcado, continua contando no gasto e só aceita **tirar** pontos. O mesmo vale ao trocar a Vocação ou a Classe.
 
-- *Essência Básica 1*: dropdown fixo com os 4 Elementos: **Fogo**, **Água**, **Terra**, **Ar** (ver "Matriz_Elemental.png" em `Docs/Sistema RPG`).
-- *Valor da Essência Básica 1*: campo numérico ≥ 0, sem relação de cálculo com os demais campos da linha.
-- *Essência Básica 2*: dropdown cujas opções dependem da Essência Básica 1 da própria linha — só os valores que cruzam com ela na Matriz Elemental (Elementos e os Caminhos **Alma**, **Vida** e **Mundano**; ver tabela abaixo). Fica desabilitado enquanto a Essência Básica 1 estiver vazia. Trocar a Essência Básica 1 limpa uma Essência Básica 2 que deixou de cruzar com ela.
-- *Valor da Essência Básica 2*: campo numérico ≥ 0, mesma regra do Valor da Essência Básica 1.
-- *Sub-Elemento*: não é escolhido — é **calculado** pelo servidor como o cruzamento das duas Essências Básicas na Matriz Elemental, e exibido só como nome (ou vazio, sem as duas Essências). Os pares de Elemento são simétricos (Água + Ar também dá Gelo):
+Os pontos consomem o orçamento de afinidade da ficha, e o total é limitado — ver R0007.
 
-  | Essência 1 (Elemento) | Essência 2 | Sub-Elemento |
-  |---|---|---|
-  | Ar | Água | Gelo |
-  | Ar | Fogo | Raio |
-  | Água | Terra | Flora |
-  | Fogo | Terra | Ferro |
-  | Ar | Alma | Prever |
-  | Água | Alma | Purificar |
-  | Fogo | Vida | Curar |
-  | Terra | Vida | Aprimorar |
-  | Ar | Mundano | Ecomancia |
-  | Água | Mundano | Hemomancia |
-  | Fogo | Mundano | Necromancia |
-  | Terra | Mundano | Invocação |
-
-  Qualquer outra combinação de Essências (incluindo a mesma Essência Básica 1 duas vezes) não cruza — nenhum Sub-Elemento. O Sub-Elemento salvo só é recalculado quando a Essência Básica 1 ou 2 muda; editar só o Valor ou a Experiência da linha não mexe nele — é o que preserva, até a próxima edição de Essência, uma linha salva antes desta mudança cujo Sub-Elemento não vem da Matriz.
-- *Valor do Sub-Elemento*: campo numérico ≥ 0, mesma regra do Valor das Essências.
-- *Experiência*: valor numérico ≥ 0.
-
-Qualquer campo de uma linha de Afinidade já existente pode ser editado pelo jogador a qualquer momento (não só no momento de adicionar a linha), e a linha pode ser removida a qualquer momento.
-
-Duas linhas de Afinidade não podem produzir o mesmo Sub-Elemento não-nulo — o servidor rejeita a
-segunda. A Essência Básica 1 pode se repetir livremente entre linhas.
-
-Os Valores das linhas consomem pontos de **Vocação Arcana**, e o total é limitado — ver R0007. O cabeçalho da seção exibe o contador e o campo *Afinidade Adicional*.
+*Conversão (2.2.0)*: as fichas feitas com a lista antiga de linhas foram convertidas em pontos por elemento: cada Elemento/Caminho recebeu o maior valor com que aparecia em qualquer linha (o gasto total de cada ficha não mudou), cada Sub-Elemento o valor da sua linha, e a Experiência da linha foi para o Sub-Elemento dela (ou para a Essência Básica 1 se a linha não tinha Sub-Elemento; duas linhas para o mesmo elemento ficam com a maior). Linhas totalmente vazias sumiram.
 
   
 
@@ -482,15 +460,16 @@ Ao confirmar, os itens do kit (fixos e os escolhidos) são concedidos à ficha a
 
   
 
-# **R0007** - As Afinidades (2.c) são limitadas pelos pontos de Vocação Arcana.
+# **R0007** - As Afinidades (2.c) são limitadas pelo total de pontos da ficha.
 
-**Descrição**: Os Valores distribuídos nas linhas de Afinidade gastam pontos de **Vocação Arcana**. O cabeçalho da seção 2.c exibe **Vocação Arcana: gasto / máximo**, destacado em vermelho quando o gasto passa do máximo, e ao lado o campo *Afinidade Adicional*.
+**Descrição**: Os pontos distribuídos por elemento em 2.c consomem o orçamento de afinidade da ficha. O cabeçalho da seção exibe **Distribuídos {gasto}/{máximo}**, destacado em vermelho quando o gasto passa do máximo, e ao lado o campo *Afinidade Adicional*.
 
-- *Gasto*: cada Essência (os 4 Elementos e os Caminhos Alma, Vida e Mundano) conta **uma vez só**, pelo **maior** Valor com que aparece em qualquer linha, seja como Essência Básica 1 ou 2 — ex.: Fogo 2 numa linha e Fogo 1 em outra contam 2. A isso se soma o Valor do Sub-Elemento de **todas** as linhas. Valores NULL contam 0.
-- *Máximo*: para Feiticeiro, Adepto e Bruxo, o valor da coluna *Afinidade (Valores Absolutos)* da "[[Tabela de Circulo e Grau por EAP]]" no Círculo atual (1.b — sem coração de mana o Círculo é 0), mais a *Afinidade Adicional*. Vocações marciais (Campeão, Caçador) e ficha sem Vocação só têm a *Afinidade Adicional*.
+- *Gasto*: a **soma dos pontos** de todos os elementos da ficha (cada elemento tem um valor só). Pontos NULL contam 0.
+- *Máximo*: para Feiticeiro, Adepto e Bruxo, o **total do Círculo** atual (1.b — sem coração de mana o Círculo é 0), mantido pelo Auditor de Regras ("[[Requisitos - Auditoria de Regras]]" R0018), mais a *Afinidade Adicional*. Os valores iniciais do total por Círculo vêm da coluna *Afinidade (Valores Absolutos)* da "[[Tabela de Circulo e Grau por EAP]]", semeados só enquanto a tabela do Auditor está vazia. Vocações marciais (Campeão, Caçador) e ficha sem Vocação só têm a *Afinidade Adicional*.
 - *Afinidade Adicional*: campo numérico ≥ 0 que aumenta o máximo. Padrão **0**.
+- *Teto por elemento*: nenhum elemento passa do teto definido pelo Auditor (R0019 da Auditoria; inicialmente sem limite).
 
-O servidor rejeita adicionar ou editar uma linha quando isso faria o gasto **subir** acima do máximo. Baixar o máximo (trocar a Vocação, perder o coração de mana, reduzir a Afinidade Adicional) continua permitido; a ficha só fica com o contador em vermelho, e a partir daí aceita apenas edições que não aumentem o gasto.
+O servidor recusa um **+** que faria o gasto passar do máximo, passar do teto do elemento, ou usar um elemento bloqueado ou não visível para a Vocação/Classe da ficha. Baixar o máximo (trocar a Vocação, perder o coração de mana, reduzir a Afinidade Adicional) continua permitido; a ficha só fica com o contador em vermelho, e a partir daí aceita apenas edições que não aumentem o gasto — só **tirar** pontos.
 
   
 
