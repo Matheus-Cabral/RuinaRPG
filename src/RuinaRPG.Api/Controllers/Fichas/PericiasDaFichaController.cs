@@ -32,7 +32,7 @@ public abstract class PericiasDaFichaController<TSheet, TSkill, TAtributo, TResp
     [HttpGet]
     public async Task<ActionResult<List<TResponse>>> List(Guid sheetId)
     {
-        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var ficha))
+        if ((await FichaParaLeituraAsync(sheetId)).Negado(out var erro, out var ficha))
             return erro;
 
         return await ListarAsync(ficha);

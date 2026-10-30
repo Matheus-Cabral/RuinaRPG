@@ -67,7 +67,7 @@ public abstract class MaestriasDaFichaController<TSheet, TMaestria, TSkill, TLin
     [HttpGet]
     public async Task<ActionResult<List<MasteryResponse>>> List(Guid sheetId)
     {
-        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var sheet))
+        if ((await FichaParaLeituraAsync(sheetId)).Negado(out var erro, out var sheet))
             return erro;
 
         var porId = await Pericias.PorIdAsync();

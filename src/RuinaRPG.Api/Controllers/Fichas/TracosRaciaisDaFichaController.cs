@@ -25,7 +25,7 @@ public abstract class TracosRaciaisDaFichaController<TSheet, TLinha>(RuinaRpgDbC
     [HttpGet("racial-traits/pending")]
     public async Task<ActionResult<PendingRacialTraitChoiceResponse>> PendingRacialTraitChoice(Guid sheetId)
     {
-        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var sheet))
+        if ((await FichaParaLeituraAsync(sheetId)).Negado(out var erro, out var sheet))
             return erro;
 
         if (sheet.Variante is null)

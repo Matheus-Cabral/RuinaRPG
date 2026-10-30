@@ -74,7 +74,7 @@ public abstract class FichaStats<TSheet, TAtributo, TLinhaAtributo, TLinhaPerici
     protected RuinaRpgDbContext Db { get; } = db;
     protected IRulesDataProvider Rules { get; } = rules;
 
-    /// <summary>Peso carregado e máximo que a Movimentação usa; <c>Exibida</c> falso deixa os dois fora da resposta (Criatura).</summary>
+    /// <summary>Peso carregado e máximo que a Movimentação usa; com <see cref="ExibePeso"/> falso (Criatura) os dois ficam fora da resposta.</summary>
     protected record Carga(decimal PesoAtual, decimal PesoMaximo, decimal BonusDeCargaDaCampanha = 0m);
 
     /// <summary>O Histórico da ficha, que dá o bônus +6/+3 de Perícia. Criatura não tem Histórico: null.</summary>

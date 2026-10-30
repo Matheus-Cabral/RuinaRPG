@@ -35,7 +35,7 @@ public abstract class AtributosDaFichaController<TSheet, TLinha, TAtributo>(
     [HttpGet]
     public async Task<ActionResult<List<AttributeResponse>>> List(Guid sheetId)
     {
-        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var ficha))
+        if ((await FichaParaLeituraAsync(sheetId)).Negado(out var erro, out var ficha))
             return erro;
 
         return await ListarAsync(ficha);
@@ -48,7 +48,7 @@ public abstract class AtributosDaFichaController<TSheet, TLinha, TAtributo>(
     [HttpGet("budget")]
     public async Task<ActionResult<AttributePointBudgetResponse>> Budget(Guid sheetId)
     {
-        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var ficha))
+        if ((await FichaParaLeituraAsync(sheetId)).Negado(out var erro, out var ficha))
             return erro;
 
         var gastoTotal = await Linhas.Where(a => a.SheetId == sheetId).SumAsync(a => a.Gasto);

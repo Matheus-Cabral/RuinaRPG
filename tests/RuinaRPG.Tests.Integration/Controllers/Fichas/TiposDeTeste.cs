@@ -30,7 +30,7 @@ public interface ITipoDeTeste
     /// <summary>Segmento da rota: <c>/api/{Rota}/{id}/...</c>.</summary>
     string Rota { get; }
 
-    /// <summary>Status de quem não tem acesso à ficha: 403 no Personagem, 404 no NPC/Criatura.</summary>
+    /// <summary>Status de quem não tem acesso à ficha numa escrita: 403 no Personagem, 404 no NPC/Criatura (leitura: 404 nos três).</summary>
     HttpStatusCode StatusNegado { get; }
 
     int QuantidadeDePericias { get; }

@@ -111,7 +111,7 @@ public abstract class AfinidadesDaFichaTestes<TTipo>(ApiFixture fixture) : Teste
 
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, Url(f, "affinities"), otherToken));
 
-        response.StatusCode.Should().Be(Tipo.StatusNegado);
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]

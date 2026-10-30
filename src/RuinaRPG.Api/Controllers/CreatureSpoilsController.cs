@@ -41,7 +41,7 @@ public sealed class CreatureSpoilsController(RuinaRpgDbContext db, ITipoDeFicha<
     [HttpGet("spoils")]
     public async Task<ActionResult<List<CreatureSpoilResponse>>> ListSpoils(Guid sheetId)
     {
-        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out _))
+        if ((await FichaParaLeituraAsync(sheetId)).Negado(out var erro, out _))
             return erro;
 
         var spoils = await db.CreatureSpoils.Where(i => i.SheetId == sheetId).ToListAsync();

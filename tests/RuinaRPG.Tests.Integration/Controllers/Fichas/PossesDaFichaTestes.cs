@@ -83,7 +83,7 @@ public abstract class PossesDaFichaTestes<TTipo>(ApiFixture fixture) : TestesDeF
         addArtifactResponse.StatusCode.Should().Be(Tipo.StatusNegado);
 
         var listArtifactsResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, Url(f, "artifacts"), otherToken));
-        listArtifactsResponse.StatusCode.Should().Be(Tipo.StatusNegado);
+        listArtifactsResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
         var deleteArtifactResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, Url(f, $"artifacts/{artifactId}"), otherToken));
         deleteArtifactResponse.StatusCode.Should().Be(Tipo.StatusNegado);
@@ -201,7 +201,7 @@ public abstract class PossesDePersonagemOuNpcTestes<TTipo>(ApiFixture fixture) :
         addInventoryResponse.StatusCode.Should().Be(Tipo.StatusNegado);
 
         var listInventoryResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, Url(f, "inventory"), otherToken));
-        listInventoryResponse.StatusCode.Should().Be(Tipo.StatusNegado);
+        listInventoryResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
         var updateInventoryQtdResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Put, Url(f, $"inventory/{inventoryItemId}/qtd"), otherToken, 3));
         updateInventoryQtdResponse.StatusCode.Should().Be(Tipo.StatusNegado);

@@ -28,7 +28,7 @@ public abstract class EquipagemDaFichaController<TSheet, TArma, TSlot, TEscudo, 
     [HttpGet("kits")]
     public async Task<ActionResult<List<EquipmentKitOptionResponse>>> ListKits(Guid sheetId)
     {
-        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var sheet))
+        if ((await FichaParaLeituraAsync(sheetId)).Negado(out var erro, out var sheet))
             return erro;
 
         return await BuildOptionsAsync(await Tipo.MestreAsync(sheet));

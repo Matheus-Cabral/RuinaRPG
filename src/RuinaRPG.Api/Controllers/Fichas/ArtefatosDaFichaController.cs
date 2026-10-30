@@ -59,7 +59,7 @@ public abstract class ArtefatosDaFichaController<TSheet, TLinha>(RuinaRpgDbConte
     [HttpGet("artifacts")]
     public async Task<ActionResult<List<ArtifactResponse>>> ListArtifacts(Guid sheetId)
     {
-        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var ficha))
+        if ((await FichaParaLeituraAsync(sheetId)).Negado(out var erro, out var ficha))
             return erro;
 
         var artifacts = await Linhas.Where(a => a.SheetId == sheetId).ToListAsync();

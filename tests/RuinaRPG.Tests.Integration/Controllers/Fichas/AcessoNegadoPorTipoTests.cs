@@ -7,32 +7,33 @@ using RuinaRPG.Contracts.NpcSheets;
 namespace RuinaRPG.Tests.Integration.Controllers.Fichas;
 
 // Spec D, Review Focus 1–2: o código genérico mantém o status de acesso negado de cada tipo
-// (Personagem 403 na escrita e 404 na leitura, NPC/Criatura 404) e checa a chave de Perícia antes da ficha.
+// (Personagem 403 na escrita e 404 na leitura — spec 2.1.0 B.6 —, NPC/Criatura 404) e checa a chave de Perícia antes da ficha.
 public class AcessoNegadoPorTipoTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
     public static TheoryData<string, string, string, int> Casos => new()
     {
         // tipo, método, sufixo da rota, status esperado para um usuário sem acesso
-        { "character", "GET", "skills", 403 }, { "npc", "GET", "skills", 404 }, { "creature", "GET", "skills", 404 },
+        { "character", "GET", "skills", 404 }, { "npc", "GET", "skills", 404 }, { "creature", "GET", "skills", 404 },
+        { "character", "GET", "skills/budget", 404 }, { "character", "GET", "diary", 404 },
         { "character", "PUT", "skills/Atletismo", 403 }, { "npc", "PUT", "skills/Atletismo", 404 }, { "creature", "PUT", "skills/Atletismo", 404 },
-        { "character", "GET", "attributes", 403 }, { "npc", "GET", "attributes", 404 }, { "creature", "GET", "attributes", 404 },
-        { "character", "GET", "masteries", 403 }, { "npc", "GET", "masteries", 404 }, { "creature", "GET", "masteries", 404 },
+        { "character", "GET", "attributes", 404 }, { "npc", "GET", "attributes", 404 }, { "creature", "GET", "attributes", 404 },
+        { "character", "GET", "masteries", 404 }, { "npc", "GET", "masteries", 404 }, { "creature", "GET", "masteries", 404 },
         { "character", "PUT", "attributes/Forca", 403 }, { "npc", "PUT", "attributes/Forca", 404 }, { "creature", "PUT", "attributes/Forca", 404 },
-        { "character", "GET", "attributes/budget", 403 }, { "npc", "GET", "attributes/budget", 404 }, { "creature", "GET", "attributes/budget", 404 },
+        { "character", "GET", "attributes/budget", 404 }, { "npc", "GET", "attributes/budget", 404 }, { "creature", "GET", "attributes/budget", 404 },
         { "character", "POST", "masteries", 403 }, { "npc", "POST", "masteries", 404 }, { "creature", "POST", "masteries", 404 },
         { "character", "DELETE", $"masteries/{Guid.Empty}", 403 }, { "npc", "DELETE", $"masteries/{Guid.Empty}", 404 }, { "creature", "DELETE", $"masteries/{Guid.Empty}", 404 },
         { "character", "PUT", $"masteries/{Guid.Empty}", 403 },
-        { "character", "GET", "weapons", 403 }, { "npc", "GET", "weapons", 404 }, { "creature", "GET", "weapons", 404 },
-        { "character", "GET", "armor-slots", 403 }, { "npc", "GET", "armor-slots", 404 }, { "creature", "GET", "armor-slots", 404 },
-        { "character", "GET", "shields", 403 }, { "npc", "GET", "shields", 404 }, { "creature", "GET", "shields", 404 },
+        { "character", "GET", "weapons", 404 }, { "npc", "GET", "weapons", 404 }, { "creature", "GET", "weapons", 404 },
+        { "character", "GET", "armor-slots", 404 }, { "npc", "GET", "armor-slots", 404 }, { "creature", "GET", "armor-slots", 404 },
+        { "character", "GET", "shields", 404 }, { "npc", "GET", "shields", 404 }, { "creature", "GET", "shields", 404 },
         { "character", "POST", "weapons", 403 }, { "npc", "POST", "weapons", 404 }, { "creature", "POST", "weapons", 404 },
         { "character", "PUT", "armor-slots/Capacete", 403 }, { "npc", "PUT", "armor-slots/Capacete", 404 }, { "creature", "PUT", "armor-slots/Capacete", 404 },
         { "character", "DELETE", $"shields/{Guid.Empty}", 403 }, { "npc", "DELETE", $"shields/{Guid.Empty}", 404 }, { "creature", "DELETE", $"shields/{Guid.Empty}", 404 },
-        { "character", "GET", "inventory", 403 }, { "npc", "GET", "inventory", 404 }, { "creature", "GET", "spoils", 404 },
-        { "character", "GET", "artifacts", 403 }, { "npc", "GET", "artifacts", 404 }, { "creature", "GET", "artifacts", 404 },
-        { "character", "GET", "affections", 403 }, { "npc", "GET", "affections", 404 }, { "creature", "GET", "affections", 404 },
-        { "character", "GET", "traits", 403 }, { "npc", "GET", "traits", 404 }, { "creature", "GET", "traits", 404 },
-        { "character", "GET", "racial-traits/pending", 403 }, { "npc", "GET", "racial-traits/pending", 404 },
+        { "character", "GET", "inventory", 404 }, { "npc", "GET", "inventory", 404 }, { "creature", "GET", "spoils", 404 },
+        { "character", "GET", "artifacts", 404 }, { "npc", "GET", "artifacts", 404 }, { "creature", "GET", "artifacts", 404 },
+        { "character", "GET", "affections", 404 }, { "npc", "GET", "affections", 404 }, { "creature", "GET", "affections", 404 },
+        { "character", "GET", "traits", 404 }, { "npc", "GET", "traits", 404 }, { "creature", "GET", "traits", 404 },
+        { "character", "GET", "racial-traits/pending", 404 }, { "npc", "GET", "racial-traits/pending", 404 },
         { "character", "POST", "inventory", 403 }, { "npc", "POST", "inventory", 404 }, { "creature", "POST", "spoils", 404 },
         { "character", "DELETE", $"inventory/{Guid.Empty}", 403 }, { "npc", "DELETE", $"inventory/{Guid.Empty}", 404 }, { "creature", "DELETE", $"spoils/{Guid.Empty}", 404 },
         { "character", "POST", "artifacts", 403 }, { "npc", "POST", "artifacts", 404 }, { "creature", "POST", "artifacts", 404 },
@@ -41,20 +42,20 @@ public class AcessoNegadoPorTipoTests(ApiFixture fixture) : ApiTestBase(fixture)
         { "character", "POST", "traits", 403 }, { "npc", "POST", "traits", 404 }, { "creature", "POST", "traits", 404 },
         { "character", "DELETE", $"traits/{Guid.Empty}", 403 }, { "npc", "DELETE", $"traits/{Guid.Empty}", 404 }, { "creature", "DELETE", $"traits/{Guid.Empty}", 404 },
         { "character", "POST", "racial-traits/resolve", 403 }, { "npc", "POST", "racial-traits/resolve", 404 },
-        // Magias e Habilidades: o Personagem nega os dois GET com 404 (e não 403) — divergência acidental mantida.
+        // Magias e Habilidades: leitura 404, escrita 403 no Personagem.
         { "character", "GET", "spell-abilities", 404 }, { "npc", "GET", "spell-abilities", 404 }, { "creature", "GET", "spell-abilities", 404 },
         { "character", "GET", "spell-abilities/passivas-disponiveis", 404 }, { "npc", "GET", "spell-abilities/passivas-disponiveis", 404 }, { "creature", "GET", "spell-abilities/passivas-disponiveis", 404 },
         { "character", "POST", "spell-abilities", 403 }, { "npc", "POST", "spell-abilities", 404 }, { "creature", "POST", "spell-abilities", 404 },
         { "character", "PUT", $"spell-abilities/{Guid.Empty}", 403 }, { "npc", "PUT", $"spell-abilities/{Guid.Empty}", 404 }, { "creature", "PUT", $"spell-abilities/{Guid.Empty}", 404 },
         { "character", "DELETE", $"spell-abilities/{Guid.Empty}", 403 }, { "npc", "DELETE", $"spell-abilities/{Guid.Empty}", 404 }, { "creature", "DELETE", $"spell-abilities/{Guid.Empty}", 404 },
-        { "character", "GET", "runes", 403 }, { "npc", "GET", "runes", 404 },
+        { "character", "GET", "runes", 404 }, { "npc", "GET", "runes", 404 },
         { "character", "POST", "runes", 403 }, { "npc", "POST", "runes", 404 },
         { "character", "DELETE", $"runes/{Guid.Empty}", 403 }, { "npc", "DELETE", $"runes/{Guid.Empty}", 404 },
-        { "character", "GET", "affinities", 403 }, { "npc", "GET", "affinities", 404 },
+        { "character", "GET", "affinities", 404 }, { "npc", "GET", "affinities", 404 },
         { "character", "POST", "affinities", 403 }, { "npc", "POST", "affinities", 404 },
         { "character", "PUT", $"affinities/{Guid.Empty}", 403 }, { "npc", "PUT", $"affinities/{Guid.Empty}", 404 },
         { "character", "DELETE", $"affinities/{Guid.Empty}", 403 }, { "npc", "DELETE", $"affinities/{Guid.Empty}", 404 },
-        { "character", "GET", "equipagem/kits", 403 }, { "npc", "GET", "equipagem/kits", 404 },
+        { "character", "GET", "equipagem/kits", 404 }, { "npc", "GET", "equipagem/kits", 404 },
         { "character", "POST", "equipagem/choose", 403 }, { "npc", "POST", "equipagem/choose", 404 },
         // Endpoints da própria ficha (rotas com {id}; sufixo vazio é a ficha em si).
         { "character", "GET", "sub-attributes", 404 }, { "npc", "GET", "sub-attributes", 404 }, { "creature", "GET", "sub-attributes", 404 },

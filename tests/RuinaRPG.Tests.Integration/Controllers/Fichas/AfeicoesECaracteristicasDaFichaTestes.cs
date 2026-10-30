@@ -196,7 +196,7 @@ public abstract class AfeicoesECaracteristicasDaFichaTestes<TTipo>(ApiFixture fi
         addAffectionResponse.StatusCode.Should().Be(Tipo.StatusNegado);
 
         var listAffectionsResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, Url(f, "affections"), otherToken));
-        listAffectionsResponse.StatusCode.Should().Be(Tipo.StatusNegado);
+        listAffectionsResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
         var deleteAffectionResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, Url(f, $"affections/{affectionId}"), otherToken));
         deleteAffectionResponse.StatusCode.Should().Be(Tipo.StatusNegado);
@@ -205,7 +205,7 @@ public abstract class AfeicoesECaracteristicasDaFichaTestes<TTipo>(ApiFixture fi
         addTraitResponse.StatusCode.Should().Be(Tipo.StatusNegado);
 
         var listTraitsResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, Url(f, "traits"), otherToken));
-        listTraitsResponse.StatusCode.Should().Be(Tipo.StatusNegado);
+        listTraitsResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
         var deleteTraitResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, Url(f, $"traits/{traitId}"), otherToken));
         deleteTraitResponse.StatusCode.Should().Be(Tipo.StatusNegado);

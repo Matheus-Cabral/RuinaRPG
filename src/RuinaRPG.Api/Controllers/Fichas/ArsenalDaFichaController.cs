@@ -75,7 +75,7 @@ public abstract class ArsenalDaFichaController<TSheet, TArma, TSlot, TEscudo, TA
     [HttpGet("weapons")]
     public async Task<ActionResult<List<TArmaResponse>>> ListWeapons(Guid sheetId)
     {
-        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var ficha))
+        if ((await FichaParaLeituraAsync(sheetId)).Negado(out var erro, out var ficha))
             return erro;
 
         var weapons = await Armas.Where(w => w.SheetId == sheetId).ToListAsync();
@@ -142,7 +142,7 @@ public abstract class ArsenalDaFichaController<TSheet, TArma, TSlot, TEscudo, TA
     [HttpGet("armor-slots")]
     public async Task<ActionResult<List<TSlotResponse>>> ListArmorSlots(Guid sheetId)
     {
-        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var ficha))
+        if ((await FichaParaLeituraAsync(sheetId)).Negado(out var erro, out var ficha))
             return erro;
 
         var slots = await Slots.Where(a => a.SheetId == sheetId).ToListAsync();
@@ -221,7 +221,7 @@ public abstract class ArsenalDaFichaController<TSheet, TArma, TSlot, TEscudo, TA
     [HttpGet("shields")]
     public async Task<ActionResult<List<ShieldResponse>>> ListShields(Guid sheetId)
     {
-        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var ficha))
+        if ((await FichaParaLeituraAsync(sheetId)).Negado(out var erro, out var ficha))
             return erro;
 
         var shields = await Escudos.Where(s => s.SheetId == sheetId).ToListAsync();

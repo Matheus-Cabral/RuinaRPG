@@ -71,7 +71,7 @@ public abstract class AfinidadesDaFichaController<TSheet, TLinha>(RuinaRpgDbCont
     [HttpGet]
     public async Task<ActionResult<List<AffinityResponse>>> List(Guid sheetId)
     {
-        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var sheet))
+        if ((await FichaParaLeituraAsync(sheetId)).Negado(out var erro, out var sheet))
             return erro;
 
         var affinities = await Linhas.Where(a => a.SheetId == sheetId).ToListAsync();
