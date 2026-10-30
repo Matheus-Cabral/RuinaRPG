@@ -29,8 +29,8 @@ public sealed class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataPr
     public async Task<ActionResult<CharacterSheetResponse>> Create(Guid campaignId, CreateCharacterSheetRequest request)
     {
         var gmId = CurrentUserId();
-        var campaignExists = await Db.Campaigns.AnyAsync(c => c.Id == campaignId && c.GmId == gmId);
-        if (!campaignExists)
+        var campaignName = await Db.Campaigns.Where(c => c.Id == campaignId && c.GmId == gmId).Select(c => c.Nome).FirstOrDefaultAsync();
+        if (campaignName is null)
             return NotFound();
 
         if (!Guid.TryParse(request.OwnerId, out var ownerId))
@@ -110,8 +110,8 @@ public sealed class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataPr
     public async Task<ActionResult<List<CharacterSheetResponse>>> ListForCampaign(Guid campaignId)
     {
         var gmId = CurrentUserId();
-        var campaignExists = await Db.Campaigns.AnyAsync(c => c.Id == campaignId && c.GmId == gmId);
-        if (!campaignExists)
+        var campaignName = await Db.Campaigns.Where(c => c.Id == campaignId && c.GmId == gmId).Select(c => c.Nome).FirstOrDefaultAsync();
+        if (campaignName is null)
             return NotFound();
 
         var sheets = await Db.CharacterSheets.Where(s => s.CampaignId == campaignId).ToListAsync();
@@ -120,7 +120,7 @@ public sealed class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataPr
         var nicknames = await Db.Users.Where(u => donos.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.Nickname);
         var responses = new List<CharacterSheetResponse>();
         foreach (var sheet in sheets)
-            responses.Add(await ToResponseAsync(sheet, motivos[sheet.Id], nicknames.GetValueOrDefault(sheet.OwnerId)));
+            responses.Add(await ToResponseAsync(sheet, motivos[sheet.Id], nicknames.GetValueOrDefault(sheet.OwnerId), campaignName));
         return responses;
     }
 
@@ -298,9 +298,10 @@ public sealed class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataPr
 
     private async Task<CharacterSheetResponse> ToResponseAsync(CharacterSheet s)
         => await ToResponseAsync(s, await cemiterio.MotivosAsync(s),
-            await Db.Users.Where(u => u.Id == s.OwnerId).Select(u => u.Nickname).FirstOrDefaultAsync());
+            await Db.Users.Where(u => u.Id == s.OwnerId).Select(u => u.Nickname).FirstOrDefaultAsync(),
+            await NomeDaCampanhaAsync(Db, s.CampaignId));
 
-    private async Task<CharacterSheetResponse> ToResponseAsync(CharacterSheet s, IReadOnlyList<MotivoDoCemiterio> motivosDoCemiterio, string? donoNickname)
+    private async Task<CharacterSheetResponse> ToResponseAsync(CharacterSheet s, IReadOnlyList<MotivoDoCemiterio> motivosDoCemiterio, string? donoNickname, string? campaignName)
     {
         var imageUrl = await UrlDaImagemAsync(Db, s.ImageId);
 
@@ -335,7 +336,7 @@ public sealed class CharacterSheetsController(RuinaRpgDbContext db, IRulesDataPr
             s.PontosDeIgnicaoBonusManual, s.PontosDePericiaBonusCritico, s.ImageId?.ToString(), s.ArcaRolada,
             s.Estrela?.ToString(), s.SinaAtual, s.HistoricoId?.ToString(), s.EquipmentKitId?.ToString(), s.Historia,
             s.AfinidadeAdicional, vocacaoArcanaGasta, VocacaoArcanaCalculator.Maxima(s.Vocacao, graduacao, s.AfinidadeAdicional, rules.CirculoGrauPorEap),
-            motivosDoCemiterio.Count > 0, MotivosComoTexto(motivosDoCemiterio), donoNickname);
+            motivosDoCemiterio.Count > 0, MotivosComoTexto(motivosDoCemiterio), campaignName, donoNickname);
     }
 
     /// <summary>

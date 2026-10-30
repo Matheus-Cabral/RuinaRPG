@@ -104,13 +104,9 @@ public abstract class PaginaDeFicha<TFicha> : ComponentBase, IDisposable where T
             yield return Estado.CarregarDiarioAsync();
         if (Tipo.CriaCaracteristicaNoPicker)
             yield return Estado.CarregarAuditorDeRegrasAsync();
-        yield return CarregarOQueEDaPaginaAsync();
         if (Tipo.TemTracosRaciais)
             yield return Estado.CarregarEscolhaRacialPendenteAsync();
     }
-
-    /// <summary>Uma leitura que só a página do tipo faz ao abrir (junto com as das abas).</summary>
-    protected virtual Task CarregarOQueEDaPaginaAsync() => Task.CompletedTask;
 
     private async Task LoadImagesAsync()
     {

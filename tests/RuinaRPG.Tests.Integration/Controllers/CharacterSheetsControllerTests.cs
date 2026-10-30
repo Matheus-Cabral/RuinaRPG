@@ -152,6 +152,8 @@ public class CharacterSheetsControllerTests(ApiFixture fixture) : FichaDePersona
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", gmToken));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+        // O nome da campanha vem com a ficha (a trilha da página não pede a lista de campanhas), como no NPC/Criatura.
+        (await response.Content.ReadFromJsonAsync<RuinaRPG.Tests.Integration.Controllers.Fichas.FichaLida>())!.CampaignName.Should().Be("Campanha Get");
     }
 
     [Fact]

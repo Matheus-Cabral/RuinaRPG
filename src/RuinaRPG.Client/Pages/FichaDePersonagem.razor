@@ -1,6 +1,5 @@
 @page "/fichas/{SheetId}"
 @inherits PaginaDeFicha<CharacterSheetResponse>
-@using RuinaRPG.Contracts.Campaigns
 @using RuinaRPG.Contracts.CharacterSheets
 @using RuinaRPG.Client.Shared.Ficha
 @using MudBlazor
@@ -135,22 +134,12 @@
         return falha;
     }
 
-    // O nome da campanha não vem com a ficha do Personagem. O jogador não lê a lista do GM: as campanhas dele vêm de
-    // campaigns/mine.
-    protected override async Task CarregarOQueEDaPaginaAsync()
-    {
-        if (Estado.CampaignId is null) return;
-        var response = await Http.GetAsync(Estado.IsGmCaller ? "campaigns" : "campaigns/mine");
-        if (!response.IsSuccessStatusCode) return;
-        var campaigns = await response.Content.ReadFromJsonAsync<List<CampaignResponse>>() ?? new();
-        Estado.CampaignName = campaigns.FirstOrDefault(c => c.Id == Estado.CampaignId)?.Nome;
-    }
-
     protected override int PontosDeIgnicaoDa(CharacterSheetResponse sheet) => sheet.PontosDeIgnicaoAtual;
 
     protected override void PreencherFormulario(CharacterSheetResponse sheet)
     {
         Estado.CampaignId = sheet.CampaignId;
+        Estado.CampaignName = sheet.CampaignName;
         Estado.DefinirCemiterio(sheet.NoCemiterio, sheet.MotivosDoCemiterio);
         _form.ImageUrl = sheet.ImageUrl;
         _form.ImageId = sheet.ImageId;

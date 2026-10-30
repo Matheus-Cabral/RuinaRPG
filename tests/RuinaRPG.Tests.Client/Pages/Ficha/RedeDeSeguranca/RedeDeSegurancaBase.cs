@@ -115,7 +115,7 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
         lista.Add(tipo == "Criatura" ? $"GET {k}/spoils" : $"GET {k}/inventory");
         lista.AddRange(new[] { $"GET {k}/artifacts", $"GET {k}/affections", $"GET {k}/traits" });
         if (tipo == "Personagem")
-            lista.AddRange(new[] { $"GET {k}/diary", jogador ? "GET /campaigns/mine" : "GET /campaigns" });
+            lista.Add($"GET {k}/diary");
         if (tipo != "Criatura")
             lista.Add($"GET {k}/racial-traits/pending");
         if (tipo == "Criatura")
@@ -542,7 +542,7 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
     {
         "Personagem" => new
         {
-            id = SheetId, campaignId = "c1", ownerId = "u2", imageUrl = "/img/um.png", imageId = "img1",
+            id = SheetId, campaignId = "c1", campaignName = "Crônicas de Alker", ownerId = "u2", imageUrl = "/img/um.png", imageId = "img1",
             nome = "Aria", linhagem = "Humano", variante = "Sinir", vocacao = "Feiticeiro", subVocacao = "Piromante", afinidade = "Fogo", propriedade = "Uma casa",
             nivel = 3, circulo = 1, grau = 2, possuiCoracaoDeMana = true, experienciaAtual = 120, eapAtual = 7,
             nucleosRankF = 1, nucleosRankE = 2, nucleosRankD = 0, nucleosRankC = 0, nucleosRankB = 0, nucleosRankA = 0, nucleosRankS = 0,
