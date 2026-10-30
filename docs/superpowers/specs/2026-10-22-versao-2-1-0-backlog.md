@@ -98,3 +98,19 @@ deixadas para os próximos itens da 2.1.0:
   rastreada + consulta o GM a cada escrita; a regra de template de rota está duplicada entre filtro e teste;
   qualquer 409 ao salvar a ficha recarrega o formulário; ao sair do cemitério o Atual acima do máximo só é cortado
   no próximo salvamento.
+
+## Correções e acabamento — entregue em 2026-10-30 (até eb69bec)
+
+Spec `2026-10-29-versao-2-1-0-correcoes-e-acabamento-design.md`, plano homônimo. Pendências menores, nenhuma bloqueia (para uma próxima rodada):
+
+- (T1) ApagarAsync has two 404 paths (NotFound vs Negado); Delete not covered for outsider GM/Jogador
+- (T2) stale XML doc on Carga (FichaStats.cs:77 mentions Exibida); Escudo desequipado for Criatura untested
+- (T3) Update repeats Add's validation prelude + Criatura message (shared helper); stale doc comments (RedePartesPorTipoTests Maestrias class, AbaCombate header, AtualizarMaestriaAsync); hand-built TheoryData in AbaCombateTests
+- (T4) EstrelaSelect catch misses NotSupportedException (200 with non-JSON content type); ItemFieldsEditor routes Estrela error through OnImageError (misleading name)
+- (T5) stale *Carregado values while a reload is deferred (second save in burst can resend old loaded values); duplicate full reloads per burst (coalesce); LoadSheetAsync/RecarregarPontosDeIgnicaoAsync wrappers in three pages → Task 8 absorbs
+- (T5) FichaNoCemiterio 409-after-deferred-reload test uses Task.Delay timings (100/1500 ms) — possible flake under load
+- (T6) Lista_do_GM_per_kind is a single-InlineData Theory
+- (T7) only the Combate load proves Formato-not-flag decoupling; AdicionarArma, Perícias, Características paths lack a decoupling test
+- (T8) _concedida/Concedida and Estado.CampaignId assignment repeated in pages; SaveIfValidAsync tail (PUT→FalhaAoSalvar→Recarregar) repeated in three pages (protected SalvarFichaAsync would remove it); English comments in PaginaDeFicha.cs
+- Bancos já semeados mantêm "Ultima Passiva" sem acento (a Tabela de Níveis só semeia uma vez).
+- Criaturas existentes podem ter a Movimentação aumentada (armas e armaduras equipadas deixaram de pesar) — mencionar no texto de novidades.
