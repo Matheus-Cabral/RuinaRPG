@@ -317,7 +317,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Id | PK, estável: os 18 ids de hoje são os inteiros do antigo `AfinidadeElemental` (Terra=0, Agua=1, Fogo=2, Ar=3, Gelo=4, Flora=5, Ferro=6, Raio=7, Prever=8, Alma=9, Purificar=10, Ecomancia=11, Hemomancia=12, Curar=13, Vida=14, Aprimorar=15, Necromancia=16, Invocacao=17); **Mundano = 18** |
 | Nome | string, único |
 | Tipo | enum: Base \| Caminho \| SubElemento |
-| Teto | int, nullable (NULL = sem limite) |
+| Teto | int, nullable — >= 1 quando preenchido (NULL = sem limite) |
 
 **Cruzamentos** (provisório) — R0020: `ElementoAId`, `ElementoBId` (FKs ao catálogo; par único, simétrico), `SubElementoId` (FK ao catálogo, tipo Sub-Elemento), `MinimoA` e `MinimoB` (int >= 1, padrão 1). Iniciais: os 12 cruzamentos de "[[Requisitos - Auditoria de Regras]]" R0020.
 

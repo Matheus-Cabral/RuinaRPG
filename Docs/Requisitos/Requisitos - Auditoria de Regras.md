@@ -158,7 +158,7 @@ Cada linha tem um **Tipo de valor**, **Fixo** ou **Percentual**, e um **Valor** 
 
 # **R0019** - O Auditor define o teto de pontos de cada elemento.
 
-**Descrição**: Cada elemento do catálogo (R0018) tem um **teto** de pontos por ficha: um inteiro ≥ 1 (0 não faz sentido: o elemento seria inutilizável; para impedir o uso, o Auditor tira a ligação de R0021) ou **sem limite** (valor inicial de todos). O teto define o número de segmentos da barra da ficha; com **sem limite**, a barra tem segmentos até o **máximo da ficha** (R0007). O teto é checado ao subir pontos ("[[Requisitos - Ficha de Personagem]]" R0007). Baixar o teto abaixo do que uma ficha já tem **não** apaga pontos: a ficha fica inconsistente e só aceita tirar pontos (2.c).
+**Descrição**: Cada elemento do catálogo (R0018) tem um **teto** de pontos por ficha: um inteiro ≥ 1 ou vazio (= **sem limite**) (valor inicial de todos). O teto define o número de segmentos da barra da ficha; com **sem limite**, a barra tem segmentos até o **máximo da ficha** (R0007). O teto é checado ao subir pontos ("[[Requisitos - Ficha de Personagem]]" R0007). Baixar o teto abaixo do que uma ficha já tem **não** apaga pontos: a ficha fica inconsistente e só aceita tirar pontos (2.c).
 
 # **R0020** - O Auditor mantém os cruzamentos que geram os Sub-Elementos.
 
