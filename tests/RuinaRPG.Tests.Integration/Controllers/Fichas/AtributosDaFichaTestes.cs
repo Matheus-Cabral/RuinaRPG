@@ -127,7 +127,7 @@ public abstract class AtributosDaFichaTestes<TTipo>(ApiFixture fixture) : Testes
 
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, Url(f, "attributes"), intruso));
 
-        response.StatusCode.Should().Be(Tipo.StatusNegado);
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
@@ -177,7 +177,7 @@ public abstract class AtributosDaFichaTestes<TTipo>(ApiFixture fixture) : Testes
 
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, Url(f, "attributes/budget"), intruso));
 
-        response.StatusCode.Should().Be(Tipo.StatusNegado);
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 }
 

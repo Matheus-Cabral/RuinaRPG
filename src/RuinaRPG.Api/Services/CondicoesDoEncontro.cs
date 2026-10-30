@@ -34,9 +34,12 @@ namespace RuinaRPG.Api.Services;
 /// </summary>
 public class CondicoesDoEncontro(
     RuinaRpgDbContext db, CharacterSheetStats personagens, NpcSheetStats npcs, CreatureSheetStats criaturas, SheetLogDoServidor logDoServidor,
-    EncounterLog logDoEncontro, IHubContext<NotificationHub> notificacoes, IHubContext<EncounterHub> encontros, ILogger<CondicoesDoEncontro> logger)
+    EncounterLog logDoEncontro, CemiterioDaFicha cemiterio, IHubContext<NotificationHub> notificacoes, IHubContext<EncounterHub> encontros, ILogger<CondicoesDoEncontro> logger)
 {
     private const string SecaoDoLog = "Condições";
+
+    /// <summary>Gerenciador de Encontros R0013/R0015: o motivo do pulo de uma escrita numa ficha no cemitério.</summary>
+    private const string MotivoDoCemiterio = "ficha no cemitério";
 
     private sealed record Ficha(SheetLogKind Kind, Guid Id);
 
@@ -72,7 +75,11 @@ public class CondicoesDoEncontro(
             if (!mudou)
                 continue;
 
-            await CortarAsync(ficha, situacao.EfeitosDepois());
+            // R0015: numa ficha no cemitério nem o sistema grava; o corte pulado fica no log do encontro.
+            if (await NoCemiterioAsync(ficha))
+                await RegistrarCortePuladoAsync(ficha, participantes, situacao);
+            else
+                await CortarAsync(ficha, situacao.EfeitosDepois());
             Avisar(ficha, ownerId.Value, situacao);
         }
     }
@@ -187,6 +194,11 @@ public class CondicoesDoEncontro(
         var ownerId = ficha is null ? null : await DonoAsync(ficha);
         if (ficha is not null && ownerId is not null)
         {
+            if (await NoCemiterioAsync(ficha))
+            {
+                await Registrar(recurso.ToString(), null, null, MotivoDoCemiterio);
+                return;
+            }
             var situacao = await SituacaoAsync(ficha);
             var recursos = await RecursosAsync(ficha, situacao.EfeitosDepois());
             if (!recursos.TryGetValue(recurso, out var guardado))
@@ -477,6 +489,30 @@ public class CondicoesDoEncontro(
                     [RecursoDeCondicao.Foco] = Recurso(c, nameof(CreatureSheet.FocoAtual), () => c.FocoAtual, v => c.FocoAtual = v, fc),
                     [RecursoDeCondicao.Adrenalina] = Recurso(c, nameof(CreatureSheet.AdrenalinaAtual), () => c.AdrenalinaAtual, v => c.AdrenalinaAtual = v, ac),
                 };
+        }
+    }
+
+    /// <summary>Só uma Ficha de Personagem vai para o cemitério (Ficha de Personagem R0010).</summary>
+    private async Task<bool> NoCemiterioAsync(Ficha ficha) =>
+        ficha.Kind == SheetLogKind.Character && await cemiterio.NoCemiterioAsync(ficha.Id);
+
+    /// <summary>
+    /// O corte que <see cref="CortarAsync"/> faria numa ficha no cemitério: uma linha AjusteDeCondicao por encontro dos
+    /// participantes dados (os que a ação mudou), só quando o corte mudaria algum valor. Nada é gravado na ficha.
+    /// </summary>
+    private async Task RegistrarCortePuladoAsync(Ficha ficha, HashSet<Guid> participantes, Situacao situacao)
+    {
+        var cortados = (await RecursosAsync(ficha, situacao.EfeitosDepois())).Values.Where(r => r.Ler() > r.Maximo).Select(r => r.Rotulo).ToList();
+        if (cortados.Count == 0)
+            return;
+
+        var texto = $"Corte de {string.Join(", ", cortados)} ao novo máximo: {MotivoDoCemiterio}";
+        foreach (var doEncontro in participantes.Select(id => situacao.Ligados[id]).Where(p => !p.Removido).GroupBy(p => p.EncounterId))
+        {
+            if (await db.Encounters.FindAsync(doEncontro.Key) is not { } encounter)
+                continue;
+            var nome = (await db.EncounterParticipants.FindAsync(doEncontro.First().Id))?.Nome;
+            await logDoEncontro.RegistrarAsync(encounter, EncounterLogTipo.AjusteDeCondicao, nome, texto: texto);
         }
     }
 

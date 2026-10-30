@@ -9,13 +9,13 @@
 @if (Estado.Tipo.TemAntecedentes)
 {
     <Section Title="Estrela e Histórico">
-        <EstrelaSelect @bind-Value="Formulario.Estrela" @bind-Value:after="MudouAsync" />
+        <EstrelaSelect @bind-Value="Formulario.Estrela" @bind-Value:after="MudouAsync" OnError="@Estado.MostrarErro" />
         <HistoricoSelect @bind-Value="Formulario.HistoricoId" @bind-Value:after="MudouAsync" />
     </Section>
     <Section>
         @if (Estado.HistoriaCarregada)
         {
-            <HistoriaEditor SaveUrl="@Estado.UrlDaHistoria" @bind-Html="Formulario.Historia" OnError="@Estado.MostrarErro"
+            <HistoriaEditor SaveUrl="@Estado.UrlDaHistoria" @bind-Html="Formulario.Historia" OnError="@Estado.MostrarErro" SomenteLeitura="Estado.SomenteLeitura"
                             AvailableImages="Estado.MinhasImagens" CampaignId="@(Estado.IsGmCaller ? null : Estado.CampaignId)" />
         }
         else

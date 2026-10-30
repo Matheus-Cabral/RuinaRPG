@@ -134,7 +134,7 @@ public abstract class PericiasDaFichaTestes<TTipo>(ApiFixture fixture) : TestesD
 
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, Url(f, "skills"), intruso));
 
-        response.StatusCode.Should().Be(Tipo.StatusNegado);
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 }
 

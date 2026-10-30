@@ -219,4 +219,32 @@ public class MinhaCampanhaTests : MudBunitContext
             new AnexoView("a2", "Image", null, "/images/mapa.png", null, null),
         });
     }
+
+    [Fact]
+    public async Task Minha_campanha_de_onde_saiu_volta_ao_painel()
+    {
+        var authContext = this.AddAuthorization();
+        authContext.SetAuthorized("jogador");
+        authContext.SetRoles("Jogador");
+        var saiu = false;
+        Services.AddScoped(_ => FakeHttpMessageHandler.CreateClient(request =>
+        {
+            var path = request.RequestUri!.AbsolutePath;
+            if (path.EndsWith("player-view"))
+                return saiu
+                    ? new HttpResponseMessage(HttpStatusCode.NotFound)
+                    : new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new PlayerCampaignViewResponse(new(), new(), new())) };
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<SecretNoteResponse>()) };
+        }));
+        await Services.GetRequiredService<SecretNoteNotifier>().StartAsync(notasSecretas: false);
+        var navegacao = Services.GetRequiredService<NavigationManager>();
+        navegacao.NavigateTo("campanhas/campaign-1/jogador");
+        var cut = Render<MinhaCampanha>(p => p.Add(x => x.CampaignId, "campaign-1"));
+        await Task.Delay(100);
+
+        saiu = true;
+        await cut.InvokeAsync(() => NotificationConnection.RaiseCampanhasDoJogadorAlteradasAsync());
+
+        cut.WaitForAssertion(() => navegacao.ToBaseRelativePath(navegacao.Uri).Should().Be("painel"));
+    }
 }

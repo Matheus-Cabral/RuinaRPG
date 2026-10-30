@@ -140,4 +140,155 @@ public class FichaPontosDeIgnicaoTests : MudBunitContext
         cut.WaitForAssertion(() => cut.Markup.Should().Contain(mensagem), TimeSpan.FromSeconds(3));
         _requests.Should().NotContain(r => r.StartsWith("PUT ") && r.Contains(rota));
     }
+
+    // Spec 2.1.0 A.4: um recarregamento nunca sobrescreve no formulário um campo com edição pendente ou em envio; depois
+    // que as edições são enviadas, o formulário mostra o servidor. O servidor falso guarda Nome, Experiência e PI: o
+    // PUT geral grava Nome e Experiência e ignora o PI (como o real); o PI e (no NPC e na Criatura) a Experiência têm
+    // endpoints próprios.
+    private sealed class ServidorFalso
+    {
+        public string? Nome = "Antigo";
+        public int Experiencia = 0;
+        public int Pi = 12;
+    }
+
+    private ServidorFalso RegisterServidor()
+    {
+        var servidor = new ServidorFalso();
+        Services.AddScoped(_ => FakeHttpMessageHandler.CreateClient(request =>
+        {
+            var path = request.RequestUri!.AbsolutePath;
+            lock (servidor)
+            {
+                _requests.Add($"{request.Method} {path}");
+                if (request.Method == HttpMethod.Put && Regex.IsMatch(path, "-sheets/[^/]+$"))
+                {
+                    using var corpo = System.Text.Json.JsonDocument.Parse(request.Content!.ReadAsStringAsync().GetAwaiter().GetResult());
+                    servidor.Nome = corpo.RootElement.GetProperty("nome").GetString();
+                    servidor.Experiencia = corpo.RootElement.GetProperty("experienciaAtual").GetInt32();
+                    return new HttpResponseMessage(HttpStatusCode.OK);
+                }
+                if (request.Method == HttpMethod.Put && path.EndsWith("/pontos-de-ignicao"))
+                {
+                    servidor.Pi = int.Parse(request.Content!.ReadAsStringAsync().GetAwaiter().GetResult());
+                    return new HttpResponseMessage(HttpStatusCode.OK);
+                }
+                if (request.Method == HttpMethod.Put && path.EndsWith("/experiencia-atual"))
+                {
+                    servidor.Experiencia = int.Parse(request.Content!.ReadAsStringAsync().GetAwaiter().GetResult());
+                    return new HttpResponseMessage(HttpStatusCode.OK);
+                }
+                if (request.Method != HttpMethod.Get)
+                    return new HttpResponseMessage(HttpStatusCode.OK);
+                if (path.EndsWith("/auth/me") || path.EndsWith("/level-up-notice"))
+                    return new HttpResponseMessage(HttpStatusCode.NotFound);
+                if (Regex.IsMatch(path, "-sheets/[^/]+$"))
+                    return Json(new
+                    {
+                        servidor.Nome, Nivel = 1, ExperienciaAtual = servidor.Experiencia, EAPAtual = 0,
+                        NucleosRankF = 0, NucleosRankE = 0, NucleosRankD = 0, NucleosRankC = 0, NucleosRankB = 0, NucleosRankA = 0, NucleosRankS = 0,
+                        PontosDeIgnicaoAtual = servidor.Pi, PontosDeIgnicao = servidor.Pi, PontosDeIgnicaoTotal = 40,
+                        VitalidadeAtual = 10, FocoAtual = 10, AdrenalinaAtual = 10, EstresseAtual = 0,
+                    });
+                return SingleObjectSuffixes.Any(path.EndsWith) ? Json(new { }) : Json(new List<object>());
+            }
+        }));
+        Services.AddScoped<AuthenticationStateProvider>(_ => new FakeAuthStateProvider());
+        return servidor;
+    }
+
+    private static IRenderedComponent<MudTextField<string>> Texto(IRenderedComponent<ComponentBase> cut, string rotulo) =>
+        cut.FindComponents<MudTextField<string>>().Single(c => c.Instance.Label == rotulo);
+
+    private static IRenderedComponent<MudNumericField<int?>> Numero(IRenderedComponent<ComponentBase> cut, string rotulo) =>
+        cut.FindComponents<MudNumericField<int?>>().Single(c => c.Instance.Label == rotulo);
+
+    private static Task Editar(IRenderedComponent<ComponentBase> cut, string rotulo, string valor) =>
+        cut.InvokeAsync(() => Texto(cut, rotulo).Instance.ValueChanged.InvokeAsync(valor));
+
+    private static Task Editar(IRenderedComponent<ComponentBase> cut, string rotulo, int valor) =>
+        cut.InvokeAsync(() => Numero(cut, rotulo).Instance.ValueChanged.InvokeAsync(valor));
+
+    private static string? ValorDoTexto(IRenderedComponent<ComponentBase> cut, string rotulo) => Texto(cut, rotulo).Find("input").GetAttribute("value");
+
+    private static string? ValorDoNumero(IRenderedComponent<ComponentBase> cut, string rotulo) => Numero(cut, rotulo).Find("input").GetAttribute("value");
+
+    [Theory]
+    [InlineData(typeof(FichaDePersonagem), "Pontos de Ignição Atual")]
+    [InlineData(typeof(FichaDeNpc), "Pontos de Ignição Atual")]
+    [InlineData(typeof(FichaDeCriatura), "Pontos de Ignição")]
+    public async Task Pi_editado_logo_depois_do_nome_nao_se_perde(Type pagina, string rotuloDoPi)
+    {
+        var servidor = RegisterServidor();
+        var cut = RenderPagina(pagina);
+        await Task.Delay(100);
+
+        await Editar(cut, "Nome", "Novo nome");
+        await Task.Delay(100); // dentro da janela de 400 ms do salvamento do Nome
+        await Editar(cut, rotuloDoPi, 25);
+
+        cut.WaitForAssertion(() =>
+        {
+            lock (servidor)
+            {
+                servidor.Nome.Should().Be("Novo nome");
+                servidor.Pi.Should().Be(25, "a edição do PI não pode ser apagada pelo recarregamento do salvamento do Nome");
+            }
+        }, TimeSpan.FromSeconds(3));
+        cut.WaitForAssertion(() => ValorDoNumero(cut, rotuloDoPi).Should().Be("25"), TimeSpan.FromSeconds(3));
+        ValorDoTexto(cut, "Nome").Should().Be("Novo nome");
+    }
+
+    [Theory]
+    [InlineData(typeof(FichaDePersonagem), "Pontos de Ignição Atual")]
+    [InlineData(typeof(FichaDeNpc), "Pontos de Ignição Atual")]
+    [InlineData(typeof(FichaDeCriatura), "Pontos de Ignição")]
+    public async Task Tres_edicoes_seguidas_terminam_todas_no_servidor(Type pagina, string rotuloDoPi)
+    {
+        var servidor = RegisterServidor();
+        var cut = RenderPagina(pagina);
+        await Task.Delay(100);
+
+        await Editar(cut, "Nome", "Novo nome");
+        await Task.Delay(100);
+        await Editar(cut, rotuloDoPi, 25);
+        await Task.Delay(100);
+        await Editar(cut, "Experiência Atual", 300);
+
+        cut.WaitForAssertion(() =>
+        {
+            lock (servidor)
+            {
+                servidor.Nome.Should().Be("Novo nome");
+                servidor.Pi.Should().Be(25);
+                servidor.Experiencia.Should().Be(300);
+            }
+        }, TimeSpan.FromSeconds(3));
+        cut.WaitForAssertion(() =>
+        {
+            ValorDoTexto(cut, "Nome").Should().Be("Novo nome");
+            ValorDoNumero(cut, rotuloDoPi).Should().Be("25");
+            ValorDoNumero(cut, "Experiência Atual").Should().Be("300");
+        }, TimeSpan.FromSeconds(3));
+    }
+
+    [Theory]
+    [InlineData(typeof(FichaDePersonagem), "Pontos de Ignição Atual")]
+    [InlineData(typeof(FichaDeNpc), "Pontos de Ignição Atual")]
+    [InlineData(typeof(FichaDeCriatura), "Pontos de Ignição")]
+    public async Task Recarregamento_sem_edicao_pendente_mostra_o_servidor(Type pagina, string rotuloDoPi)
+    {
+        var servidor = RegisterServidor();
+        var cut = RenderPagina(pagina);
+        await Task.Delay(100);
+        lock (servidor)
+            servidor.Pi = 7; // o servidor mudou o saldo sozinho (ex.: uma Magia debitou)
+
+        await Editar(cut, "Nome", "Novo nome");
+
+        cut.WaitForAssertion(() => ValorDoNumero(cut, rotuloDoPi).Should().Be("7", "sem edição pendente, o recarregamento mostra o servidor"),
+            TimeSpan.FromSeconds(3));
+        lock (servidor)
+            servidor.Nome.Should().Be("Novo nome");
+    }
 }

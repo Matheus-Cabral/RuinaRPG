@@ -900,7 +900,7 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
         foreach (var p in await LerAsync<List<SkillResponse>>(mesa.Jogador, $"{raiz}/skills"))
             await EnviarAsync(HttpMethod.Put, $"{raiz}/skills/{p.Pericia}", mesa.Jogador, new UpdateSkillRequest(p.Gasto, p.AtributoEscolhido));
         foreach (var m in await LerAsync<List<MasteryResponse>>(mesa.Jogador, $"{raiz}/masteries"))
-            await EnviarAsync(HttpMethod.Put, $"{raiz}/masteries/{m.Id}", mesa.Jogador, new UpdateCharacterMasteryRequest(m.Nome, m.Pericia, m.Atributo, m.GastoMaestria));
+            await EnviarAsync(HttpMethod.Put, $"{raiz}/masteries/{m.Id}", mesa.Jogador, new UpdateMasteryRequest(m.Nome, m.Pericia, m.Atributo, m.GastoMaestria));
         foreach (var a in await LerAsync<List<AffinityResponse>>(mesa.Jogador, $"{raiz}/affinities"))
             await EnviarAsync(HttpMethod.Put, $"{raiz}/affinities/{a.Id}", mesa.Jogador,
                 new UpdateAffinityRequest(a.Elemento, a.ElementoValor, a.SegundaEssencia, a.SegundaEssenciaValor, a.SubElementoValor, a.Experiencia));
@@ -997,8 +997,8 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
 
         foreach (var intruso in new[] { outraMesa.Gm, outraMesa.Jogador })
         {
-            // O mesmo resultado dos demais GETs calculados de cada controller.
-            (await Client.SendAsync(Authed(HttpMethod.Get, $"/api/character-sheets/{personagem.Id}/condicoes-ativas", intruso))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+            // As leituras da própria ficha negam com 404 nos três tipos (spec 2.1.0 B.6).
+            (await Client.SendAsync(Authed(HttpMethod.Get, $"/api/character-sheets/{personagem.Id}/condicoes-ativas", intruso))).StatusCode.Should().Be(HttpStatusCode.NotFound);
             (await Client.SendAsync(Authed(HttpMethod.Get, $"/api/npc-sheets/{npc.Id}/condicoes-ativas", intruso))).StatusCode.Should().Be(HttpStatusCode.NotFound);
             (await Client.SendAsync(Authed(HttpMethod.Get, $"/api/creature-sheets/{criatura.Id}/condicoes-ativas", intruso))).StatusCode.Should().Be(HttpStatusCode.NotFound);
         }

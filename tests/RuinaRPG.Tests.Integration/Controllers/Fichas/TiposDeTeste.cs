@@ -30,7 +30,7 @@ public interface ITipoDeTeste
     /// <summary>Segmento da rota: <c>/api/{Rota}/{id}/...</c>.</summary>
     string Rota { get; }
 
-    /// <summary>Status de quem não tem acesso à ficha: 403 no Personagem, 404 no NPC/Criatura.</summary>
+    /// <summary>Status de quem não tem acesso à ficha numa escrita: 403 no Personagem, 404 no NPC/Criatura (leitura: 404 nos três).</summary>
     HttpStatusCode StatusNegado { get; }
 
     int QuantidadeDePericias { get; }
@@ -293,5 +293,5 @@ public sealed record EscudoLido(string Id, string ItemId, string Nome, int? Bonu
     string? ImageUrl, string? Descricao, List<string>? RequisitosPendentes);
 public sealed record ArtefatoLido(string Id, string Nome, List<string>? Penalidade);
 public sealed record FichaLida(string Id, string? EquipmentKitId, int Ciclos, string? Nome, int Nivel, int ExperienciaAtual, string? CampaignId, string? OwnerId, int AdrenalinaMaximo,
-    string? Afinidade, string? HistoricoId);
+    string? Afinidade, string? HistoricoId, string? CampaignName = null);
 public sealed record ResumoDeFichaLido(string Id, string? OwnerNickname);

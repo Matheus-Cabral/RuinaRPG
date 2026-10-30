@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Api.Controllers.Fichas;
 using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.Encounters;
 using RuinaRPG.Domain.Condicoes;
@@ -21,7 +22,8 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize(Roles = "GM")]
 [Route("api/encounters/{encounterId}/participants/{participantId}")]
-public class EncounterParticipantCondicoesController(RuinaRpgDbContext db, EncounterLog log, ItensDesabilitaveisDaFicha itens, CondicoesDoEncontro condicoesDoEncontro) : ControllerBase
+public class EncounterParticipantCondicoesController(RuinaRpgDbContext db, EncounterLog log, ItensDesabilitaveisDaFicha itens, CondicoesDoEncontro condicoesDoEncontro,
+    CemiterioDaFicha cemiterio) : ControllerBase
 {
     [HttpPost("condicoes")]
     [ConflitoDeConcorrenciaDoEncontro]
@@ -36,6 +38,8 @@ public class EncounterParticipantCondicoesController(RuinaRpgDbContext db, Encou
         var participant = await db.EncounterParticipants.FirstOrDefaultAsync(p => p.Id == participantId && p.EncounterId == encounterId);
         if (participant is null)
             return NotFound();
+        if (await NoCemiterioAsync(participant))
+            return Conflict(FichaNoCemiterioFilter.Mensagem);
 
         if (!Guid.TryParse(request.CondicaoId, out var condicaoId))
             return BadRequest("Condição não encontrada.");
@@ -112,6 +116,8 @@ public class EncounterParticipantCondicoesController(RuinaRpgDbContext db, Encou
             : await db.EncounterParticipantCondicoes.FirstOrDefaultAsync(c => c.Id == condicaoAplicadaId && c.EncounterParticipantId == participantId);
         if (participant is null || condicao is null)
             return NotFound();
+        if (await NoCemiterioAsync(participant))
+            return Conflict(FichaNoCemiterioFilter.Mensagem);
 
         db.EncounterParticipantCondicoes.Remove(condicao);
         await log.RegistrarAsync(encounter!, EncounterLogTipo.CondicaoRemovida, participant.Nome, texto: condicao.Nome);
@@ -216,6 +222,10 @@ public class EncounterParticipantCondicoesController(RuinaRpgDbContext db, Encou
         }
         return (null, resultado);
     }
+
+    /// <summary>Gerenciador de Encontros R0015: num participante cuja ficha está no cemitério, nada de aplicar nem remover.</summary>
+    private async Task<bool> NoCemiterioAsync(EncounterParticipant participant) =>
+        participant.SourceCharacterSheetId is { } fichaId && await cemiterio.NoCemiterioAsync(fichaId);
 
     private ActionResult? RequireEditable(Encounter encounter) =>
         encounter.Status == EncounterStatus.Finalizado ? Conflict("Encontro finalizado.") : null;

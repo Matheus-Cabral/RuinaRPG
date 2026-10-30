@@ -14,6 +14,7 @@ using RuinaRPG.Infrastructure.SheetLogs;
 using RuinaRPG.Infrastructure.Auth;
 using RuinaRPG.Contracts;
 using RuinaRPG.Domain;
+using RuinaRPG.Domain.Auth;
 using RuinaRPG.Domain.Rules;
 using RuinaRPG.Infrastructure.Rules;
 using RuinaRPG.Infrastructure.Rules.Niveis;
@@ -59,6 +60,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentActor, HttpCurrentActor>();
 builder.Services.AddScoped<SheetLogDoServidor>();
+builder.Services.AddScoped<CemiterioDaFicha>();
 builder.Services.AddScoped<SheetLogInterceptor>();
 builder.Services.AddDbContext<RuinaRpgDbContext>((sp, options) => options
     .UseNpgsql(builder.Configuration.GetConnectionString("Postgres"))
@@ -98,6 +100,8 @@ builder.Services.AddScoped<CharacterSheetStats>();
 builder.Services.AddScoped<EncounterLog>();
 builder.Services.AddScoped<EncounterTurnos>();
 builder.Services.AddScoped<CondicoesDoEncontro>();
+builder.Services.AddScoped<RemocaoDeParticipante>();
+builder.Services.AddScoped<SaidaDoJogador>();
 builder.Services.AddScoped<ItensDesabilitaveisDaFicha>();
 builder.Services.AddScoped<EquipmentPenaltyService>();
 builder.Services.AddScoped<NpcSheetStats>();
@@ -164,13 +168,28 @@ builder.Services
                 if (!string.IsNullOrEmpty(accessToken) && context.HttpContext.Request.Path.StartsWithSegments("/hubs"))
                     context.Token = accessToken;
                 return Task.CompletedTask;
+            },
+            // Login e Cadastro R0002: um token de acesso emitido antes de a conta ser desativada ou excluída
+            // deixa de valer na hora, no HTTP e nos hubs. Roda em toda requisição autenticada: lê só a coluna Estado.
+            OnTokenValidated = async context =>
+            {
+                if (!Guid.TryParse(context.Principal?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value, out var userId))
+                {
+                    context.Fail("Token sem usuário.");
+                    return;
+                }
+                var db = context.HttpContext.RequestServices.GetRequiredService<RuinaRpgDbContext>();
+                var estado = await db.Users.AsNoTracking().Where(u => u.Id == userId)
+                    .Select(u => (EstadoDaConta?)u.Estado).SingleOrDefaultAsync(context.HttpContext.RequestAborted);
+                if (estado != EstadoDaConta.Ativa)
+                    context.Fail("Conta inativa.");
             }
         };
     });
 
 // Add services to the container.
 
-builder.Services.AddControllers();
+builder.Services.AddControllers(options => options.Filters.Add<FichaNoCemiterioFilter>());
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<IUserIdProvider, SubClaimUserIdProvider>();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle

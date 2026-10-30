@@ -298,14 +298,14 @@ public sealed class PenalidadesDeEquipamentoTestesPersonagem(ApiFixture fixture)
     }
 
     [Fact]
-    public async Task Equipment_penalties_is_forbidden_to_a_jogador_who_does_not_own_the_sheet()
+    public async Task Equipment_penalties_is_not_found_for_a_jogador_who_does_not_own_the_sheet()
     {
         var f = await NovaFichaAsync();
         var outroGm = await OutroMestreAsync();
         var (_, outroJogador) = await JogadorAsync(outroGm);
 
         var proibido = await Client.SendAsync(AuthedRequest(HttpMethod.Get, Url(f, "equipment-penalties"), outroJogador));
-        proibido.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        proibido.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
         var inexistente = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{Guid.NewGuid()}/equipment-penalties", f.Token));
         inexistente.StatusCode.Should().Be(HttpStatusCode.NotFound);

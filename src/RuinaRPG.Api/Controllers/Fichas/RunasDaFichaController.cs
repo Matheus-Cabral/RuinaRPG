@@ -140,7 +140,7 @@ public abstract class RunasDaFichaController<TSheet, TLinha>(RuinaRpgDbContext d
     [HttpGet]
     public async Task<ActionResult<List<RuneResponse>>> List(Guid sheetId)
     {
-        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var sheet))
+        if ((await FichaParaLeituraAsync(sheetId)).Negado(out var erro, out var sheet))
             return erro;
 
         var runes = await Linhas.Where(r => r.SheetId == sheetId).ToListAsync();

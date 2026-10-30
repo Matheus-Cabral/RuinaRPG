@@ -43,4 +43,23 @@ public class MinhasCampanhasTests : MudBunitContext
             chips[0].Closest(".mud-card")!.TextContent.Should().Contain("Ruína");
         });
     }
+
+    [Fact]
+    public async Task Aviso_de_campanhas_recarrega_minhas_campanhas()
+    {
+        var authContext = this.AddAuthorization();
+        authContext.SetAuthorized("jogador");
+        authContext.SetRoles("Jogador");
+        var campaigns = new List<CampaignResponse> { new("c1", "Ruína", "", null), new("c2", "Outra", "", null) };
+        Services.AddScoped(_ => FakeHttpMessageHandler.CreateClient(request =>
+            new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(campaigns) }));
+        await Services.GetRequiredService<SecretNoteNotifier>().StartAsync(notasSecretas: false);
+        var cut = Render<MinhasCampanhas>();
+        cut.WaitForAssertion(() => cut.Markup.Should().Contain("Outra"));
+
+        campaigns.RemoveAt(1);
+        await cut.InvokeAsync(() => NotificationConnection.RaiseCampanhasDoJogadorAlteradasAsync());
+
+        cut.WaitForAssertion(() => cut.Markup.Should().NotContain("Outra"));
+    }
 }

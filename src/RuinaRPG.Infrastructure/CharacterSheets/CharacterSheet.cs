@@ -21,6 +21,9 @@ public class CharacterSheet : IFichaComLinhagem, IFichaComEquipagem
     public Guid? HistoricoId { get; set; }
     public Guid? EquipmentKitId { get; set; }
 
+    /// <summary>Marca de morte posta pelo GM; um dos motivos do cemitério (ver Cemiterio no Domain).</summary>
+    public bool Morto { get; set; }
+
     /// <summary>Aba História: sanitized HTML (see HistoriaSanitizer). NULL = empty editor.</summary>
     public string? Historia { get; set; }
 

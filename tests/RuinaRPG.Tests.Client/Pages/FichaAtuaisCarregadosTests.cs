@@ -38,17 +38,27 @@ public class FichaAtuaisCarregadosTests : MudBunitContext
 
     private static HttpResponseMessage Json(object body) => new(HttpStatusCode.OK) { Content = JsonContent.Create(body) };
 
+    // Um handler assíncrono: o PUT da ficha pode esperar uma "porta" para ficar em voo enquanto o teste edita de novo.
+    private sealed class AsyncHandler(Func<HttpRequestMessage, Task<HttpResponseMessage>> responder) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => responder(request);
+    }
+
     private readonly List<string> _corpos = new();
     private object _ficha = new { };
+    // Enquanto não nula, o PUT da ficha só responde quando ela abre.
+    private TaskCompletionSource? _portaDoPut;
 
     private void Prepare()
     {
-        Services.AddScoped(_ => FakeHttpMessageHandler.CreateClient(request =>
+        Services.AddScoped(_ => new HttpClient(new AsyncHandler(async request =>
         {
             var path = request.RequestUri!.AbsolutePath;
             if (request.Method == HttpMethod.Put && Regex.IsMatch(path, "-sheets/[^/]+$"))
             {
-                _corpos.Add(request.Content!.ReadAsStringAsync().GetAwaiter().GetResult());
+                _corpos.Add(await request.Content!.ReadAsStringAsync());
+                if (_portaDoPut is { } porta)
+                    await porta.Task;
                 return new HttpResponseMessage(HttpStatusCode.OK);
             }
             if (request.Method != HttpMethod.Get)
@@ -58,7 +68,7 @@ public class FichaAtuaisCarregadosTests : MudBunitContext
             if (Regex.IsMatch(path, "-sheets/[^/]+$"))
                 return Json(_ficha);
             return SingleObjectSuffixes.Any(path.EndsWith) ? Json(new { }) : Json(new List<object>());
-        }));
+        })) { BaseAddress = new Uri("http://localhost/api/") });
         Services.AddScoped<AuthenticationStateProvider>(_ => new FakeAuthStateProvider());
     }
 
@@ -121,5 +131,38 @@ public class FichaAtuaisCarregadosTests : MudBunitContext
         (Campo(segundo, "focoAtual"), Campo(segundo, "focoAtualCarregado")).Should().Be((8, 8));
         Campo(segundo, "adrenalinaAtualCarregada").Should().Be(5);
         CampoOpcional(segundo, "estresseAtualCarregado").Should().Be(estresseRecarregado);
+    }
+
+    [Theory]
+    [InlineData(typeof(FichaDePersonagem))]
+    [InlineData(typeof(FichaDeNpc))]
+    [InlineData(typeof(FichaDeCriatura))]
+    public async Task A_second_save_in_the_same_burst_sends_the_first_saves_values_as_loaded(Type pagina)
+    {
+        _ficha = Ficha(12, 9, 6, 3);
+        Prepare();
+        await Services.GetRequiredService<SecretNoteNotifier>().StartAsync();
+        var cut = RenderPagina(pagina);
+        await Task.Delay(100);
+        var combate = cut.FindAll("div.mud-tab").Single(e => e.TextContent.Trim() == "Combate");
+        await cut.InvokeAsync(() => combate.Click());
+
+        // O primeiro PUT fica em voo enquanto a Vitalidade muda de novo: a releitura depois dele é adiada (há outra
+        // edição pendente), então o segundo PUT não pode reenviar o carregado antigo (12).
+        _portaDoPut = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var campo = cut.FindComponents<MudNumericField<int?>>().Single(c => c.Instance.Label == "Vitalidade");
+        await cut.InvokeAsync(() => campo.Instance.ValueChanged.InvokeAsync(20));
+        // O PUT em voo não renderiza nada: espera pelo corpo sem depender de uma renderização.
+        for (var i = 0; i < 60 && _corpos.Count == 0; i++)
+            await Task.Delay(50);
+        _corpos.Should().HaveCount(1);
+        await cut.InvokeAsync(() => campo.Instance.ValueChanged.InvokeAsync(25));
+        _portaDoPut.SetResult();
+        _portaDoPut = null;
+        cut.WaitForAssertion(() => _corpos.Should().HaveCount(2), TimeSpan.FromSeconds(3));
+
+        var segundo = _corpos[1];
+        (Campo(segundo, "vitalidadeAtual"), Campo(segundo, "vitalidadeAtualCarregada")).Should().Be((25, 20));
+        (Campo(segundo, "focoAtual"), Campo(segundo, "focoAtualCarregado")).Should().Be((9, 9));
     }
 }

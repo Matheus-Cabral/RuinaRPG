@@ -6,9 +6,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Api.Hubs;
+using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.Campaigns;
 using RuinaRPG.Contracts.Diary;
 using RuinaRPG.Contracts.Notifications;
+using RuinaRPG.Domain.Auth;
 using RuinaRPG.Infrastructure.Campaigns;
 using RuinaRPG.Infrastructure.Diary;
 using RuinaRPG.Infrastructure.Identity;
@@ -19,7 +21,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Route("api/campaigns")]
 [Authorize(Roles = "GM")]
-public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUser> userManager, IHubContext<NotificationHub> notifications, ILogger<CampaignsController> logger) : ControllerBase
+public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUser> userManager, IHubContext<NotificationHub> notifications, SaidaDoJogador saida, CemiterioDaFicha cemiterio, ILogger<CampaignsController> logger) : ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult<CampaignResponse>> Create(CreateCampaignRequest request)
@@ -105,7 +107,7 @@ public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUs
             return BadRequest("O jogador informado não está vinculado à sua conta.");
 
         var player = await userManager.FindByIdAsync(request.UserId);
-        if (player is null || player.InvitedByGmId != gmId)
+        if (player is null || player.InvitedByGmId != gmId || player.Estado != EstadoDaConta.Ativa)
             return BadRequest("O jogador informado não está vinculado à sua conta.");
 
         if (await db.CampaignMembers.AnyAsync(m => m.CampaignId == campaignId && m.UserId == player.Id))
@@ -122,8 +124,47 @@ public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUs
             // lose the race against the unique index on (CampaignId, UserId). Treat that as the
             // same idempotent success instead of letting it surface as a 500.
             db.ChangeTracker.Clear();
+            return NoContent();
         }
 
+        await AvisarEntradaAsync(campaignId, player.Id);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Campanha R0018: ao voltar, o jogador recebe o painel atualizado e, por Ficha de Personagem sua na campanha que saiu
+    /// do cemitério, FichaNoCemiterioAlterada (a ficha aberta volta a ser editável).
+    /// </summary>
+    private async Task AvisarEntradaAsync(Guid campaignId, Guid jogadorId)
+    {
+        var fichas = await db.CharacterSheets.Where(f => f.CampaignId == campaignId && f.OwnerId == jogadorId).ToListAsync();
+        var motivos = await cemiterio.MotivosAsync(fichas);
+        foreach (var ficha in fichas.Where(f => motivos[f.Id].Count == 0))
+            await notifications.AvisarUsuarioAsync(logger, jogadorId, NotificationEvents.FichaNoCemiterioAlterada, ficha.Id.ToString());
+        await notifications.AvisarUsuarioAsync(logger, jogadorId, NotificationEvents.CampanhasDoJogadorAlteradas);
+    }
+
+    /// <summary>
+    /// Campanha R0018: o jogador deixa a campanha. Tudo numa transação (<see cref="SaidaDoJogador"/>); um encontro
+    /// alterado ao mesmo tempo por outra ação desfaz tudo e responde 409.
+    /// </summary>
+    [HttpDelete("{campaignId}/members/{userId}")]
+    [ConflitoDeConcorrenciaDoEncontro]
+    public async Task<IActionResult> RemoveMember(Guid campaignId, Guid userId)
+    {
+        var gmId = CurrentGmId();
+        if (!await db.Campaigns.AnyAsync(c => c.Id == campaignId && c.GmId == gmId))
+            return NotFound();
+        if (!await db.CampaignMembers.AnyAsync(m => m.CampaignId == campaignId && m.UserId == userId))
+            return NotFound();
+
+        await using (var transacao = await db.Database.BeginTransactionAsync())
+        {
+            await saida.SairAsync(userId, [campaignId]);
+            await db.SaveChangesAsync();
+            await transacao.CommitAsync();
+        }
+        await saida.NotificarAsync();
         return NoContent();
     }
 

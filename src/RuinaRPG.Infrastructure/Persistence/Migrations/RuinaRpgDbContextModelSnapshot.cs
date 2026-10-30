@@ -363,9 +363,6 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("CharacterSheetId")
-                        .HasColumnType("uuid");
-
                     b.Property<int>("Favorabilidade")
                         .HasColumnType("integer");
 
@@ -373,9 +370,13 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CharacterSheetId");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("CharacterSheetId");
+                    b.HasIndex("SheetId");
 
                     b.ToTable("CharacterAffections");
                 });
@@ -384,9 +385,6 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CharacterSheetId")
                         .HasColumnType("uuid");
 
                     b.Property<int?>("Elemento")
@@ -404,6 +402,10 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<int?>("SegundaEssenciaValor")
                         .HasColumnType("integer");
 
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CharacterSheetId");
+
                     b.Property<int?>("SubElemento")
                         .HasColumnType("integer");
 
@@ -412,7 +414,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CharacterSheetId");
+                    b.HasIndex("SheetId");
 
                     b.ToTable("CharacterAffinities");
                 });
@@ -423,14 +425,15 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("CharacterSheetId")
-                        .HasColumnType("uuid");
-
                     b.Property<int?>("DurabilidadeAtual")
                         .HasColumnType("integer");
 
                     b.Property<Guid?>("ItemId")
                         .HasColumnType("uuid");
+
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CharacterSheetId");
 
                     b.Property<int>("Slot")
                         .HasColumnType("integer");
@@ -439,7 +442,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ItemId");
 
-                    b.HasIndex("CharacterSheetId", "Slot")
+                    b.HasIndex("SheetId", "Slot")
                         .IsUnique();
 
                     b.ToTable("CharacterArmorSlots");
@@ -454,14 +457,15 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("ArtifactItemId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("CharacterSheetId")
-                        .HasColumnType("uuid");
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CharacterSheetId");
 
                     b.HasKey("Id");
 
                     b.HasIndex("ArtifactItemId");
 
-                    b.HasIndex("CharacterSheetId");
+                    b.HasIndex("SheetId");
 
                     b.ToTable("CharacterArtifacts");
                 });
@@ -478,18 +482,19 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<int>("Bonus")
                         .HasColumnType("integer");
 
-                    b.Property<Guid>("CharacterSheetId")
-                        .HasColumnType("uuid");
-
                     b.Property<int>("Gasto")
                         .HasColumnType("integer");
+
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CharacterSheetId");
 
                     b.Property<bool>("TemMaestria")
                         .HasColumnType("boolean");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CharacterSheetId", "Atributo")
+                    b.HasIndex("SheetId", "Atributo")
                         .IsUnique();
 
                     b.ToTable("CharacterAttributes");
@@ -501,20 +506,21 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("CharacterSheetId")
-                        .HasColumnType("uuid");
-
                     b.Property<Guid>("ItemId")
                         .HasColumnType("uuid");
 
                     b.Property<int>("Qtd")
                         .HasColumnType("integer");
 
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CharacterSheetId");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("CharacterSheetId");
-
                     b.HasIndex("ItemId");
+
+                    b.HasIndex("SheetId");
 
                     b.ToTable("CharacterInventoryItems");
                 });
@@ -528,9 +534,6 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<int>("Atributo")
                         .HasColumnType("integer");
 
-                    b.Property<Guid>("CharacterSheetId")
-                        .HasColumnType("uuid");
-
                     b.Property<int>("GastoMaestria")
                         .HasColumnType("integer");
 
@@ -541,11 +544,15 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<int>("PericiaId")
                         .HasColumnType("integer");
 
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CharacterSheetId");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("CharacterSheetId");
-
                     b.HasIndex("PericiaId");
+
+                    b.HasIndex("SheetId");
 
                     b.ToTable("CharacterMasteries");
                 });
@@ -554,9 +561,6 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CharacterSheetId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("Descricao")
@@ -576,6 +580,10 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CharacterSheetId");
+
                     b.Property<Guid?>("SourceBankEntryId")
                         .HasColumnType("uuid");
 
@@ -584,9 +592,9 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CharacterSheetId");
-
                     b.HasIndex("ImageId");
+
+                    b.HasIndex("SheetId");
 
                     b.ToTable("CharacterRunes");
                 });
@@ -656,6 +664,9 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.Property<int?>("Linhagem")
                         .HasColumnType("integer");
+
+                    b.Property<bool>("Morto")
+                        .HasColumnType("boolean");
 
                     b.Property<int>("Nivel")
                         .HasColumnType("integer");
@@ -737,8 +748,9 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.CharacterSheets.CharacterSheetHistoriaImage", b =>
                 {
-                    b.Property<Guid>("CharacterSheetId")
-                        .HasColumnType("uuid");
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CharacterSheetId");
 
                     b.Property<Guid>("ImageId")
                         .HasColumnType("uuid");
@@ -746,7 +758,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<int>("Ordem")
                         .HasColumnType("integer");
 
-                    b.HasKey("CharacterSheetId", "ImageId");
+                    b.HasKey("SheetId", "ImageId");
 
                     b.HasIndex("ImageId");
 
@@ -759,9 +771,6 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("CharacterSheetId")
-                        .HasColumnType("uuid");
-
                     b.Property<int>("DurabilidadeAtual")
                         .HasColumnType("integer");
 
@@ -771,11 +780,15 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("ItemId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CharacterSheetId");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("CharacterSheetId");
-
                     b.HasIndex("ItemId");
+
+                    b.HasIndex("SheetId");
 
                     b.ToTable("CharacterShields");
                 });
@@ -789,20 +802,21 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<int?>("AtributoEscolhido")
                         .HasColumnType("integer");
 
-                    b.Property<Guid>("CharacterSheetId")
-                        .HasColumnType("uuid");
-
                     b.Property<int>("Gasto")
                         .HasColumnType("integer");
 
                     b.Property<int>("PericiaId")
                         .HasColumnType("integer");
 
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CharacterSheetId");
+
                     b.HasKey("Id");
 
                     b.HasIndex("PericiaId");
 
-                    b.HasIndex("CharacterSheetId", "PericiaId")
+                    b.HasIndex("SheetId", "PericiaId")
                         .IsUnique();
 
                     b.ToTable("CharacterSkills");
@@ -816,9 +830,6 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.Property<int?>("Categoria")
                         .HasColumnType("integer");
-
-                    b.Property<Guid>("CharacterSheetId")
-                        .HasColumnType("uuid");
 
                     b.Property<bool>("CriadaNaFicha")
                         .HasColumnType("boolean");
@@ -843,6 +854,10 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<string>("Requisitos")
                         .HasColumnType("jsonb");
 
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CharacterSheetId");
+
                     b.Property<Guid?>("SourceBankEntryId")
                         .HasColumnType("uuid");
 
@@ -851,7 +866,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CharacterSheetId");
+                    b.HasIndex("SheetId");
 
                     b.ToTable("CharacterSpellAbilities");
                 });
@@ -888,9 +903,6 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("CharacterSheetId")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("Especificacao")
                         .HasColumnType("text");
 
@@ -903,12 +915,16 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<int?>("RacialVariante")
                         .HasColumnType("integer");
 
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CharacterSheetId");
+
                     b.Property<Guid>("TraitId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CharacterSheetId");
+                    b.HasIndex("SheetId");
 
                     b.HasIndex("TraitId");
 
@@ -921,9 +937,6 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("CharacterSheetId")
-                        .HasColumnType("uuid");
-
                     b.Property<int>("DurabilidadeAtual")
                         .HasColumnType("integer");
 
@@ -933,11 +946,15 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("ItemId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CharacterSheetId");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("CharacterSheetId");
-
                     b.HasIndex("ItemId");
+
+                    b.HasIndex("SheetId");
 
                     b.ToTable("CharacterWeapons");
                 });
@@ -1102,9 +1119,6 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("CreatureSheetId")
-                        .HasColumnType("uuid");
-
                     b.Property<int>("Favorabilidade")
                         .HasColumnType("integer");
 
@@ -1112,9 +1126,13 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatureSheetId");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatureSheetId");
+                    b.HasIndex("SheetId");
 
                     b.ToTable("CreatureAffections");
                 });
@@ -1125,14 +1143,15 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("CreatureSheetId")
-                        .HasColumnType("uuid");
-
                     b.Property<int?>("DurabilidadeAtual")
                         .HasColumnType("integer");
 
                     b.Property<Guid?>("ItemId")
                         .HasColumnType("uuid");
+
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatureSheetId");
 
                     b.Property<int>("Slot")
                         .HasColumnType("integer");
@@ -1141,7 +1160,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ItemId");
 
-                    b.HasIndex("CreatureSheetId", "Slot")
+                    b.HasIndex("SheetId", "Slot")
                         .IsUnique();
 
                     b.ToTable("CreatureArmorSlots");
@@ -1156,14 +1175,15 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("ArtifactItemId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("CreatureSheetId")
-                        .HasColumnType("uuid");
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatureSheetId");
 
                     b.HasKey("Id");
 
                     b.HasIndex("ArtifactItemId");
 
-                    b.HasIndex("CreatureSheetId");
+                    b.HasIndex("SheetId");
 
                     b.ToTable("CreatureArtifacts");
                 });
@@ -1180,18 +1200,19 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<int>("Bonus")
                         .HasColumnType("integer");
 
-                    b.Property<Guid>("CreatureSheetId")
-                        .HasColumnType("uuid");
-
                     b.Property<int>("Gasto")
                         .HasColumnType("integer");
+
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatureSheetId");
 
                     b.Property<bool>("TemMaestria")
                         .HasColumnType("boolean");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatureSheetId", "Atributo")
+                    b.HasIndex("SheetId", "Atributo")
                         .IsUnique();
 
                     b.ToTable("CreatureAttributes");
@@ -1206,9 +1227,6 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<int>("Atributo")
                         .HasColumnType("integer");
 
-                    b.Property<Guid>("CreatureSheetId")
-                        .HasColumnType("uuid");
-
                     b.Property<int>("GastoMaestria")
                         .HasColumnType("integer");
 
@@ -1219,11 +1237,15 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<int>("PericiaId")
                         .HasColumnType("integer");
 
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatureSheetId");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatureSheetId");
-
                     b.HasIndex("PericiaId");
+
+                    b.HasIndex("SheetId");
 
                     b.ToTable("CreatureMasteries");
                 });
@@ -1302,9 +1324,6 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("CreatureSheetId")
-                        .HasColumnType("uuid");
-
                     b.Property<int>("DurabilidadeAtual")
                         .HasColumnType("integer");
 
@@ -1314,11 +1333,15 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("ItemId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatureSheetId");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatureSheetId");
-
                     b.HasIndex("ItemId");
+
+                    b.HasIndex("SheetId");
 
                     b.ToTable("CreatureShields");
                 });
@@ -1332,20 +1355,21 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<int?>("AtributoEscolhido")
                         .HasColumnType("integer");
 
-                    b.Property<Guid>("CreatureSheetId")
-                        .HasColumnType("uuid");
-
                     b.Property<int>("Gasto")
                         .HasColumnType("integer");
 
                     b.Property<int>("PericiaId")
                         .HasColumnType("integer");
 
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatureSheetId");
+
                     b.HasKey("Id");
 
                     b.HasIndex("PericiaId");
 
-                    b.HasIndex("CreatureSheetId", "PericiaId")
+                    b.HasIndex("SheetId", "PericiaId")
                         .IsUnique();
 
                     b.ToTable("CreatureSkills");
@@ -1359,9 +1383,6 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.Property<int?>("Categoria")
                         .HasColumnType("integer");
-
-                    b.Property<Guid>("CreatureSheetId")
-                        .HasColumnType("uuid");
 
                     b.Property<bool>("CriadaNaFicha")
                         .HasColumnType("boolean");
@@ -1386,6 +1407,10 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<string>("Requisitos")
                         .HasColumnType("jsonb");
 
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatureSheetId");
+
                     b.Property<Guid?>("SourceBankEntryId")
                         .HasColumnType("uuid");
 
@@ -1394,7 +1419,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatureSheetId");
+                    b.HasIndex("SheetId");
 
                     b.ToTable("CreatureSpellAbilities");
                 });
@@ -1431,9 +1456,6 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("CreatureSheetId")
-                        .HasColumnType("uuid");
-
                     b.Property<int>("DT")
                         .HasColumnType("integer");
 
@@ -1443,11 +1465,15 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<int>("Qtd")
                         .HasColumnType("integer");
 
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatureSheetId");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatureSheetId");
-
                     b.HasIndex("ItemId");
+
+                    b.HasIndex("SheetId");
 
                     b.ToTable("CreatureSpoils");
                 });
@@ -1461,14 +1487,15 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("CreatureExclusiveTraitId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("CreatureSheetId")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("Especificacao")
                         .HasColumnType("text");
 
                     b.Property<int>("Polaridade")
                         .HasColumnType("integer");
+
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatureSheetId");
 
                     b.Property<Guid?>("TraitId")
                         .HasColumnType("uuid");
@@ -1477,7 +1504,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("CreatureExclusiveTraitId");
 
-                    b.HasIndex("CreatureSheetId");
+                    b.HasIndex("SheetId");
 
                     b.HasIndex("TraitId");
 
@@ -1491,9 +1518,6 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CreatureSheetId")
                         .HasColumnType("uuid");
 
                     b.Property<int?>("DurabilidadeAtual")
@@ -1517,11 +1541,15 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<int?>("ManualTipoDeDano")
                         .HasColumnType("integer");
 
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("CreatureSheetId");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatureSheetId");
-
                     b.HasIndex("ItemId");
+
+                    b.HasIndex("SheetId");
 
                     b.ToTable("CreatureWeapons");
                 });
@@ -1830,6 +1858,10 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<Guid?>("InvitedByGmId")
                         .HasColumnType("uuid");
 
@@ -2076,12 +2108,13 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<Guid>("NpcSheetId")
-                        .HasColumnType("uuid");
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("NpcSheetId");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("NpcSheetId");
+                    b.HasIndex("SheetId");
 
                     b.ToTable("NpcAffections");
                 });
@@ -2101,14 +2134,15 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<int?>("Experiencia")
                         .HasColumnType("integer");
 
-                    b.Property<Guid>("NpcSheetId")
-                        .HasColumnType("uuid");
-
                     b.Property<int?>("SegundaEssencia")
                         .HasColumnType("integer");
 
                     b.Property<int?>("SegundaEssenciaValor")
                         .HasColumnType("integer");
+
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("NpcSheetId");
 
                     b.Property<int?>("SubElemento")
                         .HasColumnType("integer");
@@ -2118,7 +2152,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("NpcSheetId");
+                    b.HasIndex("SheetId");
 
                     b.ToTable("NpcAffinities");
                 });
@@ -2135,8 +2169,9 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("ItemId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("NpcSheetId")
-                        .HasColumnType("uuid");
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("NpcSheetId");
 
                     b.Property<int>("Slot")
                         .HasColumnType("integer");
@@ -2145,7 +2180,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ItemId");
 
-                    b.HasIndex("NpcSheetId", "Slot")
+                    b.HasIndex("SheetId", "Slot")
                         .IsUnique();
 
                     b.ToTable("NpcArmorSlots");
@@ -2160,14 +2195,15 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("ArtifactItemId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("NpcSheetId")
-                        .HasColumnType("uuid");
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("NpcSheetId");
 
                     b.HasKey("Id");
 
                     b.HasIndex("ArtifactItemId");
 
-                    b.HasIndex("NpcSheetId");
+                    b.HasIndex("SheetId");
 
                     b.ToTable("NpcArtifacts");
                 });
@@ -2187,15 +2223,16 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<int>("Gasto")
                         .HasColumnType("integer");
 
-                    b.Property<Guid>("NpcSheetId")
-                        .HasColumnType("uuid");
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("NpcSheetId");
 
                     b.Property<bool>("TemMaestria")
                         .HasColumnType("boolean");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("NpcSheetId", "Atributo")
+                    b.HasIndex("SheetId", "Atributo")
                         .IsUnique();
 
                     b.ToTable("NpcAttributes");
@@ -2210,17 +2247,18 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("ItemId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("NpcSheetId")
-                        .HasColumnType("uuid");
-
                     b.Property<int>("Qtd")
                         .HasColumnType("integer");
+
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("NpcSheetId");
 
                     b.HasKey("Id");
 
                     b.HasIndex("ItemId");
 
-                    b.HasIndex("NpcSheetId");
+                    b.HasIndex("SheetId");
 
                     b.ToTable("NpcInventoryItems");
                 });
@@ -2241,17 +2279,18 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<Guid>("NpcSheetId")
-                        .HasColumnType("uuid");
-
                     b.Property<int>("PericiaId")
                         .HasColumnType("integer");
 
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("NpcSheetId");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("NpcSheetId");
-
                     b.HasIndex("PericiaId");
+
+                    b.HasIndex("SheetId");
 
                     b.ToTable("NpcMasteries");
                 });
@@ -2279,8 +2318,9 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<Guid>("NpcSheetId")
-                        .HasColumnType("uuid");
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("NpcSheetId");
 
                     b.Property<Guid?>("SourceBankEntryId")
                         .HasColumnType("uuid");
@@ -2292,7 +2332,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ImageId");
 
-                    b.HasIndex("NpcSheetId");
+                    b.HasIndex("SheetId");
 
                     b.ToTable("NpcRunes");
                 });
@@ -2437,8 +2477,9 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.NpcSheets.NpcSheetHistoriaImage", b =>
                 {
-                    b.Property<Guid>("NpcSheetId")
-                        .HasColumnType("uuid");
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("NpcSheetId");
 
                     b.Property<Guid>("ImageId")
                         .HasColumnType("uuid");
@@ -2446,7 +2487,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<int>("Ordem")
                         .HasColumnType("integer");
 
-                    b.HasKey("NpcSheetId", "ImageId");
+                    b.HasKey("SheetId", "ImageId");
 
                     b.HasIndex("ImageId");
 
@@ -2468,14 +2509,15 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("ItemId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("NpcSheetId")
-                        .HasColumnType("uuid");
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("NpcSheetId");
 
                     b.HasKey("Id");
 
                     b.HasIndex("ItemId");
 
-                    b.HasIndex("NpcSheetId");
+                    b.HasIndex("SheetId");
 
                     b.ToTable("NpcShields");
                 });
@@ -2492,17 +2534,18 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<int>("Gasto")
                         .HasColumnType("integer");
 
-                    b.Property<Guid>("NpcSheetId")
-                        .HasColumnType("uuid");
-
                     b.Property<int>("PericiaId")
                         .HasColumnType("integer");
+
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("NpcSheetId");
 
                     b.HasKey("Id");
 
                     b.HasIndex("PericiaId");
 
-                    b.HasIndex("NpcSheetId", "PericiaId")
+                    b.HasIndex("SheetId", "PericiaId")
                         .IsUnique();
 
                     b.ToTable("NpcSkills");
@@ -2537,11 +2580,12 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<Guid>("NpcSheetId")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("Requisitos")
                         .HasColumnType("jsonb");
+
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("NpcSheetId");
 
                     b.Property<Guid?>("SourceBankEntryId")
                         .HasColumnType("uuid");
@@ -2551,7 +2595,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("NpcSheetId");
+                    b.HasIndex("SheetId");
 
                     b.ToTable("NpcSpellAbilities");
                 });
@@ -2594,21 +2638,22 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<bool>("IsRacial")
                         .HasColumnType("boolean");
 
-                    b.Property<Guid>("NpcSheetId")
-                        .HasColumnType("uuid");
-
                     b.Property<int>("Polaridade")
                         .HasColumnType("integer");
 
                     b.Property<int?>("RacialVariante")
                         .HasColumnType("integer");
 
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("NpcSheetId");
+
                     b.Property<Guid>("TraitId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("NpcSheetId");
+                    b.HasIndex("SheetId");
 
                     b.HasIndex("TraitId");
 
@@ -2630,14 +2675,15 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("ItemId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("NpcSheetId")
-                        .HasColumnType("uuid");
+                    b.Property<Guid>("SheetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("NpcSheetId");
 
                     b.HasKey("Id");
 
                     b.HasIndex("ItemId");
 
-                    b.HasIndex("NpcSheetId");
+                    b.HasIndex("SheetId");
 
                     b.ToTable("NpcWeapons");
                 });
@@ -3586,7 +3632,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                 {
                     b.HasOne("RuinaRPG.Infrastructure.CharacterSheets.CharacterSheet", null)
                         .WithMany()
-                        .HasForeignKey("CharacterSheetId")
+                        .HasForeignKey("SheetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -3595,23 +3641,23 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                 {
                     b.HasOne("RuinaRPG.Infrastructure.CharacterSheets.CharacterSheet", null)
                         .WithMany()
-                        .HasForeignKey("CharacterSheetId")
+                        .HasForeignKey("SheetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.CharacterSheets.CharacterArmorSlot", b =>
                 {
-                    b.HasOne("RuinaRPG.Infrastructure.CharacterSheets.CharacterSheet", null)
-                        .WithMany()
-                        .HasForeignKey("CharacterSheetId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("RuinaRPG.Infrastructure.Items.Item", null)
                         .WithMany()
                         .HasForeignKey("ItemId")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("RuinaRPG.Infrastructure.CharacterSheets.CharacterSheet", null)
+                        .WithMany()
+                        .HasForeignKey("SheetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.CharacterSheets.CharacterArtifact", b =>
@@ -3624,7 +3670,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.HasOne("RuinaRPG.Infrastructure.CharacterSheets.CharacterSheet", null)
                         .WithMany()
-                        .HasForeignKey("CharacterSheetId")
+                        .HasForeignKey("SheetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -3633,53 +3679,53 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                 {
                     b.HasOne("RuinaRPG.Infrastructure.CharacterSheets.CharacterSheet", null)
                         .WithMany()
-                        .HasForeignKey("CharacterSheetId")
+                        .HasForeignKey("SheetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.CharacterSheets.CharacterInventoryItem", b =>
                 {
-                    b.HasOne("RuinaRPG.Infrastructure.CharacterSheets.CharacterSheet", null)
-                        .WithMany()
-                        .HasForeignKey("CharacterSheetId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("RuinaRPG.Infrastructure.Items.Item", null)
                         .WithMany()
                         .HasForeignKey("ItemId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("RuinaRPG.Infrastructure.CharacterSheets.CharacterSheet", null)
+                        .WithMany()
+                        .HasForeignKey("SheetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.CharacterSheets.CharacterMastery", b =>
                 {
-                    b.HasOne("RuinaRPG.Infrastructure.CharacterSheets.CharacterSheet", null)
-                        .WithMany()
-                        .HasForeignKey("CharacterSheetId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("RuinaRPG.Infrastructure.Rules.PericiaDefinicao", null)
                         .WithMany()
                         .HasForeignKey("PericiaId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("RuinaRPG.Infrastructure.CharacterSheets.CharacterSheet", null)
+                        .WithMany()
+                        .HasForeignKey("SheetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.CharacterSheets.CharacterRune", b =>
                 {
-                    b.HasOne("RuinaRPG.Infrastructure.CharacterSheets.CharacterSheet", null)
-                        .WithMany()
-                        .HasForeignKey("CharacterSheetId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("RuinaRPG.Infrastructure.Images.Image", null)
                         .WithMany()
                         .HasForeignKey("ImageId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("RuinaRPG.Infrastructure.CharacterSheets.CharacterSheet", null)
+                        .WithMany()
+                        .HasForeignKey("SheetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.CharacterSheets.CharacterSheet", b =>
@@ -3714,46 +3760,46 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.CharacterSheets.CharacterSheetHistoriaImage", b =>
                 {
-                    b.HasOne("RuinaRPG.Infrastructure.CharacterSheets.CharacterSheet", null)
-                        .WithMany()
-                        .HasForeignKey("CharacterSheetId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("RuinaRPG.Infrastructure.Images.Image", null)
                         .WithMany()
                         .HasForeignKey("ImageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RuinaRPG.Infrastructure.CharacterSheets.CharacterSheet", null)
+                        .WithMany()
+                        .HasForeignKey("SheetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.CharacterSheets.CharacterShield", b =>
                 {
-                    b.HasOne("RuinaRPG.Infrastructure.CharacterSheets.CharacterSheet", null)
-                        .WithMany()
-                        .HasForeignKey("CharacterSheetId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("RuinaRPG.Infrastructure.Items.Item", null)
                         .WithMany()
                         .HasForeignKey("ItemId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("RuinaRPG.Infrastructure.CharacterSheets.CharacterSheet", null)
+                        .WithMany()
+                        .HasForeignKey("SheetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.CharacterSheets.CharacterSkill", b =>
                 {
-                    b.HasOne("RuinaRPG.Infrastructure.CharacterSheets.CharacterSheet", null)
-                        .WithMany()
-                        .HasForeignKey("CharacterSheetId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("RuinaRPG.Infrastructure.Rules.PericiaDefinicao", null)
                         .WithMany()
                         .HasForeignKey("PericiaId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RuinaRPG.Infrastructure.CharacterSheets.CharacterSheet", null)
+                        .WithMany()
+                        .HasForeignKey("SheetId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
@@ -3761,7 +3807,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                 {
                     b.HasOne("RuinaRPG.Infrastructure.CharacterSheets.CharacterSheet", null)
                         .WithMany()
-                        .HasForeignKey("CharacterSheetId")
+                        .HasForeignKey("SheetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -3779,7 +3825,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                 {
                     b.HasOne("RuinaRPG.Infrastructure.CharacterSheets.CharacterSheet", null)
                         .WithMany()
-                        .HasForeignKey("CharacterSheetId")
+                        .HasForeignKey("SheetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -3792,16 +3838,16 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.CharacterSheets.CharacterWeapon", b =>
                 {
-                    b.HasOne("RuinaRPG.Infrastructure.CharacterSheets.CharacterSheet", null)
-                        .WithMany()
-                        .HasForeignKey("CharacterSheetId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("RuinaRPG.Infrastructure.Items.Item", null)
                         .WithMany()
                         .HasForeignKey("ItemId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RuinaRPG.Infrastructure.CharacterSheets.CharacterSheet", null)
+                        .WithMany()
+                        .HasForeignKey("SheetId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
@@ -3845,23 +3891,23 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                 {
                     b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", null)
                         .WithMany()
-                        .HasForeignKey("CreatureSheetId")
+                        .HasForeignKey("SheetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureArmorSlot", b =>
                 {
-                    b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", null)
-                        .WithMany()
-                        .HasForeignKey("CreatureSheetId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("RuinaRPG.Infrastructure.Items.Item", null)
                         .WithMany()
                         .HasForeignKey("ItemId")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", null)
+                        .WithMany()
+                        .HasForeignKey("SheetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureArtifact", b =>
@@ -3874,7 +3920,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", null)
                         .WithMany()
-                        .HasForeignKey("CreatureSheetId")
+                        .HasForeignKey("SheetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -3883,23 +3929,23 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                 {
                     b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", null)
                         .WithMany()
-                        .HasForeignKey("CreatureSheetId")
+                        .HasForeignKey("SheetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureMastery", b =>
                 {
-                    b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", null)
-                        .WithMany()
-                        .HasForeignKey("CreatureSheetId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("RuinaRPG.Infrastructure.Rules.PericiaDefinicao", null)
                         .WithMany()
                         .HasForeignKey("PericiaId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", null)
+                        .WithMany()
+                        .HasForeignKey("SheetId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
@@ -3924,31 +3970,31 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureShield", b =>
                 {
-                    b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", null)
-                        .WithMany()
-                        .HasForeignKey("CreatureSheetId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("RuinaRPG.Infrastructure.Items.Item", null)
                         .WithMany()
                         .HasForeignKey("ItemId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", null)
+                        .WithMany()
+                        .HasForeignKey("SheetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureSkill", b =>
                 {
-                    b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", null)
-                        .WithMany()
-                        .HasForeignKey("CreatureSheetId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("RuinaRPG.Infrastructure.Rules.PericiaDefinicao", null)
                         .WithMany()
                         .HasForeignKey("PericiaId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", null)
+                        .WithMany()
+                        .HasForeignKey("SheetId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
@@ -3956,7 +4002,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                 {
                     b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", null)
                         .WithMany()
-                        .HasForeignKey("CreatureSheetId")
+                        .HasForeignKey("SheetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -3972,16 +4018,16 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureSpoil", b =>
                 {
-                    b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", null)
-                        .WithMany()
-                        .HasForeignKey("CreatureSheetId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("RuinaRPG.Infrastructure.Items.Item", null)
                         .WithMany()
                         .HasForeignKey("ItemId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", null)
+                        .WithMany()
+                        .HasForeignKey("SheetId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
@@ -3994,7 +4040,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", null)
                         .WithMany()
-                        .HasForeignKey("CreatureSheetId")
+                        .HasForeignKey("SheetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -4006,16 +4052,16 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.CreatureSheets.CreatureWeapon", b =>
                 {
-                    b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", null)
-                        .WithMany()
-                        .HasForeignKey("CreatureSheetId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("RuinaRPG.Infrastructure.Items.Item", null)
                         .WithMany()
                         .HasForeignKey("ItemId")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("RuinaRPG.Infrastructure.CreatureSheets.CreatureSheet", null)
+                        .WithMany()
+                        .HasForeignKey("SheetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.Diary.DiaryEntry", b =>
@@ -4182,7 +4228,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                 {
                     b.HasOne("RuinaRPG.Infrastructure.NpcSheets.NpcSheet", null)
                         .WithMany()
-                        .HasForeignKey("NpcSheetId")
+                        .HasForeignKey("SheetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -4191,7 +4237,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                 {
                     b.HasOne("RuinaRPG.Infrastructure.NpcSheets.NpcSheet", null)
                         .WithMany()
-                        .HasForeignKey("NpcSheetId")
+                        .HasForeignKey("SheetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -4205,7 +4251,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.HasOne("RuinaRPG.Infrastructure.NpcSheets.NpcSheet", null)
                         .WithMany()
-                        .HasForeignKey("NpcSheetId")
+                        .HasForeignKey("SheetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -4220,7 +4266,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.HasOne("RuinaRPG.Infrastructure.NpcSheets.NpcSheet", null)
                         .WithMany()
-                        .HasForeignKey("NpcSheetId")
+                        .HasForeignKey("SheetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -4229,7 +4275,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                 {
                     b.HasOne("RuinaRPG.Infrastructure.NpcSheets.NpcSheet", null)
                         .WithMany()
-                        .HasForeignKey("NpcSheetId")
+                        .HasForeignKey("SheetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -4244,23 +4290,23 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.HasOne("RuinaRPG.Infrastructure.NpcSheets.NpcSheet", null)
                         .WithMany()
-                        .HasForeignKey("NpcSheetId")
+                        .HasForeignKey("SheetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.NpcSheets.NpcMastery", b =>
                 {
-                    b.HasOne("RuinaRPG.Infrastructure.NpcSheets.NpcSheet", null)
-                        .WithMany()
-                        .HasForeignKey("NpcSheetId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("RuinaRPG.Infrastructure.Rules.PericiaDefinicao", null)
                         .WithMany()
                         .HasForeignKey("PericiaId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RuinaRPG.Infrastructure.NpcSheets.NpcSheet", null)
+                        .WithMany()
+                        .HasForeignKey("SheetId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
@@ -4273,7 +4319,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.HasOne("RuinaRPG.Infrastructure.NpcSheets.NpcSheet", null)
                         .WithMany()
-                        .HasForeignKey("NpcSheetId")
+                        .HasForeignKey("SheetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -4317,7 +4363,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.HasOne("RuinaRPG.Infrastructure.NpcSheets.NpcSheet", null)
                         .WithMany()
-                        .HasForeignKey("NpcSheetId")
+                        .HasForeignKey("SheetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -4332,23 +4378,23 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.HasOne("RuinaRPG.Infrastructure.NpcSheets.NpcSheet", null)
                         .WithMany()
-                        .HasForeignKey("NpcSheetId")
+                        .HasForeignKey("SheetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
             modelBuilder.Entity("RuinaRPG.Infrastructure.NpcSheets.NpcSkill", b =>
                 {
-                    b.HasOne("RuinaRPG.Infrastructure.NpcSheets.NpcSheet", null)
-                        .WithMany()
-                        .HasForeignKey("NpcSheetId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("RuinaRPG.Infrastructure.Rules.PericiaDefinicao", null)
                         .WithMany()
                         .HasForeignKey("PericiaId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RuinaRPG.Infrastructure.NpcSheets.NpcSheet", null)
+                        .WithMany()
+                        .HasForeignKey("SheetId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
@@ -4356,7 +4402,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                 {
                     b.HasOne("RuinaRPG.Infrastructure.NpcSheets.NpcSheet", null)
                         .WithMany()
-                        .HasForeignKey("NpcSheetId")
+                        .HasForeignKey("SheetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -4374,7 +4420,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                 {
                     b.HasOne("RuinaRPG.Infrastructure.NpcSheets.NpcSheet", null)
                         .WithMany()
-                        .HasForeignKey("NpcSheetId")
+                        .HasForeignKey("SheetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -4395,7 +4441,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
 
                     b.HasOne("RuinaRPG.Infrastructure.NpcSheets.NpcSheet", null)
                         .WithMany()
-                        .HasForeignKey("NpcSheetId")
+                        .HasForeignKey("SheetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

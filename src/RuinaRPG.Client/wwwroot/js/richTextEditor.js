@@ -93,9 +93,12 @@ window.ruinaRichText = {
         await this._ensureLoaded();
         var self = this;
         var allowImages = !!(options && options.imagens);
+        // Ficha no cemitério: só leitura (setReadOnly abaixo segue as mudanças depois de criado).
+        var readOnly = !!(options && options.somenteLeitura);
         var state = { editor: null, timer: null, observer: null };
         var editor = Jodit.make(element, {
             language: 'pt_br',
+            readonly: readOnly,
             theme: this._isDark() ? 'dark' : 'default',
             minHeight: 500,
             height: 'auto',
@@ -165,6 +168,12 @@ window.ruinaRichText = {
         state.observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
         this._instances.set(element, state);
+    },
+
+    setReadOnly: function (element, readOnly) {
+        var state = this._instances.get(element);
+        if (!state) return;
+        state.editor.setReadOnly(!!readOnly);
     },
 
     destroy: function (element) {

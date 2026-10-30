@@ -13,7 +13,10 @@ public interface INotificationConnection : IAsyncDisposable
 
     /// <summary><paramref name="onChanged"/> also runs after an automatic reconnect, since events may have been missed.</summary>
     /// <param name="onCondicoes">The server changed the Condições acting on a sheet the user owns (the sheet pages reload).</param>
-    Task StartAsync(Func<SecretNoteNotification, Task> onReceived, Func<Task> onChanged, Func<CondicoesAlteradasNotification, Task> onCondicoes);
+    /// <param name="onFichaNoCemiterio">A sheet the user owns entered or left the cemetery, including when its campaign removed or re-added the user (its id; the sheet page reloads).</param>
+    /// <param name="onCampanhasDoJogador">The user was removed from a campaign (also on account deactivation/deletion) or added to one, re-adding included (Campanha R0018): the panel and the campaign pages reload.</param>
+    Task StartAsync(Func<SecretNoteNotification, Task> onReceived, Func<Task> onChanged, Func<CondicoesAlteradasNotification, Task> onCondicoes,
+        Func<string, Task> onFichaNoCemiterio, Func<Task> onCampanhasDoJogador);
 
     Task StopAsync();
 }

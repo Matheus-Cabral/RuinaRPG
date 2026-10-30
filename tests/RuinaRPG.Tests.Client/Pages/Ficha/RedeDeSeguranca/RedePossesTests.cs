@@ -137,9 +137,9 @@ public abstract class RedePossesTests : RedeDeSegurancaBase
             AbaAberta(cut).QuerySelectorAll("button[title='Cadastrar novo item']").Should().HaveCount(tipo != "Personagem" && papel == "GM" ? 2 : 0);
             AbaAberta(cut).QuerySelectorAll("input[disabled]").Should().BeEmpty();
             AbaAberta(cut).QuerySelectorAll("button[disabled]").Should().BeEmpty();
-            // No NPC e na Criatura o CatalogoItemPicker passa ao EntityPicker o texto literal "Placeholder" (hoje é o que se vê).
+            // O CatalogoItemPicker do NPC e da Criatura repassa o texto do campo, como o seletor do Personagem (2.1.0: era o literal "Placeholder").
             AbaAberta(cut).QuerySelectorAll("input[placeholder]").Select(i => i.GetAttribute("placeholder"))
-                .Should().Equal(tipo == "Personagem" ? new[] { "Buscar item...", "Buscar artefato..." } : new[] { "Placeholder", "Placeholder" });
+                .Should().Equal(new[] { "Buscar item...", "Buscar artefato..." });
         }
 
         // Acima da carga: o aviso de Sobrecarregado. O bônus de carga da campanha só aparece no Personagem (o único
@@ -375,7 +375,7 @@ public abstract class RedePossesTests : RedeDeSegurancaBase
     {
         public static readonly object Personagem = new
         {
-            id = SheetId, campaignId = "c1", ownerId = "u2", imageUrl = "/img/um.png", imageId = "img1",
+            id = SheetId, campaignId = "c1", campaignName = "Crônicas de Alker", ownerId = "u2", imageUrl = "/img/um.png", imageId = "img1",
             nome = "Aria", linhagem = "Humano", variante = "Sinir", vocacao = "Feiticeiro", subVocacao = "Piromante", afinidade = "Fogo", propriedade = "Uma casa",
             nivel = 3, circulo = 1, grau = 2, possuiCoracaoDeMana = true, experienciaAtual = 120, eapAtual = 7,
             nucleosRankF = 1, nucleosRankE = 2, nucleosRankD = 0, nucleosRankC = 0, nucleosRankB = 0, nucleosRankA = 0, nucleosRankS = 0,

@@ -162,6 +162,7 @@
     {
         Notifier.Changed += OnNotifierChanged;
         Notifier.Received += OnSecretNoteReceived;
+        Notifier.CampanhasDoJogadorAlteradas += OnCampanhasDoJogadorAlteradas;
         Navigation.LocationChanged += OnLocationChanged;
     }
 
@@ -224,10 +225,25 @@
         StateHasChanged();
     });
 
+    // Campanha R0018: se o GM tirou o jogador desta campanha, a tela dela já não existe para ele: volta ao painel.
+    private void OnCampanhasDoJogadorAlteradas() => _ = InvokeAsync(async () =>
+    {
+        var response = await Http.GetAsync($"campaigns/{CampaignId}/player-view");
+        if (response.StatusCode is System.Net.HttpStatusCode.NotFound or System.Net.HttpStatusCode.Forbidden)
+        {
+            Navigation.NavigateTo("painel");
+            return;
+        }
+
+        await LoadAsync();
+        StateHasChanged();
+    });
+
     public void Dispose()
     {
         Notifier.Changed -= OnNotifierChanged;
         Notifier.Received -= OnSecretNoteReceived;
+        Notifier.CampanhasDoJogadorAlteradas -= OnCampanhasDoJogadorAlteradas;
         Navigation.LocationChanged -= OnLocationChanged;
     }
 

@@ -28,6 +28,31 @@ public sealed partial class FichaEstado
         NotificarAlteracao();
     }
 
+    /// <summary>
+    /// A caixa "Morto" do GM (só onde <see cref="TipoDeFichaCliente.TemCemiterio"/>): grava no endpoint dela, que vale
+    /// também com a ficha no cemitério, e relê o estado do cemitério.
+    /// </summary>
+    public async Task DefinirMorteAsync(bool morto)
+    {
+        HttpResponseMessage response;
+        try
+        {
+            response = await Http.PutAsJsonAsync(Tipo.Url(SheetId, "morte"), new DefinirMorteRequest(morto));
+        }
+        catch (HttpRequestException)
+        {
+            MostrarErro("Não foi possível alterar a caixa Morto.");
+            return;
+        }
+        if (!response.IsSuccessStatusCode)
+        {
+            MostrarErro(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível alterar a caixa Morto.");
+            return;
+        }
+
+        await RecarregarCemiterioAsync();
+    }
+
     // ---------------- Característica Racial ----------------
     // Ruína RPG - Sistema Básico §7: toda Variante concede uma Característica Gratuita (escolha de verdade) e, algumas,
     // uma Obrigatória (nenhuma, uma fixa ou também uma escolha) — ver RacialTraitLookup/RacialTraitChoiceResolver. O
@@ -48,7 +73,7 @@ public sealed partial class FichaEstado
     public async Task CarregarEscolhaRacialPendenteAsync()
     {
         EscolhaRacialPendente = await Http.GetFromJsonAsync<PendingRacialTraitChoiceResponse>(Tipo.Url(SheetId, "racial-traits/pending"));
-        EscolhaRacialAberta = EscolhaRacialPendente?.Pending == true;
+        EscolhaRacialAberta = EscolhaRacialPendente?.Pending == true && !SomenteLeitura;
         GratuitaEscolhida = null;
         ObrigatoriaEscolhida = null;
         EspecificacaoDaGratuita = null;

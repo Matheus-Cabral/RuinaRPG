@@ -126,6 +126,12 @@ else
                         <MudIcon Icon="@Icons.Material.Filled.PlayArrow" Size="Size.Small" Class="mr-1" />
                     }
                     @participant.Nome
+                    @if (participant.NoCemiterio)
+                    {
+                        <MudTooltip Text="Ficha no cemitério">
+                            <MudIcon Icon="@Icons.Material.Filled.Church" Size="Size.Small" Class="ml-1" aria-label="Ficha no cemitério" />
+                        </MudTooltip>
+                    }
                 </td>
                 <td>@participant.Iniciativa</td>
                 <td>@participant.PV</td>
@@ -154,7 +160,7 @@ else
                                            OnClick="@(() => PostAsync($"turn/{participant.Id}", "Não foi possível passar a vez."))" />
                         }
                         <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => StartEditParticipant(participant))">Editar</MudButton>
-                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Coronavirus" Disabled="_enviando"
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Coronavirus" Disabled="@(_enviando || participant.NoCemiterio)"
                                    OnClick="@(() => AdicionarCondicaoAsync(participant))">Adicionar condição</MudButton>
                         <MudIconButton Icon="@Icons.Material.Filled.PersonRemove" Size="Size.Small" aria-label="Remover do encontro" title="Remover do encontro" Disabled="_enviando"
                                        OnClick="@(() => RemoveParticipantAsync(participant))" />
@@ -175,13 +181,13 @@ else
                                 </MudItem>
                                 @* Vindo de uma ficha, PV/PF/PA mudam na própria ficha (o servidor grava só o que mudou aqui). *@
                                 <MudItem xs="12" md="2">
-                                    <MudNumericField T="int?" @bind-Value="_editParticipantForm.PV" Label="PV" />
+                                    <MudNumericField T="int?" @bind-Value="_editParticipantForm.PV" Label="PV" Disabled="participant.NoCemiterio" />
                                 </MudItem>
                                 <MudItem xs="12" md="2">
-                                    <MudNumericField T="int?" @bind-Value="_editParticipantForm.PF" Label="PF" />
+                                    <MudNumericField T="int?" @bind-Value="_editParticipantForm.PF" Label="PF" Disabled="participant.NoCemiterio" />
                                 </MudItem>
                                 <MudItem xs="12" md="2">
-                                    <MudNumericField T="int?" @bind-Value="_editParticipantForm.PA" Label="PA" />
+                                    <MudNumericField T="int?" @bind-Value="_editParticipantForm.PA" Label="PA" Disabled="participant.NoCemiterio" />
                                 </MudItem>
                                 <MudItem xs="12" md="2">
                                     <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">Salvar</MudButton>
@@ -261,7 +267,7 @@ else
             var condicao = aplicada;
             var texto = condicao.TurnosRestantes is { } turnos ? $"{condicao.Nome} · {CondicaoResumo.Turnos(turnos)}" : condicao.Nome;
             var classe = condicao.Ativa ? "mr-1" : "mr-1 condicao-inativa";
-            if (Finalizado)
+            if (Finalizado || participant.NoCemiterio)
             {
                 <MudChip T="string" Size="Size.Small" Icon="@CondicaoIcone.Icone(condicao.Icone)" Class="@classe" title="@condicao.Descricao">@texto</MudChip>
             }
@@ -275,7 +281,7 @@ else
         {
             var indice = i;
             var texto = participant.Condicoes[indice];
-            if (Finalizado)
+            if (Finalizado || participant.NoCemiterio)
             {
                 <MudChip T="string" Size="Size.Small" Class="mr-1">@texto</MudChip>
             }
@@ -455,6 +461,7 @@ else
                 if (!response.IsSuccessStatusCode) return new();
                 var sheets = await response.Content.ReadFromJsonAsync<List<CharacterSheetResponse>>() ?? new();
                 return sheets
+                    .Where(s => !s.NoCemiterio) // ficha no cemitério não entra em encontro (Gerenciador de Encontros R0015)
                     .Where(s => (s.Nome ?? "").Contains(query, StringComparison.OrdinalIgnoreCase))
                     .Select(s => new PickerOption(s.Id, s.Nome ?? "(sem nome)"))
                     .ToList();

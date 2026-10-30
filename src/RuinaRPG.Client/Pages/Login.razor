@@ -45,7 +45,9 @@
 
         if (!response.IsSuccessStatusCode)
         {
-            _errorMessage = "Nickname ou senha inválidos.";
+            // Só a conta desativada tem texto próprio do servidor; o resto segue a mensagem genérica (R0002).
+            var motivo = await response.Content.ReadAsStringAsync();
+            _errorMessage = motivo == TextosDaConta.ContaDesativada ? motivo : "Nickname ou senha inválidos.";
             return;
         }
 

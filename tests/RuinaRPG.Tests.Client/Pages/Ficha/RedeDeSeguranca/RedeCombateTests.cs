@@ -92,9 +92,8 @@ public abstract class RedeCombateTests : RedeDeSegurancaBase
     protected static IEnumerable<string> Maestrias(string tipo) => new[]
     {
         "Maestrias", "«»", "Nome", "Escolha uma Perícia", "Perícia", "Escolha um Atributo", "Atributo", "«0»", "Gasto Maestria", "Adicionar Maestria",
-    }.Concat(tipo == "Personagem"
-        ? new[] { "Nome", "Perícia", "Atributo", "Gasto Maestria", "Total", "«Golpe Firme»", "Atletismo", "Vigor", "«1»", "4", "Remover" }
-        : new[] { "Golpe Firme — Atletismo / Vigor — Gasto 1 — Total 4", "Remover" });
+        "Nome", "Perícia", "Atributo", "Gasto Maestria", "Total", "«Golpe Firme»", "Atletismo", "Vigor", "«1»", "4", "Remover",
+    };
 
     protected static readonly string[] Armaduras =
     {
@@ -190,12 +189,10 @@ public abstract class RedeCombateTests : RedeDeSegurancaBase
             AbaAberta(cut).QuerySelectorAll("button[title='Cadastrar novo item']").Should().HaveCount(tipo != "Personagem" && papel == "GM" ? 4 : 0);
             AbaAberta(cut).QuerySelectorAll("input[disabled]").Should().BeEmpty();
             AbaAberta(cut).QuerySelectorAll("button[disabled]").Should().BeEmpty();
-            // No NPC e na Criatura o CatalogoItemPicker passa ao EntityPicker o texto literal "Placeholder" (hoje é o que se vê).
+            // O CatalogoItemPicker do NPC e da Criatura repassa o texto do campo, como o seletor do Personagem (2.1.0: era o literal "Placeholder").
             AbaAberta(cut).QuerySelectorAll("input[placeholder]").Select(i => i.GetAttribute("placeholder"))
-                .Should().Equal(tipo == "Personagem"
-                    ? new[] { "Escolha uma Afinidade", "Buscar arma...", "Buscar armadura...", "Buscar armadura...", "Buscar escudo..." }
-                    : (tipo == "NPC" ? new[] { "Escolha uma Afinidade" } : Array.Empty<string>())
-                        .Concat(new[] { "Placeholder", "Placeholder", "Placeholder", "Placeholder" }));
+                .Should().Equal((tipo == "Criatura" ? Array.Empty<string>() : new[] { "Escolha uma Afinidade" })
+                    .Concat(new[] { "Buscar arma...", "Buscar armadura...", "Buscar armadura...", "Buscar escudo..." }));
         }
 
         // Ataque natural (Ficha de Criaturas 3.a): sem item do catálogo, sem durabilidade editável.

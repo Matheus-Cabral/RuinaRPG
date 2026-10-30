@@ -87,6 +87,17 @@ public class AbaPossesTests : RedeDeSegurancaBase
         cut.FindComponents<EntityPicker>().Should().HaveCount(2);
     }
 
+    // O texto de busca é o do campo, igual nos três tipos (o CatalogoItemPicker do NPC e da Criatura repassa o dele).
+    [Theory]
+    [MemberData(nameof(Tipos))]
+    public async Task Seletor_de_item_mostra_o_placeholder_do_campo(string tipo)
+    {
+        var cut = await AbrirAsync(tipo);
+
+        AbaAberta(cut).QuerySelectorAll("input[placeholder]").Select(i => i.GetAttribute("placeholder"))
+            .Should().Equal("Buscar item...", "Buscar artefato...");
+    }
+
     // Uma filha sem parâmetros (AfeicoesNaLinha, EspoliosSection) não re-renderiza só porque a aba re-renderizou: depois de
     // adicionar, a lista nova tem de aparecer em todo tipo (a rede de segurança devolve a mesma linha e não vê isto).
     [Theory]

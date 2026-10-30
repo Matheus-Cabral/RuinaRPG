@@ -1,6 +1,6 @@
 Os históricos representam experiências, interesses e hábitos que marcaram a vida do personagem antes de sua jornada começar. Eles não determinam uma profissão. Um personagem com Estudo Acadêmico, por exemplo, não precisa ser um acadêmico; ele apenas passou tempo suficiente estudando para desenvolver habilidades relacionadas ao conhecimento.
 
-Cada historico concede +6 em uma perícia e +3 em outra.
+Cada histórico concede +6 em uma perícia e +3 em outra.
 
 ---
 

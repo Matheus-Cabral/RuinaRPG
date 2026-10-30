@@ -18,6 +18,7 @@
 @using RuinaRPG.Domain.SpellsAndAbilities
 @using Microsoft.AspNetCore.Components.Forms
 @using MudBlazor
+@using RuinaRPG.Client.Shared.Ficha
 @using System.ComponentModel.DataAnnotations
 
 <Breadcrumbs Items="@Crumbs" />
@@ -25,7 +26,7 @@
 
 <DismissibleAlert @bind-Message="_errorMessage" Class="mt-3" />
 
-<MudTabs Class="mt-3">
+<MudTabs Class="mt-3" @bind-ActivePanelIndex="_abaAtiva">
     <MudTabPanel Text="Membros">
         <Section Title="Adicionar Jogador">
             <MudTextField T="string" @bind-Value="_memberSearch" Immediate="true" @bind-Value:after="DebouncedSearchPlayersAsync" Label="Buscar jogador para adicionar" />
@@ -48,10 +49,14 @@
                 {
                     <MudListItem T="string">
                         <ChildContent>
-                            <MudText>@member.Nickname</MudText>
+                            <MudText Class="d-inline">@member.Nickname</MudText>
+                            <MudTooltip Text="Remover da campanha">
+                                <MudIconButton Icon="@Icons.Material.Filled.PersonRemove" Size="Size.Small" Color="Color.Error" aria-label="Remover da campanha"
+                                               OnClick="@(() => RemoverMembroAsync(member))" />
+                            </MudTooltip>
                             <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" OnClick="@(() => CreateSheetForAsync(member.UserId))">Criar Ficha de Personagem</MudButton>
                             <MudList T="string" Dense="true">
-                                @foreach (var sheet in _sheets.Where(s => s.OwnerId == member.UserId))
+                                @foreach (var sheet in _sheets.Where(s => s.OwnerId == member.UserId && !s.NoCemiterio))
                                 {
                                     <MudListItem T="string">
                                         @if (sheet.ImageUrl is not null)
@@ -71,6 +76,41 @@
                     </MudListItem>
                 }
             </MudList>
+        </Section>
+    </MudTabPanel>
+
+    <MudTabPanel Text="Cemitério">
+        <Section Title="Cemitério">
+            <div data-testid="cemiterio">
+                @if (!_sheets.Any(s => s.NoCemiterio))
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Nenhuma ficha no cemitério.</MudText>
+                }
+                else
+                {
+                    <MudList T="string" Dense="true">
+                        @foreach (var sheet in _sheets.Where(s => s.NoCemiterio))
+                        {
+                            <MudListItem T="string">
+                                @if (sheet.ImageUrl is not null)
+                                {
+                                    <ClickableAvatarImage Src="@sheet.ImageUrl" Size="Size.Small" Class="mr-2" />
+                                }
+                                <MudLink Href="@($"fichas/{sheet.Id}")">@(sheet.Nome ?? "(sem nome)")</MudLink>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="d-inline ml-2">— Nível @sheet.Nivel, jogador: @(sheet.DonoNickname ?? "—")</MudText>
+                                @foreach (var motivo in sheet.MotivosDoCemiterio)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Class="ml-2">@FichaEstado.RotuloDoMotivo(motivo)</MudChip>
+                                }
+                                <MudTooltip Text="Log da ficha">
+                                    <MudIconButton Icon="@Icons.Material.Filled.History" Size="Size.Small" aria-label="Log da ficha"
+                                                   OnClick="@(() => AbrirLogAsync("character", sheet.Id, sheet.Nome))" />
+                                </MudTooltip>
+                            </MudListItem>
+                        }
+                    </MudList>
+                }
+            </div>
         </Section>
     </MudTabPanel>
 
@@ -243,6 +283,14 @@
                     }
                 </Visibilidade>
                 <Acoes Context="anexo">
+                    @{ var origem = _attachments.First(a => a.Id == anexo.Id); }
+                    @if (TipoDaFichaAnexada(origem.Tipo) is { } tipoDaFicha && origem.SourceId is { } fichaId)
+                    {
+                        <MudTooltip Text="Alterar dono">
+                            <MudIconButton Icon="@Icons.Material.Filled.SwitchAccount" Size="Size.Small" aria-label="Alterar dono"
+                                           OnClick="@(() => AlterarDonoAsync(tipoDaFicha, fichaId))" />
+                        </MudTooltip>
+                    }
                     <MudButton Variant="Variant.Outlined" Color="Color.Error" Size="Size.Small" OnClick="@(() => RemoveAttachmentAsync(anexo.Id))">Remover</MudButton>
                 </Acoes>
             </AnexosAgrupados>
@@ -286,6 +334,10 @@
                                 <MudTooltip Text="Log da ficha">
                                     <MudIconButton Icon="@Icons.Material.Filled.History" Size="Size.Small" aria-label="Log da ficha"
                                                    OnClick="@(() => AbrirLogAsync(grant.Tipo == "Npc" ? "npc" : "creature", grant.SheetId, grant.Nome))" />
+                                </MudTooltip>
+                                <MudTooltip Text="Alterar dono">
+                                    <MudIconButton Icon="@Icons.Material.Filled.SwitchAccount" Size="Size.Small" aria-label="Alterar dono"
+                                                   OnClick="@(() => AlterarDonoAsync(TipoDaFichaConcedida(grant.Tipo), grant.SheetId))" />
                                 </MudTooltip>
                             </td>
                         </tr>
@@ -410,6 +462,11 @@
 @code {
     [Parameter] public string CampaignId { get; set; } = "";
 
+    /// <summary><c>?aba=cemiterio</c> (do aviso da ficha no cemitério) abre a aba Cemitério.</summary>
+    [SupplyParameterFromQuery(Name = "aba")] public string? Aba { get; set; }
+
+    private int _abaAtiva;
+
     private string? _campaignName;
     private CampaignResponse? _campaign;
     private readonly CampaignDetailsFormModel _detailsForm = new();
@@ -482,6 +539,8 @@
 
     protected override void OnInitialized()
     {
+        if (Aba == "cemiterio")
+            _abaAtiva = 1;
         _autoSave.StateChanged += StateHasChangedFromAutoSave;
     }
 
@@ -721,7 +780,8 @@
     {
         var response = await Http.GetAsync($"players?q={Uri.EscapeDataString(_memberSearch)}");
         if (response.IsSuccessStatusCode)
-            _searchResults = await response.Content.ReadFromJsonAsync<List<PlayerSearchResultResponse>>() ?? new();
+            _searchResults = (await response.Content.ReadFromJsonAsync<List<PlayerSearchResultResponse>>() ?? new())
+                .Where(p => p.Estado == nameof(RuinaRPG.Domain.Auth.EstadoDaConta.Ativa)).ToList();
     }
 
     private async Task AddMemberAsync(string playerId)
@@ -910,6 +970,51 @@
         }
 
         await LoadAttachmentsAsync();
+    }
+
+    // Campanha R0018: a confirmação diz o que a saída faz; o servidor aplica tudo numa transação.
+    private async Task RemoverMembroAsync(CampaignMemberResponse member)
+    {
+        var confirmou = await Dialogs.ShowMessageBoxAsync(
+            $"Remover {member.Nickname} da campanha",
+            $"{member.Nickname} deixa de ser membro desta campanha. As fichas de personagem dele nela vão para o cemitério, as fichas de NPC e Criatura concedidas a ele voltam ao GM e ele sai dos Encontros em preparação ou em andamento.",
+            yesText: "Remover", cancelText: "Cancelar");
+        if (confirmou != true)
+            return;
+
+        var response = await Http.DeleteAsync($"campaigns/{CampaignId}/members/{member.UserId}");
+        if (!response.IsSuccessStatusCode)
+        {
+            _errorMessage = "Não foi possível remover o membro.";
+            return;
+        }
+
+        await Task.WhenAll(LoadMembersAsync(), LoadSheetsAsync(), LoadGrantsAsync(), LoadAttachmentsAsync(), LoadEncountersAsync());
+    }
+
+    // Campanha R0019: o tipo da concessão (GrantSummaryResponse.Tipo) e o do anexo (CampaignAttachmentResponse.Tipo)
+    // dizem o tipo com palavras diferentes; o endereço do PUT vem sempre do TipoDeFichaCliente.
+    private static TipoDeFichaCliente TipoDaFichaConcedida(string tipo) => tipo == "Npc" ? TipoDeFichaCliente.Npc : TipoDeFichaCliente.Criatura;
+
+    private static TipoDeFichaCliente? TipoDaFichaAnexada(string tipo) => tipo switch
+    {
+        "NpcSheet" => TipoDeFichaCliente.Npc,
+        "CreatureSheet" => TipoDeFichaCliente.Criatura,
+        _ => null,
+    };
+
+    private async Task AlterarDonoAsync(TipoDeFichaCliente tipo, string sheetId)
+    {
+        var dialog = await Dialogs.ShowAsync<AlterarDonoDialog>("Alterar dono",
+            new DialogParameters<AlterarDonoDialog>
+            {
+                { x => x.Url, tipo.Url(sheetId, "dono") },
+                { x => x.Membros, _members },
+                { x => x.DonoAtualId, _grants.FirstOrDefault(g => g.SheetId == sheetId)?.PlayerId },
+            },
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        if ((await dialog.Result) is { Canceled: false })
+            await Task.WhenAll(LoadGrantsAsync(), LoadAttachmentsAsync());
     }
 
     private async Task GrantSheetAsync()

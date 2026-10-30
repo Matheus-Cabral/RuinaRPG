@@ -36,7 +36,9 @@ public class FichaEstadoCombateTests
 
     private const string Maestrias = """[{"id":"ma1","nome":"Golpe Firme","pericia":"Atletismo","atributo":"Vigor","gastoMaestria":1,"total":4}]""";
 
-    private FichaEstado Estado(string tipo)
+    private FichaEstado Estado(string tipo) => Estado(Tipo(tipo));
+
+    private FichaEstado Estado(TipoDeFichaCliente tipo)
     {
         var http = FakeHttpMessageHandler.CreateClient(req =>
         {
@@ -56,7 +58,19 @@ public class FichaEstadoCombateTests
                 : (HttpStatusCode.OK, "{}");
             return new HttpResponseMessage(resposta.Item1) { Content = new StringContent(resposta.Item2, Encoding.UTF8, "application/json") };
         });
-        return new FichaEstado(http, Tipo(tipo), "s1");
+        return new FichaEstado(http, tipo, "s1");
+    }
+
+    // 2.1.0 C.2: a escolha dos records do Combate segue o formato dos dados, não a flag de interface da arma manual.
+    [Fact]
+    public async Task Combate_reads_the_creature_records_by_data_format_not_by_the_manual_weapon_flag()
+    {
+        _respostas["GET creature-sheets/s1/weapons"] = (HttpStatusCode.OK, """[{"id":"w1","nome":"Garra","durabilidadeMaximo":10}]""");
+        var estado = Estado(TipoDeFichaCliente.Criatura with { TemArmaManual = false });
+
+        await estado.CarregarAtributosECombateAsync();
+
+        estado.Armas.Select(a => a.DurabilidadeMaxima).Should().Equal((int?)10);
     }
 
     private static string K(string tipo) => Tipo(tipo).Url("s1");

@@ -96,7 +96,7 @@ public abstract class CaracteristicasDaFichaController<TSheet, TLinha, TResponse
     [HttpGet("traits")]
     public async Task<ActionResult<TLista>> ListTraits(Guid sheetId)
     {
-        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var ficha))
+        if ((await FichaParaLeituraAsync(sheetId)).Negado(out var erro, out var ficha))
             return erro;
 
         var rows = (await LinhasComCatalogoAsync(sheetId))

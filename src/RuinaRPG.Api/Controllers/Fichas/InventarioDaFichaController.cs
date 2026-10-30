@@ -50,7 +50,7 @@ public abstract class InventarioDaFichaController<TSheet, TLinha>(RuinaRpgDbCont
     [HttpGet("inventory")]
     public async Task<ActionResult<List<InventoryItemResponse>>> ListInventory(Guid sheetId)
     {
-        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out _))
+        if ((await FichaParaLeituraAsync(sheetId)).Negado(out var erro, out _))
             return erro;
 
         var items = await Linhas.Where(i => i.SheetId == sheetId).ToListAsync();

@@ -28,7 +28,7 @@ public sealed class CharacterSkillsController(RuinaRpgDbContext db, IPericiaCata
     [HttpGet("budget")]
     public async Task<ActionResult<SkillPointBudgetResponse>> Budget(Guid sheetId)
     {
-        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var sheet))
+        if ((await FichaParaLeituraAsync(sheetId)).Negado(out var erro, out var sheet))
             return erro;
 
         var gastoBruto = await Db.CharacterSkills

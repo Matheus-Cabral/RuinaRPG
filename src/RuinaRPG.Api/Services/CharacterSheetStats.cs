@@ -19,12 +19,10 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules,
 {
     protected override Guid? HistoricoId(CharacterSheet sheet) => sheet.HistoricoId;
 
-    protected override async Task<Carga> CargaAsync(CharacterSheet sheet, int forca, int vigor)
-    {
-        // Bônus de carga da Campanha (Requisitos - Campanha): só a Ficha de Personagem pertence a uma.
-        var bonusDeCarga = await Db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.BonusDeCarga).FirstOrDefaultAsync();
-        return await CargaDoInventarioAsync<CharacterWeapon, CharacterInventoryItem>(sheet.Id, forca, vigor, bonusDeCarga);
-    }
+    protected override Task<List<(int Qtd, decimal Peso, decimal? CapacidadeExtra)>> InventarioAsync(Guid sheetId) => InventarioAsync<CharacterInventoryItem>(sheetId);
+
+    protected override async Task<decimal> BonusDeCargaAsync(CharacterSheet sheet) =>
+        await Db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.BonusDeCarga).FirstOrDefaultAsync();
 
     protected override Task<(int? Eficiencia, int? Dano)> ElementalAsync(CharacterSheet sheet, EfeitosDeCondicao efeitos) =>
         ElementalDasAfinidadesAsync<CharacterAffinity>(sheet.Id, sheet.Afinidade, efeitos, tabelaDeAfinidades);

@@ -40,7 +40,7 @@ public abstract class AfeicoesDaFichaController<TSheet, TLinha>(RuinaRpgDbContex
     [HttpGet("affections")]
     public async Task<ActionResult<List<AffectionResponse>>> ListAffections(Guid sheetId)
     {
-        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out _))
+        if ((await FichaParaLeituraAsync(sheetId)).Negado(out var erro, out _))
             return erro;
 
         var affections = await Linhas.Where(a => a.SheetId == sheetId).ToListAsync();

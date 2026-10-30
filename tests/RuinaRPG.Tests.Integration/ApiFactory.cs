@@ -48,10 +48,11 @@ public class ApiFactory(string connectionString) : WebApplicationFactory<Program
                 options.Audience = "RuinaRPG.Tests";
             });
 
-            // Program.cs falls back to "/images", a container-only path; use a temp directory.
+            // Program.cs falls back to "/images", a container-only path; use a temp directory — one per OS
+            // user, so the CI runner user and a developer on the same host never share (and lock out) it.
             services.Configure<ImageStorageOptions>(options =>
             {
-                options.ImagesPath = Path.Combine(Path.GetTempPath(), "ruinarpg-test-images");
+                options.ImagesPath = Path.Combine(Path.GetTempPath(), $"ruinarpg-test-images-{Environment.UserName}");
                 options.MaxSizeMb = 10;
             });
         });

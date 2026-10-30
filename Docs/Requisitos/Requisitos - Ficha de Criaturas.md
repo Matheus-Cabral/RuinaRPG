@@ -65,6 +65,7 @@ A seção também exibe **Pontos de Atributo: gasto / disponíveis**, como em "[
 
 - *Resistência Física* e *Resistência Arcana* existem na Ficha de Criatura (diferente do Personagem, que não os tem). Por ora, nenhuma fórmula do sistema depende deles — campos previstos porém não implementados até existir regra.
 - *Dano Cortante* aparece na ficha real como um sub-atributo próprio da Criatura. Mesmo tratamento de *Dano de Briga* no Personagem: campo previsto porém sem fórmula definida ainda.
+- *Peso Atual* e *Peso Máximo* não são exibidos, mas a *Movimentação* os usa. O Peso Atual segue a mesma fórmula do Personagem ("[[Requisitos - Ficha de Personagem]]" 2.b): só Armas e Escudos do Catálogo **desequipados** pesam (equipados, Armaduras e ataques naturais não); a Criatura não tem Inventário e não há bônus de carga de Campanha.
 - *Eficiência Elemental* e *Dano Elemental* não aparecem na Ficha de Criatura — ambos dependem da lista de Afinidades (2.c) do Personagem/NPC, que a Criatura não tem (ver 2.c abaixo).
 
 **2.c Afinidades** não existe na Ficha de Criatura — a lista incremental de Elemento/Sub-Elemento/Caminho e Experiência do Personagem não tem equivalente aqui; a Criatura tem apenas o campo único *Afinidade* em 1.a.
@@ -91,7 +92,7 @@ A seção também exibe **Pontos de Atributo: gasto / disponíveis**, como em "[
 - **4.a Habilidade Racial** não existe na Ficha de Criatura.
 - **4.b Magias & Habilidades**: como no Personagem ("[[Requisitos - Ficha de Personagem]]" 4.b), com duas diferenças: o Grau de cada entrada é limitado pelo *Rank* da Criatura (1.a) em vez do Círculo/Grau (a equivalência exata entre Rank e Grau máximo ainda não está definida nas regras, e essa validação fica pendente até ela existir); e o saldo de Pontos de Ignição é o campo *Pontos de Ignição* (1.b).
 - **4.c Contratos** e **4.d Runas** não existem na Ficha de Criatura.
-- **4.e Maestrias**: mesma estrutura do Personagem; o dropdown de Atributo oferece apenas os 6 atributos de Criatura (2.a).
+- **4.e Maestrias**: mesma estrutura do Personagem, inclusive a edição na própria linha; o dropdown de Atributo oferece apenas os 6 atributos de Criatura (2.a).
 - **4.f Habilidades Passivas**: mesma estrutura e regras do Personagem (ver "[[Requisitos - Ficha de Personagem]]" 4.f e R0008). Requisitos sobre campos que a Criatura não tem são **ignorados**: Vocação, Classe, Linhagem, Variante, Grau/Círculo, Coração de Mana, Estrela, Histórico e as Perícias fora da lista de 2.d. Entre os Atributos, só Força, Vigor, Agilidade, Destreza e Astúcia são comparados — requisitos de Instinto, Vontade e Influência são ignorados. Nível, Afinidade e Sub-Atributos são conferidos normalmente.
 
   

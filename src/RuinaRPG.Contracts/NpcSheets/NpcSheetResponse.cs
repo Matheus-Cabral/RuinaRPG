@@ -39,6 +39,7 @@ public record NpcSheetResponse(
     int AdrenalinaMaximo,
     int EstresseMaximo,
     string? CampaignId,
+    string? CampaignName,
     string? ImageId,
     int? ArcaRolada,
     string? Estrela,

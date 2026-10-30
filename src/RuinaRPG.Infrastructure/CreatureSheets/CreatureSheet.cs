@@ -4,7 +4,7 @@ using RuinaRPG.Domain.CreatureSheets;
 
 namespace RuinaRPG.Infrastructure.CreatureSheets;
 
-public class CreatureSheet : IFicha
+public class CreatureSheet : IFicha, IFichaConcedivel
 {
     public Guid Id { get; set; }
     public Guid GmId { get; set; }

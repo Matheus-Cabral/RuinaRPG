@@ -225,7 +225,7 @@ public abstract class EquipagemDaFichaTestes<TTipo>(ApiFixture fixture) : Testes
         var otherToken = await Tipo.CriarIntrusoAsync(this, f);
 
         var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/{Tipo.Rota}/{sheetId}/equipagem/kits", otherToken));
-        listResponse.StatusCode.Should().Be(Tipo.StatusNegado);
+        listResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
         var chooseResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/{Tipo.Rota}/{sheetId}/equipagem/choose", otherToken,
             new ChooseEquipmentKitRequest(Guid.NewGuid().ToString(), [])));

@@ -242,7 +242,7 @@ Ao ser acometido por esta Condição, o alvo é obrigado a atacar o causador del
 
 Gasto: 5 PI
 
-Conjura uma entidade de arcana elemental, o tipo da entidade precisa ser concebido a partir de uma essência elemental. a criatura terá de vida a quantidade de arcana a ela concedida após a utilização da magia, ficando a cargo do mago a quantidade que deverá ser concedida e não afetando o custo ja pago pela ultilização do feitiço que a invocou.
+Conjura uma entidade de arcana elemental, o tipo da entidade precisa ser concebido a partir de uma essência elemental. A criatura terá de vida a quantidade de arcana a ela concedida após a utilização da magia, ficando a cargo do mago a quantidade que deverá ser concedida e não afetando o custo já pago pela utilização do feitiço que a invocou.
 
 É obrigatória a compra de Duração.
 

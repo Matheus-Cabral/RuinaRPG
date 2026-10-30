@@ -45,6 +45,7 @@ public class TipoDeFichaClienteTests
 
     [Theory]
     [InlineData(nameof(TipoDeFichaCliente.TemDiario), true, false, false)]
+    [InlineData(nameof(TipoDeFichaCliente.TemCemiterio), true, false, false)]
     [InlineData(nameof(TipoDeFichaCliente.TemAntecedentes), true, true, false)]
     [InlineData(nameof(TipoDeFichaCliente.EditaNivelAManual), false, true, true)]
     [InlineData(nameof(TipoDeFichaCliente.TemOrcamentoDePericias), true, false, false)]
@@ -53,7 +54,6 @@ public class TipoDeFichaClienteTests
     [InlineData(nameof(TipoDeFichaCliente.TemRunas), true, true, false)]
     [InlineData(nameof(TipoDeFichaCliente.TemAfinidades), true, true, false)]
     [InlineData(nameof(TipoDeFichaCliente.TemTracosRaciais), true, true, false)]
-    [InlineData(nameof(TipoDeFichaCliente.EditaMaestriaNaLinha), true, false, false)]
     [InlineData(nameof(TipoDeFichaCliente.EditaAfeicaoNaLinha), true, false, false)]
     [InlineData(nameof(TipoDeFichaCliente.TemArmaManual), false, false, true)]
     [InlineData(nameof(TipoDeFichaCliente.CondicoesSoSeConcedida), false, true, true)]
@@ -95,6 +95,26 @@ public class TipoDeFichaClienteTests
         Ler<string?>(TipoDeFichaCliente.Personagem, membro).Should().Be(personagem);
         Ler<string?>(TipoDeFichaCliente.Npc, membro).Should().Be(npc);
         Ler<string?>(TipoDeFichaCliente.Criatura, membro).Should().Be(criatura);
+    }
+
+    // 2.1.0 C.2: Personagem e NPC compartilham os records; a Criatura tem os próprios (a flag de interface não decide).
+    [Theory]
+    [InlineData(nameof(TipoDeFichaCliente.Formato), FormatoDosDados.Comum, FormatoDosDados.Comum, FormatoDosDados.Criatura)]
+    public void Formato_dos_dados_por_tipo(string membro, FormatoDosDados personagem, FormatoDosDados npc, FormatoDosDados criatura)
+    {
+        Ler<FormatoDosDados>(TipoDeFichaCliente.Personagem, membro).Should().Be(personagem);
+        Ler<FormatoDosDados>(TipoDeFichaCliente.Npc, membro).Should().Be(npc);
+        Ler<FormatoDosDados>(TipoDeFichaCliente.Criatura, membro).Should().Be(criatura);
+    }
+
+    // 2.1.0 A.1: a lista do GM é o segundo item da trilha do GM; o Personagem não tem (a trilha dele passa pela campanha).
+    [Theory]
+    [InlineData(nameof(TipoDeFichaCliente.ListaDoGm), "NPCs do GM", "npcs", "Bestiário do GM", "bestiario")]
+    public void Lista_do_GM_per_kind(string membro, string npcRotulo, string npcRota, string criaturaRotulo, string criaturaRota)
+    {
+        Ler<(string Rotulo, string Rota)?>(TipoDeFichaCliente.Personagem, membro).Should().BeNull();
+        Ler<(string Rotulo, string Rota)?>(TipoDeFichaCliente.Npc, membro).Should().Be((npcRotulo, npcRota));
+        Ler<(string Rotulo, string Rota)?>(TipoDeFichaCliente.Criatura, membro).Should().Be((criaturaRotulo, criaturaRota));
     }
 
     // Nenhum fato fica sem teste: cada propriedade pública de TipoDeFichaCliente aparece num InlineData acima.

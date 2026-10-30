@@ -115,7 +115,7 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
         lista.Add(tipo == "Criatura" ? $"GET {k}/spoils" : $"GET {k}/inventory");
         lista.AddRange(new[] { $"GET {k}/artifacts", $"GET {k}/affections", $"GET {k}/traits" });
         if (tipo == "Personagem")
-            lista.AddRange(new[] { $"GET {k}/diary", "GET /campaigns" });
+            lista.Add($"GET {k}/diary");
         if (tipo != "Criatura")
             lista.Add($"GET {k}/racial-traits/pending");
         if (tipo == "Criatura")
@@ -528,7 +528,7 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
                 custoAlternativo = (int?)null, custoAlternativoAPartirDoGrau = (int?)null, preRequisitos = Array.Empty<string[]>(),
             },
         },
-        "/campaigns" => new[] { new { id = "c1", nome = "Crônicas de Alker", descricao = "A campanha.", imageUrl = (string?)null, bonusDeCarga = 0m } },
+        "/campaigns" or "/campaigns/mine" => new[] { new { id = "c1", nome = "Crônicas de Alker", descricao = "A campanha.", imageUrl = (string?)null, bonusDeCarga = 0m } },
         "/images/mine" or "/campaigns/c1/available-images" => new[]
         {
             new { id = "img1", url = "/img/um.png", createdAt = "2026-10-01T12:00:00Z" },
@@ -542,7 +542,7 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
     {
         "Personagem" => new
         {
-            id = SheetId, campaignId = "c1", ownerId = "u2", imageUrl = "/img/um.png", imageId = "img1",
+            id = SheetId, campaignId = "c1", campaignName = "Crônicas de Alker", ownerId = "u2", imageUrl = "/img/um.png", imageId = "img1",
             nome = "Aria", linhagem = "Humano", variante = "Sinir", vocacao = "Feiticeiro", subVocacao = "Piromante", afinidade = "Fogo", propriedade = "Uma casa",
             nivel = 3, circulo = 1, grau = 2, possuiCoracaoDeMana = true, experienciaAtual = 120, eapAtual = 7,
             nucleosRankF = 1, nucleosRankE = 2, nucleosRankD = 0, nucleosRankC = 0, nucleosRankB = 0, nucleosRankA = 0, nucleosRankS = 0,
@@ -555,7 +555,7 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
         },
         "NPC" => new
         {
-            id = SheetId, ownerId = EhJogador ? "u2" : null, campaignId = EhJogador ? "c1" : null, imageUrl = "/img/um.png", imageId = "img1",
+            id = SheetId, ownerId = EhJogador ? "u2" : null, campaignId = EhJogador ? "c1" : null, campaignName = EhJogador ? "Crônicas de Alker" : null, imageUrl = "/img/um.png", imageId = "img1",
             nome = "Borin", linhagem = "Nephrytes", variante = "Koroanos", vocacao = "Campeao", subVocacao = "Duelista", afinidade = "Terra", propriedade = "Uma forja",
             nivel = 4, circulo = 0, grau = 2, possuiCoracaoDeMana = false, experienciaAtual = 200, eapAtual = 8,
             nucleosRankF = 0, nucleosRankE = 1, nucleosRankD = 1, nucleosRankC = 0, nucleosRankB = 0, nucleosRankA = 0, nucleosRankS = 0,
@@ -569,7 +569,7 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
         },
         _ => new
         {
-            id = SheetId, ownerId = EhJogador ? "u2" : null, campaignId = EhJogador ? "c1" : null, imageUrl = "/img/um.png", imageId = "img1",
+            id = SheetId, ownerId = EhJogador ? "u2" : null, campaignId = EhJogador ? "c1" : null, campaignName = EhJogador ? "Crônicas de Alker" : null, imageUrl = "/img/um.png", imageId = "img1",
             nome = "Lobo Cinzento", raca = "Lobo", arquetipo = "Fisico", subArquetipo = "Caçador", afinidade = "Ar", rank = "D",
             nivel = 2, experienciaAtual = 60, abate = 40, assistencia = 20, pontosDeIgnicao = 5,
             vitalidadeAtual = 18, focoAtual = 4, adrenalinaAtual = 2, cobertura = "Nenhuma",

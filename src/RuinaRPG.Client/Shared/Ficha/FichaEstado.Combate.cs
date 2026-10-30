@@ -36,11 +36,11 @@ public sealed partial class FichaEstado
     public MasteryFormModel FormularioDeMaestria { get; } = new();
 
     // O fim da recarga das abas 2 e 3, em sequência, na ordem de hoje. A Criatura tem os seus records no fio (arma com
-    // ItemId e Durabilidade anuláveis, DurabilidadeMaximo): o tipo com arma manual os lê e passa pelo adaptador (ver
-    // TipoDeFichaCliente.TemArmaManual).
+    // ItemId e Durabilidade anuláveis, DurabilidadeMaximo): o tipo com esse formato os lê e passa pelo adaptador (ver
+    // TipoDeFichaCliente.Formato).
     private async Task CarregarCombateAsync()
     {
-        if (Tipo.TemArmaManual)
+        if (Tipo.Formato == FormatoDosDados.Criatura)
         {
             var armas = await Http.GetFromJsonAsync<List<CreatureWeaponResponse>>(Tipo.Url(SheetId, "weapons")) ?? new();
             Armas = armas.Select(LinhaDeArma.De).ToList();
@@ -72,7 +72,7 @@ public sealed partial class FichaEstado
     {
         var form = FormularioDeArma;
         HttpResponseMessage response;
-        if (!Tipo.TemArmaManual)
+        if (Tipo.Formato == FormatoDosDados.Comum)
             response = await Http.PostAsJsonAsync(Tipo.Url(SheetId, "weapons"), new AddWeaponRequest(form.ItemId));
         else if (form.Origem == "Catalogo")
             response = await Http.PostAsJsonAsync(Tipo.Url(SheetId, "weapons"), new AddCreatureWeaponRequest(form.ItemId, null, null, null, null));
@@ -195,7 +195,7 @@ public sealed partial class FichaEstado
     }
 
     /// <summary>
-    /// A edição na linha (só onde <see cref="TipoDeFichaCliente.EditaMaestriaNaLinha"/>): grava a linha com o campo
+    /// A edição na linha: grava a linha com o campo
     /// mudado. A mensagem de uma recusa vai para o alerta, um salvamento certo o apaga.
     /// </summary>
     public async Task AtualizarMaestriaAsync(string id, string campo, object? valor)
@@ -206,7 +206,7 @@ public sealed partial class FichaEstado
         var atributo = campo == "Atributo" ? valor?.ToString() ?? atual.Atributo : atual.Atributo;
         var gastoMaestria = campo == "GastoMaestria" ? (int.TryParse(valor?.ToString(), out var g) ? g : atual.GastoMaestria) : atual.GastoMaestria;
 
-        var response = await Http.PutAsJsonAsync(Tipo.Url(SheetId, $"masteries/{id}"), new UpdateCharacterMasteryRequest(nome, pericia, atributo, gastoMaestria));
+        var response = await Http.PutAsJsonAsync(Tipo.Url(SheetId, $"masteries/{id}"), new UpdateMasteryRequest(nome, pericia, atributo, gastoMaestria));
         Erro = response.IsSuccessStatusCode ? null : await response.Content.ReadErrorMessageAsync();
         await RecarregarMaestriasAsync();
     }

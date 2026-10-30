@@ -43,7 +43,7 @@ public class CharacterDiaryController(RuinaRpgDbContext db, ITipoDeFicha<Charact
     [HttpGet]
     public async Task<ActionResult<List<DiaryEntryResponse>>> ListDiaryEntries(Guid sheetId)
     {
-        var authError = await CheckAuthorizationAsync(sheetId);
+        var authError = await CheckAuthorizationAsync(sheetId, leitura: true);
         if (authError is not null)
             return authError;
 
@@ -107,14 +107,15 @@ public class CharacterDiaryController(RuinaRpgDbContext db, ITipoDeFicha<Charact
     /// owning player and the campaign's GM can read" (unlike the campaign diary, which is GM-only),
     /// and write access follows the same population — so a single CanEdit check covers both.
     /// </summary>
-    private async Task<ActionResult?> CheckAuthorizationAsync(Guid sheetId)
+    /// <summary>Ficha inexistente → 404; sem acesso → 404 na leitura (não confirma que a ficha existe), 403 na escrita.</summary>
+    private async Task<ActionResult?> CheckAuthorizationAsync(Guid sheetId, bool leitura = false)
     {
         var sheet = await tipo.CarregarAsync(sheetId);
         if (sheet is null)
             return NotFound();
 
         if (!await tipo.PodeEditarAsync(sheet, CurrentUserId()))
-            return Forbid();
+            return leitura ? NotFound() : Forbid();
 
         return null;
     }

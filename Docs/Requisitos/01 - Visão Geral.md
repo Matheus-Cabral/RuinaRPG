@@ -24,17 +24,18 @@ Duas abas: **Cadastro do Gamemaster** (nickname, e-mail, senha, confirmação) e
 # PAINEL DO JOGADOR
 
 - Lista das fichas do jogador (imagem, nome, nível, campanha) com o botão de abrir a ficha: [[Requisitos - Ficha de Personagem]]. Uma ficha só é criada ou excluída pelo GM.
+- **Cemitério**: seção separada, abaixo da lista de fichas, com as fichas do jogador que estão no cemitério (imagem, nome, nível, campanha), abertas em modo leitura; não aparece quando vazia: [[Requisitos - Ficha de Personagem]] R0010.
 - **Minhas Campanhas**: as campanhas de que é membro, com os anexos públicos, as fichas de NPC/Criatura concedidas a ele e as Notas Secretas: [[Requisitos - Campanha]].
 
 # PAINEL DO *GM*
 
 Ferramentas do GM (a numeração é a do canvas original; as demais vieram depois):
 
-1. **Convidar jogador** (códigos de convite e a busca/redefinição de senha dos jogadores do GM): [[Requisitos - Convite de Jogador]].
+1. **Convidar jogador** (códigos de convite, a busca/redefinição de senha dos jogadores do GM e as ações Desativar, Reativar e Excluir conta, com a seção **Desativados**): [[Requisitos - Convite de Jogador]].
 2. **Bestiário do *GM***: [[Requisitos - Ficha de Criaturas]].
 3. **NPCs do *GM***: [[Requisitos - Ficha de NPCs]].
 4. **Itens e Equipamentos**: [[Requisitos - Catálogo de Itens e Equipamentos]].
-5. **Campanhas**: membros, fichas concedidas, anexos públicos/privados, diário do GM e Notas Secretas: [[Requisitos - Campanha]]. Dentro de uma campanha, os encontros: [[Requisitos - Gerenciador de Encontros]].
+5. **Campanhas**: membros, fichas concedidas, anexos públicos/privados, diário do GM, Notas Secretas e a aba **Cemitério** (fichas de personagem fora de jogo, em modo leitura): [[Requisitos - Campanha]] R0017. Dentro de uma campanha, os encontros: [[Requisitos - Gerenciador de Encontros]].
 6. **Banco de Magias e Habilidades**: [[Requisitos - Banco de Magias e Habilidades]].
 7. **Banco de Runas**: [[Requisitos - Banco de Runas]].
 8. **Habilidades Raciais**: [[Requisitos - Habilidades Raciais]].

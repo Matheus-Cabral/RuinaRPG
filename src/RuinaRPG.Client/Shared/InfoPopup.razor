@@ -4,7 +4,10 @@
    and body. Same look/behavior as the ⓘ in Fields/HistoricoSelect.razor and EstrelaSelect.razor —
    this component exists so every other placement (Section headers, form fields, etc.) doesn't have
    to repeat the MudIconButton + MudDialog boilerplate. *@
-<MudIconButton Icon="@Icons.Material.Filled.Info" Size="Size.Small" OnClick="@(() => _open = true)" title="@Title" aria-label="@Title" />
+@* Só mostra uma ajuda: continua utilizável dentro de uma desabilitação em cascata (a ficha no cemitério, só leitura). *@
+<CascadingValue Name="ParentDisabled" Value="false">
+    <MudIconButton Icon="@Icons.Material.Filled.Info" Size="Size.Small" OnClick="@(() => _open = true)" title="@Title" aria-label="@Title" Class="rr-info-popup" />
+</CascadingValue>
 
 <MudDialog @bind-Visible="_open">
     <TitleContent>@Title</TitleContent>

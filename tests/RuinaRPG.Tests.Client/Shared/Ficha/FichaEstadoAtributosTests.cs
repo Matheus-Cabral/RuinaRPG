@@ -230,7 +230,7 @@ public class FichaEstadoAtributosTests
     [InlineData("Personagem", "", "null")]
     [InlineData("NPC", null, "null")]
     [InlineData("Criatura", "Agilidade", "\"Agilidade\"")]
-    public async Task A_skill_attribute_edit_keeps_the_gasto_and_reloads_without_touching_the_error(string tipo, string? valor, string json)
+    public async Task A_skill_attribute_edit_keeps_the_gasto_reloads_and_clears_the_error(string tipo, string? valor, string json)
     {
         var estado = Estado(tipo);
         await estado.CarregarAtributosECombateAsync();
@@ -242,7 +242,7 @@ public class FichaEstadoAtributosTests
         await estado.AtualizarAtributoDaPericiaAsync("Atletismo", valor);
 
         _requisicoes.Should().Equal(new[] { $"PUT {K(tipo)}/skills/Atletismo {{\"gasto\":2,\"atributoEscolhido\":{json}}}" }.Concat(Recarga(tipo)));
-        estado.Erro.Should().Be("antigo");
+        estado.Erro.Should().BeNull(); // 2.1.0: como as outras edições, um salvamento certo apaga o erro
         estado.PenalidadesVersao.Should().Be(1);
         notificacoes.Should().Be(1);
     }

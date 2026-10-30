@@ -205,7 +205,7 @@ public abstract class ArsenalDaFichaTestes<TTipo>(ApiFixture fixture) : TestesDe
 
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, Url(f, lista), intruso));
 
-        response.StatusCode.Should().Be(Tipo.StatusNegado);
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]

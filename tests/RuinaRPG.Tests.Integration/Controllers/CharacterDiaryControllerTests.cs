@@ -87,7 +87,7 @@ public class CharacterDiaryControllerTests(ApiFixture fixture) : ApiTestBase(fix
     }
 
     [Fact]
-    public async Task List_and_Update_by_an_unrelated_jogador_return_403_not_the_entries()
+    public async Task List_by_an_unrelated_jogador_returns_404_and_create_403_not_the_entries()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("DiaryGm5", "diary5@teste.com");
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "DiaryPlayer5", "diaryplayer5@teste.com");
@@ -97,7 +97,7 @@ public class CharacterDiaryControllerTests(ApiFixture fixture) : ApiTestBase(fix
             new CreateDiaryEntryRequest("Não é da sua conta.", [])));
 
         var listResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/diary", otherToken));
-        listResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        listResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
         var createResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/diary", otherToken,
             new CreateDiaryEntryRequest("Intrusão.", [])));

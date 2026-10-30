@@ -1,5 +1,12 @@
 namespace RuinaRPG.Client.Shared.Ficha;
 
+/// <summary>Quais records o tipo lê e escreve no fio: os compartilhados, ou os da Criatura (sem Histórico nem marca racial, com Durabilidade anulável).</summary>
+public enum FormatoDosDados
+{
+    Comum,
+    Criatura,
+}
+
 /// <summary>
 /// O tipo de ficha (Personagem, NPC, Criatura) do lado do cliente: o prefixo da API e os fatos que as abas
 /// compartilhadas perguntam. É um valor passado adiante, sem HTTP próprio. Os fatos têm o nome da capacidade
@@ -71,14 +78,10 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
     public required bool MostraPesoDasArmas { get; init; }
 
     /// <summary>
-    /// A arma preenchida à mão (ataque natural, sem Item do Catálogo). O tipo que a tem lê os records de Combate da
-    /// Criatura no fio (arma com <c>ItemId</c> e Durabilidade anuláveis; armas e slots com <c>DurabilidadeMaximo</c>) e os
-    /// passa pelo <see cref="AdaptadorDeCriatura"/> (FichaEstado.Combate.cs).
+    /// A arma preenchida à mão (ataque natural, sem Item do Catálogo): a Origem Catálogo/Manual do formulário. Os
+    /// records de Combate que o tipo lê são o <see cref="Formato"/>.
     /// </summary>
     public required bool TemArmaManual { get; init; }
-
-    /// <summary>A edição na linha das Maestrias (<c>PUT masteries/{id}</c>).</summary>
-    public required bool EditaMaestriaNaLinha { get; init; }
 
     /// <summary>A edição na linha das Afeições (<c>PUT affections/{id}</c>).</summary>
     public required bool EditaAfeicaoNaLinha { get; init; }
@@ -93,14 +96,31 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
     public required bool TemEspolios { get; init; }
 
     /// <summary>
-    /// A aba Antecedentes (Estrela, Histórico e História; igual em todo tipo que a tem). Também escolhe o record das
-    /// Perícias: só com Antecedentes há o bônus de Histórico (<c>ContaHistorico</c>); sem eles, o record da Criatura passa
-    /// pelo <see cref="AdaptadorDeCriatura"/> (FichaEstado.Atributos.cs, <c>CarregarPericiasAsync</c>).
+    /// A aba Antecedentes (Estrela, Histórico e História; igual em todo tipo que a tem).
     /// </summary>
     public required bool TemAntecedentes { get; init; }
 
     /// <summary>A aba Diário.</summary>
     public required bool TemDiario { get; init; }
+
+    /// <summary>
+    /// O cemitério (Ficha de Personagem R0010): a ficha vem com <c>NoCemiterio</c> e os motivos, fica só leitura no
+    /// cemitério, e o GM tem a caixa "Morto" no cabeçalho.
+    /// </summary>
+    public required bool TemCemiterio { get; init; }
+
+    /// <summary>
+    /// A lista do GM onde a ficha mora (NPC: "NPCs do GM", <c>npcs</c>; Criatura: "Bestiário do GM", <c>bestiario</c>): o
+    /// segundo item da trilha para o GM. <c>null</c> onde a trilha sempre passa pela campanha (Personagem).
+    /// </summary>
+    public (string Rotulo, string Rota)? ListaDoGm { get; init; }
+
+    /// <summary>
+    /// Quais records o tipo usa no fio (Combate, Perícias, Características e a arma nova). É o fato que escolhe o record;
+    /// as flags de interface (<see cref="TemArmaManual"/>, <see cref="TemAntecedentes"/>, <see cref="TemTracosRaciais"/>)
+    /// só decidem o que a tela mostra. O record da Criatura passa pelo <see cref="AdaptadorDeCriatura"/>.
+    /// </summary>
+    public required FormatoDosDados Formato { get; init; }
 
     /// <summary>O endereço da busca de Características (<c>traits</c> ou <c>creature-exclusive-traits</c>).</summary>
     public required string UrlDeBuscaDeCaracteristicas { get; init; }
@@ -128,13 +148,14 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
         CriaCaracteristicaNoPicker = false,
         MostraPesoDasArmas = true,
         TemArmaManual = false,
-        EditaMaestriaNaLinha = true,
         EditaAfeicaoNaLinha = true,
         TemRunas = true,
         TemInventario = true,
         TemEspolios = false,
         TemAntecedentes = true,
         TemDiario = true,
+        Formato = FormatoDosDados.Comum,
+        TemCemiterio = true,
         UrlDeBuscaDeCaracteristicas = "traits",
     };
 
@@ -142,6 +163,7 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
     {
         TipoDaNotificacao = "npc",
         Titulo = "Ficha de NPC",
+        ListaDoGm = ("NPCs do GM", "npcs"),
         CondicoesSoSeConcedida = true,
         TemLinhagemEVocacao = true,
         TemTracosRaciais = true,
@@ -159,13 +181,14 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
         AjudaDoXpPorAbate = "XP que o NPC concede aos jogadores ao ser derrotado: Abate para quem deu o golpe final, Assistência para quem ajudou. Calculado a partir da Experiência atual do NPC; só o GM vê.",
         MostraPesoDasArmas = true,
         TemArmaManual = false,
-        EditaMaestriaNaLinha = false,
         EditaAfeicaoNaLinha = false,
         TemRunas = true,
         TemInventario = true,
         TemEspolios = false,
         TemAntecedentes = true,
         TemDiario = false,
+        Formato = FormatoDosDados.Comum,
+        TemCemiterio = false,
         UrlDeBuscaDeCaracteristicas = "traits",
     };
 
@@ -173,6 +196,7 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
     {
         TipoDaNotificacao = "creature",
         Titulo = "Ficha de Criatura",
+        ListaDoGm = ("Bestiário do GM", "bestiario"),
         CondicoesSoSeConcedida = true,
         TemLinhagemEVocacao = false,
         TemTracosRaciais = false,
@@ -189,13 +213,14 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
         CriaCaracteristicaNoPicker = true,
         MostraPesoDasArmas = false,
         TemArmaManual = true,
-        EditaMaestriaNaLinha = false,
         EditaAfeicaoNaLinha = false,
         TemRunas = false,
         TemInventario = false,
         TemEspolios = true,
         TemAntecedentes = false,
         TemDiario = false,
+        Formato = FormatoDosDados.Criatura,
+        TemCemiterio = false,
         UrlDeBuscaDeCaracteristicas = "creature-exclusive-traits",
     };
 }

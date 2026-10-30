@@ -622,4 +622,268 @@ public class CampanhaDetalheTests : MudBunitContext
         await cut.InvokeAsync(() => cut.Find("[data-testid='encontros-finalizados'] .mud-list-item").Click());
         nav.Uri.Should().EndWith($"campanhas/{CampaignId}/encontros/e3");
     }
+
+    private static object Ficha(string id, string owner, string nome, bool cemiterio, params string[] motivos) => new
+    {
+        Id = id, CampaignId, OwnerId = owner, DonoNickname = owner == "u1" ? "Ana" : "Beto", Nome = nome, Nivel = 7, Vocacao = "Guerreiro", Linhagem = "Humano",
+        ImageUrl = cemiterio ? "/img/morto.png" : null, NoCemiterio = cemiterio, MotivosDoCemiterio = motivos,
+    };
+
+    private IRenderedComponent<CampanhaDetalhe> RenderComFichas(object[] fichas, string? query = null)
+    {
+        var authContext = this.AddAuthorization();
+        authContext.SetAuthorized("gm-user");
+        authContext.SetRoles("GM");
+        var members = new[] { new CampaignMemberResponse("u1", "Ana", "ana@x.com") };
+        Services.AddScoped(_ => FakeHttpMessageHandler.CreateClient(request =>
+        {
+            var path = request.RequestUri!.AbsolutePath;
+            object body = path.EndsWith("/members") ? members
+                : path.EndsWith("/character-sheets") ? fichas
+                : path.EndsWith("campaigns") ? new List<CampaignResponse> { new(CampaignId, "Camp", "", null) }
+                : new List<object>();
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(body) };
+        }));
+        if (query is not null)
+            Services.GetRequiredService<NavigationManager>().NavigateTo($"/campanhas/{CampaignId}?{query}");
+        return Render<CampanhaDetalhe>(p => p.Add(x => x.CampaignId, CampaignId));
+    }
+
+    private static void IrParaCemiterio(IRenderedComponent<CampanhaDetalhe> cut)
+    {
+        var header = cut.FindAll("div.mud-tab").Single(e => e.TextContent.Trim() == "Cemitério");
+        cut.InvokeAsync(() => header.Click());
+    }
+
+    [Fact]
+    public void Membros_nao_lista_ficha_no_cemiterio()
+    {
+        var cut = RenderComFichas([Ficha("f1", "u1", "Viva", false), Ficha("f2", "u1", "Morta", true, "Morte")]);
+
+        cut.WaitForAssertion(() => cut.Markup.Should().Contain("Viva"));
+        cut.Markup.Should().NotContain("Morta");
+    }
+
+    [Fact]
+    public void Aba_Cemiterio_lista_imagem_nome_nivel_dono_e_motivos()
+    {
+        var cut = RenderComFichas([Ficha("f2", "u1", "Morta", true, "Morte", "ContaDesativada")]);
+        cut.WaitForAssertion(() => cut.FindAll("div.mud-tab").Should().Contain(e => e.TextContent.Trim() == "Cemitério"));
+
+        IrParaCemiterio(cut);
+
+        cut.WaitForAssertion(() =>
+        {
+            var texto = cut.Find("[data-testid=cemiterio]").TextContent;
+            texto.Should().Contain("Morta").And.Contain("Nível 7").And.Contain("Ana")
+                .And.Contain("Personagem morto").And.Contain("Conta do jogador desativada");
+            cut.Find("[data-testid=cemiterio] img").GetAttribute("src").Should().Contain("morto.png");
+            cut.Find("[data-testid=cemiterio] a").GetAttribute("href").Should().Be("fichas/f2");
+            cut.Find("[data-testid=cemiterio] button[aria-label='Log da ficha']").Should().NotBeNull();
+        });
+    }
+
+    [Fact]
+    public void Aba_Cemiterio_mostra_o_nickname_do_dono_vindo_da_resposta()
+    {
+        var cut = RenderComFichas([Ficha("f2", "ex-membro", "Morta", true, "RemovidoDaCampanha")]);
+        cut.WaitForAssertion(() => cut.FindAll("div.mud-tab").Should().Contain(e => e.TextContent.Trim() == "Cemitério"));
+
+        IrParaCemiterio(cut);
+
+        cut.WaitForAssertion(() => cut.Find("[data-testid=cemiterio]").TextContent
+            .Should().Contain("Jogador removido da campanha").And.Contain("jogador: Beto"));
+    }
+
+    [Fact]
+    public void Aba_Cemiterio_vazia_mostra_mensagem()
+    {
+        var cut = RenderComFichas([Ficha("f1", "u1", "Viva", false)]);
+        cut.WaitForAssertion(() => cut.FindAll("div.mud-tab").Should().Contain(e => e.TextContent.Trim() == "Cemitério"));
+
+        IrParaCemiterio(cut);
+
+        cut.WaitForAssertion(() => cut.Markup.Should().Contain("Nenhuma ficha no cemitério."));
+    }
+
+    [Fact]
+    public void Query_aba_cemiterio_abre_a_aba()
+    {
+        var cut = RenderComFichas([Ficha("f2", "u1", "Morta", true, "Morte")], "aba=cemiterio");
+
+        cut.WaitForAssertion(() => cut.Find("[data-testid=cemiterio]").TextContent.Should().Contain("Morta"));
+    }
+
+    // ---- Campanha R0018 (remover da campanha) e R0019 (alterar dono) ----
+
+    private readonly List<(HttpMethod Metodo, string Caminho, string? Corpo)> _chamadas = new();
+
+    private IRenderedComponent<CampanhaDetalhe> RenderComMembros(GrantSummaryResponse[]? grants = null, CampaignAttachmentResponse[]? anexos = null)
+    {
+        var authContext = this.AddAuthorization();
+        authContext.SetAuthorized("gm-user");
+        authContext.SetRoles("GM");
+        var members = new[] { new CampaignMemberResponse("u1", "Ana", "ana@x.com"), new CampaignMemberResponse("u2", "Beto", "beto@x.com") };
+        Services.AddScoped(_ => FakeHttpMessageHandler.CreateClient(request =>
+        {
+            var path = request.RequestUri!.AbsolutePath;
+            if (request.Method != HttpMethod.Get)
+            {
+                _chamadas.Add((request.Method, path, request.Content?.ReadAsStringAsync().Result));
+                return new HttpResponseMessage(HttpStatusCode.NoContent);
+            }
+
+            object body = path.EndsWith("/members") ? members
+                : path.EndsWith("/grants") ? grants ?? []
+                : path.EndsWith("/attachments") ? anexos ?? []
+                : path.EndsWith("campaigns") ? new List<CampaignResponse> { new(CampaignId, "Camp", "", null) }
+                : new List<object>();
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(body) };
+        }));
+        return Render<CampanhaDetalhe>(p => p.Add(x => x.CampaignId, CampaignId));
+    }
+
+    private static void IrParaAba(IRenderedComponent<CampanhaDetalhe> cut, string aba)
+    {
+        cut.WaitForAssertion(() => cut.FindAll("div.mud-tab").Should().Contain(e => e.TextContent.Trim() == aba));
+        var header = cut.FindAll("div.mud-tab").Single(e => e.TextContent.Trim() == aba);
+        cut.InvokeAsync(() => header.Click());
+    }
+
+    [Fact]
+    public async Task Remover_membro_confirma_e_chama_DELETE()
+    {
+        var cut = RenderComMembros();
+        var dialogos = Render<MudDialogProvider>();
+        cut.WaitForAssertion(() => cut.FindAll("button[aria-label='Remover da campanha']").Should().HaveCount(2));
+
+        await cut.InvokeAsync(() => cut.FindAll("button[aria-label='Remover da campanha']")[1].Click());
+
+        dialogos.WaitForAssertion(() =>
+        {
+            dialogos.Markup.Should().Contain("Beto");
+            dialogos.Markup.Should().Contain("cemitério").And.Contain("voltam ao GM").And.Contain("Encontros");
+        });
+        _chamadas.Should().BeEmpty();
+
+        await dialogos.InvokeAsync(() => dialogos.FindAll("button").Single(b => b.TextContent.Trim() == "Remover").Click());
+
+        cut.WaitForAssertion(() => _chamadas.Should().ContainSingle(c => c.Metodo == HttpMethod.Delete && c.Caminho == $"/api/campaigns/{CampaignId}/members/u2"));
+    }
+
+    [Fact]
+    public async Task Cancelar_nao_chama()
+    {
+        var cut = RenderComMembros();
+        var dialogos = Render<MudDialogProvider>();
+        cut.WaitForAssertion(() => cut.FindAll("button[aria-label='Remover da campanha']").Should().HaveCount(2));
+        await cut.InvokeAsync(() => cut.FindAll("button[aria-label='Remover da campanha']")[0].Click());
+        dialogos.WaitForAssertion(() => dialogos.Markup.Should().Contain("cemitério"));
+
+        await dialogos.InvokeAsync(() => dialogos.FindAll("button").Single(b => b.TextContent.Trim() == "Cancelar").Click());
+        await Task.Delay(100);
+
+        _chamadas.Should().BeEmpty();
+    }
+
+    private IRenderedComponent<MudPopoverProvider> _popover = null!;
+    private IRenderedComponent<MudPopoverProvider> Popover() => _popover;
+
+    private static GrantSummaryResponse Concessao(string tipo) => new("sheet-9", tipo, "Guardião", "u1", "Ana");
+
+    private async Task<(IRenderedComponent<CampanhaDetalhe> Cut, IRenderedComponent<MudDialogProvider> Dialogos)> AbrirAlterarDonoDaConcessaoAsync(string tipo)
+    {
+        var cut = RenderComMembros(grants: [Concessao(tipo)]);
+        var dialogos = Render<MudDialogProvider>();
+        _popover = Render<MudPopoverProvider>();
+        IrParaAba(cut, "Conceder Ficha");
+        cut.WaitForAssertion(() => cut.FindAll("button[aria-label='Alterar dono']").Should().ContainSingle());
+        await cut.InvokeAsync(() => cut.Find("button[aria-label='Alterar dono']").Click());
+        dialogos.WaitForAssertion(() => dialogos.Markup.Should().Contain("Novo dono"));
+        return (cut, dialogos);
+    }
+
+    [Fact]
+    public async Task Alterar_dono_lista_membros_e_GM()
+    {
+        var (_, dialogos) = await AbrirAlterarDonoDaConcessaoAsync("Npc");
+
+        await dialogos.InvokeAsync(() => dialogos.Find(".mud-select .mud-input-control").MouseDown());
+
+        Popover().FindAll(".mud-list-item").Select(li => li.TextContent.Trim()).Should().Equal("GM (sem dono)", "Ana", "Beto");
+    }
+
+    [Theory]
+    [InlineData("Npc", "npc-sheets")]
+    [InlineData("Creature", "creature-sheets")]
+    public async Task Alterar_dono_envia_DonoId_ou_null(string tipo, string rota)
+    {
+        var (_, dialogos) = await AbrirAlterarDonoDaConcessaoAsync(tipo);
+
+        await dialogos.InvokeAsync(() => dialogos.Find(".mud-select .mud-input-control").MouseDown());
+        await Popover().InvokeAsync(() => Popover().FindAll(".mud-list-item").Single(li => li.TextContent.Trim() == "Beto").Click());
+        await dialogos.InvokeAsync(() => dialogos.FindAll("button").Single(b => b.TextContent.Trim() == "Salvar").Click());
+
+        dialogos.WaitForAssertion(() => _chamadas.Should().ContainSingle(c => c.Metodo == HttpMethod.Put && c.Caminho == $"/api/{rota}/sheet-9/dono" && c.Corpo == "{\"donoId\":\"u2\"}"));
+    }
+
+    [Theory]
+    [InlineData("Npc", "npc-sheets")]
+    [InlineData("Creature", "creature-sheets")]
+    public async Task Alterar_dono_devolvendo_ao_GM_envia_null(string tipo, string rota)
+    {
+        var (_, dialogos) = await AbrirAlterarDonoDaConcessaoAsync(tipo);
+
+        await dialogos.InvokeAsync(() => dialogos.Find(".mud-select .mud-input-control").MouseDown());
+        await Popover().InvokeAsync(() => Popover().FindAll(".mud-list-item").Single(li => li.TextContent.Trim() == "GM (sem dono)").Click());
+        await dialogos.InvokeAsync(() => dialogos.FindAll("button").Single(b => b.TextContent.Trim() == "Salvar").Click());
+
+        dialogos.WaitForAssertion(() => _chamadas.Should().ContainSingle(c => c.Metodo == HttpMethod.Put && c.Caminho == $"/api/{rota}/sheet-9/dono" && c.Corpo == "{\"donoId\":null}"));
+    }
+
+    [Fact]
+    public async Task Anexo_de_NPC_sem_dono_oferece_Alterar_dono()
+    {
+        var anexo = new CampaignAttachmentResponse("a1", "NpcSheet", "Guardião", null, false, false, null, null, null, "sheet-9");
+        var cut = RenderComMembros(anexos: [anexo]);
+        var dialogos = Render<MudDialogProvider>();
+        IrParaAba(cut, "Anexos");
+        cut.WaitForAssertion(() => cut.FindAll("button[aria-label='Alterar dono']").Should().ContainSingle());
+
+        await cut.InvokeAsync(() => cut.Find("button[aria-label='Alterar dono']").Click());
+
+        dialogos.WaitForAssertion(() => dialogos.Markup.Should().Contain("Novo dono"));
+    }
+
+    [Fact]
+    public void Busca_de_membro_mostra_so_ativos()
+    {
+        var authContext = this.AddAuthorization();
+        authContext.SetAuthorized("gm-user");
+        authContext.SetRoles("GM");
+        Services.AddScoped(_ => FakeHttpMessageHandler.CreateClient(request =>
+        {
+            if (request.Method == HttpMethod.Get && request.RequestUri!.AbsolutePath.EndsWith("players"))
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = JsonContent.Create(new List<RuinaRPG.Contracts.Players.PlayerSearchResultResponse>
+                    {
+                        new("1", "Ana", "ana@x.com", "Ativa"),
+                        new("2", "Beto", "beto@x.com", "Desativada"),
+                    })
+                };
+            if (request.Method == HttpMethod.Get)
+                return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<object>()) };
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        }));
+        var cut = Render<CampanhaDetalhe>(p => p.Add(x => x.CampaignId, CampaignId));
+
+        cut.Find("input[type=text]").Input("a");
+
+        cut.WaitForAssertion(() =>
+        {
+            cut.Markup.Should().Contain("Ana (ana@x.com)");
+            cut.Markup.Should().NotContain("Beto");
+        });
+    }
 }

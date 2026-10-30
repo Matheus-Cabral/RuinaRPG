@@ -29,8 +29,7 @@ public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPeri
 
     protected override Guid? HistoricoId(NpcSheet sheet) => sheet.HistoricoId;
 
-    protected override Task<Carga> CargaAsync(NpcSheet sheet, int forca, int vigor) =>
-        CargaDoInventarioAsync<NpcWeapon, NpcInventoryItem>(sheet.Id, forca, vigor, bonusDeCarga: 0m);
+    protected override Task<List<(int Qtd, decimal Peso, decimal? CapacidadeExtra)>> InventarioAsync(Guid sheetId) => InventarioAsync<NpcInventoryItem>(sheetId);
 
     protected override Task<(int? Eficiencia, int? Dano)> ElementalAsync(NpcSheet sheet, EfeitosDeCondicao efeitos) =>
         ElementalDasAfinidadesAsync<NpcAffinity>(sheet.Id, sheet.Afinidade, efeitos, tabelaDeAfinidades);

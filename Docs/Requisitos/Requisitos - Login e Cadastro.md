@@ -18,6 +18,7 @@
 
 - Sucesso: o usuário é autenticado e redirecionado ao painel correspondente ao seu papel — GM vai para o painel de GM, Jogador vai para o painel de jogador (ver [[01 - Visão Geral]]).
 - Falha: mensagem genérica de credenciais inválidas — não indica se foi o Nickname ou a Senha que estava incorreto, para não vazar quais nicknames existem no sistema.
+- Conta de jogador **desativada** ("[[Requisitos - Convite de Jogador]]" R0008) com a senha correta: o login é recusado com a mensagem "Esta conta está desativada. Fale com o seu GM.". Uma conta **excluída** (R0009 do mesmo documento) não tem como entrar: recebe a mensagem genérica de credenciais inválidas.
 
   
 
@@ -30,8 +31,8 @@
 
 Validações, em ambas as abas:
 
-- **Nickname**: obrigatório, único no sistema.
-- **Email**: obrigatório, único no sistema, formato de e-mail válido.
+- **Nickname**: obrigatório, único no sistema. O apelido de uma conta de jogador excluída continua **reservado** e conta como já em uso.
+- **Email**: obrigatório, único no sistema, formato de e-mail válido. O e-mail de uma conta de jogador **excluída** ("[[Requisitos - Convite de Jogador]]" R0009) fica livre e pode ser usado em um novo cadastro.
 - **Senha**: segue a política de senha padrão do ASP.NET Core Identity (ver "[[Requisitos - Técnico]]" R0004) — não há regra adicional definida pelo sistema além disso.
 - **Confirmação da Senha**: deve ser idêntica à Senha.
 - Na aba de Jogador, o **Código de acesso** deve corresponder a um código **Ativo** (ver "[[Requisitos - Convite de Jogador]]" R0002) — código inválido, expirado, já usado ou revogado impede o cadastro, com uma mensagem indicando o motivo.

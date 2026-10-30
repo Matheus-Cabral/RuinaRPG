@@ -54,7 +54,7 @@
    sudo install -m 755 -o ghrunner -g ghrunner /home/pro/RuinaRPG/deploy/provision/runner-cleanup.sh /home/ghrunner/runner-cleanup.sh
    echo '0 4 * * 0 /home/ghrunner/runner-cleanup.sh /home/pro/RuinaRPG/deploy/state/colors.env >> /home/ghrunner/runner-cleanup.log 2>&1' | sudo -u ghrunner crontab -
    ```
-   Os argumentos sao os `deploy/state/colors.env` de cada checkout que faz deploy neste host (aqui, a stack de dev em `/home/pro/RuinaRPG`). As imagens de `CURRENT_SHA` e `PREVIOUS_SHA` desses arquivos nunca sao removidas, mesmo paradas ha mais de 7 dias: sao a release ativa e o alvo do rollback. Se um checkout novo passar a fazer deploy aqui, acrescente o `colors.env` dele na linha do cron. Um arquivo listado que o `ghrunner` nao consegue ler aborta a limpeza antes de remover qualquer imagem.
+   Os argumentos sao os `deploy/state/colors.env` de cada checkout que faz deploy neste host (aqui, a stack de dev em `/home/pro/RuinaRPG`). As imagens de `CURRENT_SHA` e `PREVIOUS_SHA` desses arquivos nunca sao removidas, mesmo paradas ha mais de 7 dias: sao a release ativa e o alvo do rollback. Se um checkout novo passar a fazer deploy aqui, acrescente o `colors.env` dele na linha do cron. Um arquivo listado que existe mas o `ghrunner` nao consegue ler aborta a limpeza antes de remover qualquer imagem; um que ainda nao existe (checkout sem deploy) e pulado.
    **Verificacao:** `sudo -u ghrunner crontab -l` mostra a linha; `sudo -u ghrunner /home/ghrunner/runner-cleanup.sh /home/pro/RuinaRPG/deploy/state/colors.env` termina sem erro.
 
 8. Confira a chave do host de producao (o `setup-runner.sh` a registrou sem verificar, trust-on-first-use):

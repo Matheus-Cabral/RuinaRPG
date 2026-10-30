@@ -56,28 +56,29 @@ public class ChangelogDialogTests : MudBunitContext
     }
 
     [Fact]
-    public void Rendered_list_contains_the_section_labels_of_2_0_0()
+    public void Rendered_list_contains_the_section_labels_of_2_1_0()
     {
-        var cut = RenderDialog("2.0.0", EventCallback.Factory.Create(this, () => { }));
+        var cut = RenderDialog("2.1.0", EventCallback.Factory.Create(this, () => { }));
 
-        cut.Markup.Should().Contain("Mais rapidez:").And.Contain("Melhorias e correções:")
-            .And.NotContain("Nova versão disponível").And.NotContain("Vitalidade e Foco");
+        cut.Markup.Should().Contain("Cemitério de fichas:").And.Contain("Remover jogador da campanha:")
+            .And.Contain("Contas de jogador:").And.Contain("Maestrias").And.Contain("Peso da Criatura:")
+            .And.Contain("Correções:");
     }
 
     [Fact]
-    public void The_1_5_0_text_is_gone()
+    public void The_2_0_0_and_1_5_0_texts_are_gone()
     {
-        var cut = RenderDialog("2.0.0", EventCallback.Factory.Create(this, () => { }), isRulesAuditor: true);
+        var cut = RenderDialog("2.1.0", EventCallback.Factory.Create(this, () => { }), isRulesAuditor: true);
 
-        cut.Markup.Should().NotContain("Pontos de Ignição:").And.NotContain("Log de ficha:").And.NotContain("Goblin 2")
-            .And.NotContain("Auditoria de Condições:");
+        cut.Markup.Should().NotContain("Mais rapidez:").And.NotContain("Melhorias e correções:")
+            .And.NotContain("Log de ficha:").And.NotContain("Goblin 2").And.NotContain("Auditoria de Condições:");
     }
 
     [Fact]
-    public void The_2_0_0_text_has_no_auditor_block_because_no_Auditoria_page_changed()
+    public void The_2_1_0_text_has_no_auditor_block_because_no_Auditoria_page_changed()
     {
-        var comum = RenderDialog("2.0.0", EventCallback.Factory.Create(this, () => { }));
-        var auditor = RenderDialog("2.0.0", EventCallback.Factory.Create(this, () => { }), isRulesAuditor: true);
+        var comum = RenderDialog("2.1.0", EventCallback.Factory.Create(this, () => { }));
+        var auditor = RenderDialog("2.1.0", EventCallback.Factory.Create(this, () => { }), isRulesAuditor: true);
 
         comum.Markup.Should().NotContain("Para Auditores");
         auditor.Markup.Should().NotContain("Para Auditores");
