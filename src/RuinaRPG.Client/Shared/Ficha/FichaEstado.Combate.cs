@@ -36,11 +36,11 @@ public sealed partial class FichaEstado
     public MasteryFormModel FormularioDeMaestria { get; } = new();
 
     // O fim da recarga das abas 2 e 3, em sequência, na ordem de hoje. A Criatura tem os seus records no fio (arma com
-    // ItemId e Durabilidade anuláveis, DurabilidadeMaximo): o tipo com arma manual os lê e passa pelo adaptador (ver
-    // TipoDeFichaCliente.TemArmaManual).
+    // ItemId e Durabilidade anuláveis, DurabilidadeMaximo): o tipo com esse formato os lê e passa pelo adaptador (ver
+    // TipoDeFichaCliente.Formato).
     private async Task CarregarCombateAsync()
     {
-        if (Tipo.TemArmaManual)
+        if (Tipo.Formato == FormatoDosDados.Criatura)
         {
             var armas = await Http.GetFromJsonAsync<List<CreatureWeaponResponse>>(Tipo.Url(SheetId, "weapons")) ?? new();
             Armas = armas.Select(LinhaDeArma.De).ToList();
@@ -72,7 +72,7 @@ public sealed partial class FichaEstado
     {
         var form = FormularioDeArma;
         HttpResponseMessage response;
-        if (!Tipo.TemArmaManual)
+        if (Tipo.Formato == FormatoDosDados.Comum)
             response = await Http.PostAsJsonAsync(Tipo.Url(SheetId, "weapons"), new AddWeaponRequest(form.ItemId));
         else if (form.Origem == "Catalogo")
             response = await Http.PostAsJsonAsync(Tipo.Url(SheetId, "weapons"), new AddCreatureWeaponRequest(form.ItemId, null, null, null, null));

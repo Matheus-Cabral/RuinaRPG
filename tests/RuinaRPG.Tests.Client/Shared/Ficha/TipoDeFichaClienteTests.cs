@@ -97,6 +97,16 @@ public class TipoDeFichaClienteTests
         Ler<string?>(TipoDeFichaCliente.Criatura, membro).Should().Be(criatura);
     }
 
+    // 2.1.0 C.2: Personagem e NPC compartilham os records; a Criatura tem os próprios (a flag de interface não decide).
+    [Theory]
+    [InlineData(nameof(TipoDeFichaCliente.Formato), FormatoDosDados.Comum, FormatoDosDados.Comum, FormatoDosDados.Criatura)]
+    public void Formato_dos_dados_por_tipo(string membro, FormatoDosDados personagem, FormatoDosDados npc, FormatoDosDados criatura)
+    {
+        Ler<FormatoDosDados>(TipoDeFichaCliente.Personagem, membro).Should().Be(personagem);
+        Ler<FormatoDosDados>(TipoDeFichaCliente.Npc, membro).Should().Be(npc);
+        Ler<FormatoDosDados>(TipoDeFichaCliente.Criatura, membro).Should().Be(criatura);
+    }
+
     // 2.1.0 A.1: a lista do GM é o segundo item da trilha do GM; o Personagem não tem (a trilha dele passa pela campanha).
     [Theory]
     [InlineData(nameof(TipoDeFichaCliente.ListaDoGm), "NPCs do GM", "npcs", "Bestiário do GM", "bestiario")]

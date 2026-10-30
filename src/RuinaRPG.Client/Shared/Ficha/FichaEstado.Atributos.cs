@@ -53,12 +53,12 @@ public sealed partial class FichaEstado
     }
 
     // O bônus de Histórico no Modificador (ContaHistorico) só existe onde a ficha tem Antecedentes; o record da
-    // Criatura não o traz e passa pelo adaptador. A escolha do record segue TemAntecedentes (ver a nota nele), como a
-    // dos records do Combate segue TemArmaManual (FichaEstado.Combate.cs).
+    // Criatura não o traz e passa pelo adaptador. A escolha do record segue TipoDeFichaCliente.Formato, como a
+    // dos records do Combate (FichaEstado.Combate.cs).
     private async Task<List<SkillResponse>> CarregarPericiasAsync()
     {
         var url = Tipo.Url(SheetId, "skills");
-        if (Tipo.TemAntecedentes)
+        if (Tipo.Formato == FormatoDosDados.Comum)
             return await Http.GetFromJsonAsync<List<SkillResponse>>(url) ?? new();
         var pericias = await Http.GetFromJsonAsync<List<CreatureSkillResponse>>(url) ?? new();
         return pericias.Select(AdaptadorDeCriatura.ParaPericia).ToList();

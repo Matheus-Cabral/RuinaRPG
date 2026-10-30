@@ -46,7 +46,7 @@ public sealed partial class FichaEstado
     public async Task CarregarCaracteristicasAsync()
     {
         var url = Tipo.Url(SheetId, "traits");
-        if (Tipo.TemTracosRaciais)
+        if (Tipo.Formato == FormatoDosDados.Comum)
             Caracteristicas = await Http.GetFromJsonAsync<TraitsListResponse>(url);
         else
             Caracteristicas = await Http.GetFromJsonAsync<CreatureTraitsListResponse>(url) is { } lista ? AdaptadorDeCriatura.ParaCaracteristicas(lista) : null;
