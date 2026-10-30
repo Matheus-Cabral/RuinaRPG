@@ -319,13 +319,13 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Tipo | enum: Base \| Caminho \| SubElemento |
 | Teto | int, nullable (NULL = sem limite) |
 
-**Cruzamentos** (provisório) — R0020: `ElementoAId`, `ElementoBId` (FKs ao catálogo; par único, simétrico), `SubElementoId` (FK ao catálogo, tipo Sub-Elemento), `MinimoA` e `MinimoB` (int >= 1, padrão 1). Iniciais: os 12 cruzamentos de "[[Requisitos - Ficha de Personagem]]" 2.c.
+**Cruzamentos** (provisório) — R0020: `ElementoAId`, `ElementoBId` (FKs ao catálogo; par único, simétrico), `SubElementoId` (FK ao catálogo, tipo Sub-Elemento), `MinimoA` e `MinimoB` (int >= 1, padrão 1). Iniciais: os 12 cruzamentos de "[[Requisitos - Auditoria de Regras]]" R0020.
 
 **Total de afinidade por Círculo** (provisório) — R0018: `Circulo` (int, PK) e `Total` (int >= 0). Semeado da coluna *Afinidade (Valores Absolutos)* da "[[Tabela de Circulo e Grau por EAP]]" **só enquanto está vazio**; depois, só o Auditor.
 
 **Visibilidade de elementos** (provisório) — R0021: `Origem` (Vocação ou Classe), `Chave` (identificador estável da Vocação/Classe, como texto) e `ElementoId` (FK ao catálogo, Caminho ou Sub-Elemento). Iniciais: Feiticeiro, Adepto e Bruxo ligados a todos os Caminhos e Sub-Elementos.
 
-**Referências ao catálogo** — as colunas que guardavam o enum `AfinidadeElemental` passam a referenciá-lo sem conversão de valor: `Afinidade` das fichas de Personagem, NPC e Criatura, o elemento alvo das linhas de Condição (`AlvoDeCondicao.AfinidadeElemental` e dano elemental) e o requisito *Afinidade Elemental* das Passivas. A migration cria o catálogo, os cruzamentos, o total por Círculo e a visibilidade iniciais e converte as linhas antigas de afinidade em pontos por elemento (Ficha de Personagem 2.c, *Conversão*); muda dados, então o release usa a janela de deploy.
+**Referências ao catálogo** — as colunas que guardavam o enum `AfinidadeElemental` passam a referenciá-lo; as que já guardavam o inteiro do enum não precisam de conversão de valor: `Afinidade` das fichas de Personagem, NPC e Criatura, o elemento alvo das linhas de Condição (`AlvoDeCondicao.AfinidadeElemental` e dano elemental) e o requisito *Afinidade Elemental* das Passivas. Colunas que guardavam o elemento por **nome** (`AlvoEspecifico` das linhas de Condição, inclusive as já aplicadas a participantes, e qualquer requisito de Passiva guardado por nome) passam a guardar o **id do catálogo**, convertido pela migration. A migration cria o catálogo, os cruzamentos, o total por Círculo e a visibilidade iniciais e converte as linhas antigas de afinidade em pontos por elemento (Ficha de Personagem 2.c, *Conversão*); muda dados, então o release usa a janela de deploy.
 
 **CharacterWeapons** — arsenal (3.a). Referência ao vivo ao Catálogo, exceto Durabilidade.
 
@@ -895,7 +895,7 @@ Catálogo global mantido pelo Auditor de Regras (Auditoria → Condições): uma
 | CondicaoId | FK → Condicoes (cascade) |
 | Ordem | int |
 | Alvo | enum `AlvoDeCondicao` (texto): Atributo \| Pericia \| SubAtributo \| RecursoTotal \| RecursoAtual \| AfinidadeElemental \| DanoElemental \| Dano \| Maestria |
-| AlvoEspecifico | string, nullable — nome do `Atributo`; chave da Perícia (vazio = todas); constante de `SubAtributoAlvo`; `Vitalidade` \| `Foco` \| `Adrenalina` \| `Estresse`; nome do `Elemento` (vazio = geral); nome do `TipoDeDano` (vazio = todos); chave da Perícia da Maestria (vazio = todas). Obrigatório para Atributo, SubAtributo, RecursoTotal e RecursoAtual |
+| AlvoEspecifico | string, nullable — nome do `Atributo`; chave da Perícia (vazio = todas); constante de `SubAtributoAlvo`; `Vitalidade` \| `Foco` \| `Adrenalina` \| `Estresse`; **id do elemento do catálogo** (vazio = geral; antes da 2.2.0 guardava o nome do `Elemento`, e a migration converte nome → id); nome do `TipoDeDano` (vazio = todos); chave da Perícia da Maestria (vazio = todas). Obrigatório para Atributo, SubAtributo, RecursoTotal e RecursoAtual |
 | TipoDeValor | enum `TipoDeValorDeCondicao` (texto): Fixo \| Percentual; percentual entre −100 e 1000 |
 | Valor | int, com sinal, diferente de zero |
 | Momento | enum `MomentoDeCondicao` (texto): AoAplicar \| ACadaVez, nullable — preenchido se e somente se `Alvo = RecursoAtual` |
