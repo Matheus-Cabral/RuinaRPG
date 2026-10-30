@@ -58,7 +58,7 @@ Obs: Concentração só pode ser utilizada em perícias de estudo.
 
 2 pontos: a dívida lhe vale favores maiores (como fornecer informações sigilosas ou realizar algum “serviço sujo”) e a pessoa que lhe deve irá ajudar mesmo que isso possa vir a colocála em situações perigosas.
 
-3 pontos: alguém lhe deve a vida, e fará tudo que estiver a seu alcance para ajudá-lo, não importam as conseqüências. (Só possível comprar caso tenha ajudado o alvo em um caso de vida ou morte)
+3 pontos: alguém lhe deve a vida, e fará tudo que estiver a seu alcance para ajudá-lo, não importam as consequências. (Só possível comprar caso tenha ajudado o alvo em um caso de vida ou morte)
 
 ## Homúnculo
 
@@ -126,7 +126,7 @@ Obs.: Caso o homúnculo seja colocado em um corpo ainda vivo, o homúnculo e o a
 
 ## Alergia
 
--1 ponto: o Personagem é alérgico a alguma coisa (poeira, pêlo de animais, certos perfumes). Ao entrar em contato com essa substância, começa a espirrar sem parar, o que prejudica suas ações físicas (o Mestre pode impor penalidades conforme o tipo de ação que ele pretender realizar).
+-1 ponto: o Personagem é alérgico a alguma coisa (poeira, pelo de animais, certos perfumes). Ao entrar em contato com essa substância, começa a espirrar sem parar, o que prejudica suas ações físicas (o Mestre pode impor penalidades conforme o tipo de ação que ele pretender realizar).
 
 ## Alergia Grave
 
@@ -172,7 +172,7 @@ E o Código dos Heróis (sempre cumprir sua palavra, sempre proteger qualquer pe
 
 ## Complexo de Culpa
 
--1 ponto: você se sente terrivelmente culpado por alguma coisa que fez no passado e julga-se responsável por todas as conseqüências disto. Às vezes, o motivo do acontecimento realmente foi culpa sua, em outros casos não, mas igualmente o Personagem se atribui como um responsável direto. Em todas as situações que lembrem o motivo que ocasionou seu complexo, deve fazer um Teste de Força de Vontade. Em caso de falha, o personagem ficará extremamente deprimido e todos os seus Testes se tornam Difíceis.
+-1 ponto: você se sente terrivelmente culpado por alguma coisa que fez no passado e julga-se responsável por todas as consequências disto. Às vezes, o motivo do acontecimento realmente foi culpa sua, em outros casos não, mas igualmente o Personagem se atribui como um responsável direto. Em todas as situações que lembrem o motivo que ocasionou seu complexo, deve fazer um Teste de Força de Vontade. Em caso de falha, o personagem ficará extremamente deprimido e todos os seus Testes se tornam Difíceis.
 
 ## Coração Mole
 
@@ -244,7 +244,7 @@ E o Código dos Heróis (sempre cumprir sua palavra, sempre proteger qualquer pe
 
 ## Ganância
 
--1 ponto: a fraqueza dos homens. O personagem possui inveja de tudo que os outros possuem e ele não. Sua cobiça sempre o leva a querer mais e mais. Nenhuma riqueza é suficiente para ele. Para obter tudo o que deseja, o Personagem não mede conseqüências e realizará qualquer ato para satisfazer sua ganância (desde roubar até fazer pactos com demônios).
+-1 ponto: a fraqueza dos homens. O personagem possui inveja de tudo que os outros possuem e ele não. Sua cobiça sempre o leva a querer mais e mais. Nenhuma riqueza é suficiente para ele. Para obter tudo o que deseja, o Personagem não mede consequências e realizará qualquer ato para satisfazer sua ganância (desde roubar até fazer pactos com demônios).
 
 ## Gula
 
@@ -268,7 +268,7 @@ E o Código dos Heróis (sempre cumprir sua palavra, sempre proteger qualquer pe
 
 ## Mania de Perseguição
 
--1 ponto: o Personagem é extremamente paranóico, acreditando fervorosamente que “eles” estão atrás dele, que está sempre sendo vigiado ou perseguido onde quer que ele vá. O Personagem sempre irá desconfiar de todos, por mais amigos que sejam.
+-1 ponto: o Personagem é extremamente paranoico, acreditando fervorosamente que “eles” estão atrás dele, que está sempre sendo vigiado ou perseguido onde quer que ele vá. O Personagem sempre irá desconfiar de todos, por mais amigos que sejam.
 
 -2 pontos: igual ao anterior, mas nesse caso ele realmente está sendo perseguido por alguém (embora não tenha certeza absoluta disso). Pode ser algum espírito, demônio, caçadores ou uma outra entidade que está no seu encalço e ele teme se encontrar com ela.
 

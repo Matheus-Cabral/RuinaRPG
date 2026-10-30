@@ -9,7 +9,7 @@
     "Categoria": "Caracteristica",
     "Origem": "Caracter\u00EDstica Negativa",
     "Titulo": "Alergia",
-    "Conteudo": "-1 ponto(s): o Personagem \u00E9 al\u00E9rgico a alguma coisa (poeira, p\u00EAlo de animais, certos perfumes). Ao entrar em contato com essa subst\u00E2ncia, come\u00E7a a espirrar sem parar, o que prejudica suas a\u00E7\u00F5es f\u00EDsicas (o Mestre pode impor penalidades conforme o tipo de a\u00E7\u00E3o que ele pretender realizar)."
+    "Conteudo": "-1 ponto(s): o Personagem \u00E9 al\u00E9rgico a alguma coisa (poeira, pelo de animais, certos perfumes). Ao entrar em contato com essa subst\u00E2ncia, come\u00E7a a espirrar sem parar, o que prejudica suas a\u00E7\u00F5es f\u00EDsicas (o Mestre pode impor penalidades conforme o tipo de a\u00E7\u00E3o que ele pretender realizar)."
   },
   {
     "Categoria": "Caracteristica",
@@ -51,7 +51,7 @@
     "Categoria": "Caracteristica",
     "Origem": "Caracter\u00EDstica Negativa",
     "Titulo": "Complexo de Culpa",
-    "Conteudo": "-1 ponto(s): voc\u00EA se sente terrivelmente culpado por alguma coisa que fez no passado e julga-se respons\u00E1vel por todas as conseq\u00FC\u00EAncias disto. \u00C0s vezes, o motivo do acontecimento realmente foi culpa sua, em outros casos n\u00E3o, mas igualmente o Personagem se atribui como um respons\u00E1vel direto. Em todas as situa\u00E7\u00F5es que lembrem o motivo que ocasionou seu complexo, deve fazer um Teste de For\u00E7a de Vontade. Em caso de falha, o personagem ficar\u00E1 extremamente deprimido e todos os seus Testes se tornam Dif\u00EDceis."
+    "Conteudo": "-1 ponto(s): voc\u00EA se sente terrivelmente culpado por alguma coisa que fez no passado e julga-se respons\u00E1vel por todas as consequ\u00EAncias disto. \u00C0s vezes, o motivo do acontecimento realmente foi culpa sua, em outros casos n\u00E3o, mas igualmente o Personagem se atribui como um respons\u00E1vel direto. Em todas as situa\u00E7\u00F5es que lembrem o motivo que ocasionou seu complexo, deve fazer um Teste de For\u00E7a de Vontade. Em caso de falha, o personagem ficar\u00E1 extremamente deprimido e todos os seus Testes se tornam Dif\u00EDceis."
   },
   {
     "Categoria": "Caracteristica",
@@ -177,7 +177,7 @@
     "Categoria": "Caracteristica",
     "Origem": "Caracter\u00EDstica Negativa",
     "Titulo": "Gan\u00E2ncia",
-    "Conteudo": "-1 ponto(s): a fraqueza dos homens. O personagem possui inveja de tudo que os outros possuem e ele n\u00E3o. Sua cobi\u00E7a sempre o leva a querer mais e mais. Nenhuma riqueza \u00E9 suficiente para ele. Para obter tudo o que deseja, o Personagem n\u00E3o mede conseq\u00FC\u00EAncias e realizar\u00E1 qualquer ato para satisfazer sua gan\u00E2ncia (desde roubar at\u00E9 fazer pactos com dem\u00F4nios)."
+    "Conteudo": "-1 ponto(s): a fraqueza dos homens. O personagem possui inveja de tudo que os outros possuem e ele n\u00E3o. Sua cobi\u00E7a sempre o leva a querer mais e mais. Nenhuma riqueza \u00E9 suficiente para ele. Para obter tudo o que deseja, o Personagem n\u00E3o mede consequ\u00EAncias e realizar\u00E1 qualquer ato para satisfazer sua gan\u00E2ncia (desde roubar at\u00E9 fazer pactos com dem\u00F4nios)."
   },
   {
     "Categoria": "Caracteristica",
@@ -213,7 +213,7 @@
     "Categoria": "Caracteristica",
     "Origem": "Caracter\u00EDstica Negativa",
     "Titulo": "Mania de Persegui\u00E7\u00E3o (1 ponto)",
-    "Conteudo": "-1 ponto(s): o Personagem \u00E9 extremamente paran\u00F3ico, acreditando fervorosamente que \u201Celes\u201D est\u00E3o atr\u00E1s dele, que est\u00E1 sempre sendo vigiado ou perseguido onde quer que ele v\u00E1. O Personagem sempre ir\u00E1 desconfiar de todos, por mais amigos que sejam."
+    "Conteudo": "-1 ponto(s): o Personagem \u00E9 extremamente paranoico, acreditando fervorosamente que \u201Celes\u201D est\u00E3o atr\u00E1s dele, que est\u00E1 sempre sendo vigiado ou perseguido onde quer que ele v\u00E1. O Personagem sempre ir\u00E1 desconfiar de todos, por mais amigos que sejam."
   },
   {
     "Categoria": "Caracteristica",
@@ -321,7 +321,7 @@
     "Categoria": "Caracteristica",
     "Origem": "Caracter\u00EDstica Positiva",
     "Titulo": "D\u00EDvida de Gratid\u00E3o (3 pontos)",
-    "Conteudo": "3 ponto(s): algu\u00E9m lhe deve a vida, e far\u00E1 tudo que estiver a seu alcance para ajud\u00E1-lo, n\u00E3o importam as conseq\u00FC\u00EAncias. (S\u00F3 poss\u00EDvel comprar caso tenha ajudado o alvo em um caso de vida ou morte)"
+    "Conteudo": "3 ponto(s): algu\u00E9m lhe deve a vida, e far\u00E1 tudo que estiver a seu alcance para ajud\u00E1-lo, n\u00E3o importam as consequ\u00EAncias. (S\u00F3 poss\u00EDvel comprar caso tenha ajudado o alvo em um caso de vida ou morte)"
   },
   {
     "Categoria": "Caracteristica",
@@ -537,7 +537,7 @@
     "Categoria": "Efeito",
     "Origem": "Efeito \u2014 3\u00BA Grau/C\u00EDrculo III",
     "Titulo": "Marionete Arcana",
-    "Conteudo": "Gasto: 5 PI\n\nConjura uma entidade de arcana elemental, o tipo da entidade precisa ser concebido a partir de uma ess\u00EAncia elemental. a criatura ter\u00E1 de vida a quantidade de arcana a ela concedida ap\u00F3s a utiliza\u00E7\u00E3o da magia, ficando a cargo do mago a quantidade que dever\u00E1 ser concedida e n\u00E3o afetando o custo ja pago pela ultiliza\u00E7\u00E3o do feiti\u00E7o que a invocou.\n\n\u00C9 obrigat\u00F3ria a compra de Dura\u00E7\u00E3o."
+    "Conteudo": "Gasto: 5 PI\n\nConjura uma entidade de arcana elemental, o tipo da entidade precisa ser concebido a partir de uma ess\u00EAncia elemental. A criatura ter\u00E1 de vida a quantidade de arcana a ela concedida ap\u00F3s a utiliza\u00E7\u00E3o da magia, ficando a cargo do mago a quantidade que dever\u00E1 ser concedida e n\u00E3o afetando o custo j\u00E1 pago pela utiliza\u00E7\u00E3o do feiti\u00E7o que a invocou.\n\n\u00C9 obrigat\u00F3ria a compra de Dura\u00E7\u00E3o."
   },
   {
     "Categoria": "Efeito",
@@ -7125,7 +7125,7 @@
     "Categoria": "Tabela",
     "Origem": "Tabela de N\u00EDveis \u2014 N\u00EDvel 12",
     "Titulo": "N\u00EDvel 12",
-    "Conteudo": "\u002B8 Pontos de Igni\u00E7\u00E3o  \u003Cbr\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco  \u003Cbr\u003E\u002B1 Pontos de Pericia"
+    "Conteudo": "\u002B8 Pontos de Igni\u00E7\u00E3o  \u003Cbr\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco  \u003Cbr\u003E\u002B1 Pontos de Per\u00EDcia"
   },
   {
     "Categoria": "Tabela",
@@ -7149,7 +7149,7 @@
     "Categoria": "Tabela",
     "Origem": "Tabela de N\u00EDveis \u2014 N\u00EDvel 16",
     "Titulo": "N\u00EDvel 16",
-    "Conteudo": "\u002B8 Pontos de Igni\u00E7\u00E3o  \u003Cbr\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco  \u003Cbr\u003E\u002B1 Espa\u00E7o de Caracteristica"
+    "Conteudo": "\u002B8 Pontos de Igni\u00E7\u00E3o  \u003Cbr\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco  \u003Cbr\u003E\u002B1 Espa\u00E7o de Caracter\u00EDstica"
   },
   {
     "Categoria": "Tabela",
@@ -7191,7 +7191,7 @@
     "Categoria": "Tabela",
     "Origem": "Tabela de N\u00EDveis \u2014 N\u00EDvel 22",
     "Titulo": "N\u00EDvel 22",
-    "Conteudo": "\u002B12 Pontos de Igni\u00E7\u00E3o  \u003Cbr\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco  \u003Cbr\u003E\u002B2 Pontos de Pericia"
+    "Conteudo": "\u002B12 Pontos de Igni\u00E7\u00E3o  \u003Cbr\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco  \u003Cbr\u003E\u002B2 Pontos de Per\u00EDcia"
   },
   {
     "Categoria": "Tabela",
@@ -7215,7 +7215,7 @@
     "Categoria": "Tabela",
     "Origem": "Tabela de N\u00EDveis \u2014 N\u00EDvel 26",
     "Titulo": "N\u00EDvel 26",
-    "Conteudo": "\u002B12 Pontos de Igni\u00E7\u00E3o  \u003Cbr\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco  \u003Cbr\u003E\u002B1 Espa\u00E7o de Caracteristica"
+    "Conteudo": "\u002B12 Pontos de Igni\u00E7\u00E3o  \u003Cbr\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco  \u003Cbr\u003E\u002B1 Espa\u00E7o de Caracter\u00EDstica"
   },
   {
     "Categoria": "Tabela",
@@ -7257,7 +7257,7 @@
     "Categoria": "Tabela",
     "Origem": "Tabela de N\u00EDveis \u2014 N\u00EDvel 32",
     "Titulo": "N\u00EDvel 32",
-    "Conteudo": "\u002B16 Pontos de Igni\u00E7\u00E3o  \u003Cbr\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco  \u003Cbr\u003E\u002B2 Pontos de Pericia"
+    "Conteudo": "\u002B16 Pontos de Igni\u00E7\u00E3o  \u003Cbr\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco  \u003Cbr\u003E\u002B2 Pontos de Per\u00EDcia"
   },
   {
     "Categoria": "Tabela",
@@ -7281,7 +7281,7 @@
     "Categoria": "Tabela",
     "Origem": "Tabela de N\u00EDveis \u2014 N\u00EDvel 36",
     "Titulo": "N\u00EDvel 36",
-    "Conteudo": "\u002B16 Pontos de Igni\u00E7\u00E3o  \u003Cbr\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco  \u003Cbr\u003E\u002B1 Espa\u00E7o de Caracteristica"
+    "Conteudo": "\u002B16 Pontos de Igni\u00E7\u00E3o  \u003Cbr\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco  \u003Cbr\u003E\u002B1 Espa\u00E7o de Caracter\u00EDstica"
   },
   {
     "Categoria": "Tabela",
@@ -7305,7 +7305,7 @@
     "Categoria": "Tabela",
     "Origem": "Tabela de N\u00EDveis \u2014 N\u00EDvel 4",
     "Titulo": "N\u00EDvel 4",
-    "Conteudo": "\u002B4 Pontos de Igni\u00E7\u00E3o  \u003Cbr\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco  \u003Cbr\u003E\u002B1 Espa\u00E7o de Caracteristica"
+    "Conteudo": "\u002B4 Pontos de Igni\u00E7\u00E3o  \u003Cbr\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco  \u003Cbr\u003E\u002B1 Espa\u00E7o de Caracter\u00EDstica"
   },
   {
     "Categoria": "Tabela",
@@ -7323,7 +7323,7 @@
     "Categoria": "Tabela",
     "Origem": "Tabela de N\u00EDveis \u2014 N\u00EDvel 42",
     "Titulo": "N\u00EDvel 42",
-    "Conteudo": "\u002B20 Pontos de Igni\u00E7\u00E3o  \u003Cbr\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco  \u003Cbr\u003E\u002B4 Pontos de Pericia"
+    "Conteudo": "\u002B20 Pontos de Igni\u00E7\u00E3o  \u003Cbr\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco  \u003Cbr\u003E\u002B4 Pontos de Per\u00EDcia"
   },
   {
     "Categoria": "Tabela",
@@ -7347,7 +7347,7 @@
     "Categoria": "Tabela",
     "Origem": "Tabela de N\u00EDveis \u2014 N\u00EDvel 46",
     "Titulo": "N\u00EDvel 46",
-    "Conteudo": "\u002B20 Pontos de Igni\u00E7\u00E3o  \u003Cbr\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco  \u003Cbr\u003E\u002B1 Espa\u00E7o de Caracteristica"
+    "Conteudo": "\u002B20 Pontos de Igni\u00E7\u00E3o  \u003Cbr\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco  \u003Cbr\u003E\u002B1 Espa\u00E7o de Caracter\u00EDstica"
   },
   {
     "Categoria": "Tabela",
@@ -7377,7 +7377,7 @@
     "Categoria": "Tabela",
     "Origem": "Tabela de N\u00EDveis \u2014 N\u00EDvel 50",
     "Titulo": "N\u00EDvel 50",
-    "Conteudo": "\u002B30 Pontos de Igni\u00E7\u00E3o  \u003Cbr\u003E\u002BStatus Aprimorado de Vida/Foco (Total)  \u003Cbr\u003E\u002B4 Pontos de Per\u00EDcia  \u003Cbr\u003E\u002B Ultima Passiva  \u003Cbr\u003E\u002B8 Pontos de atributo  \u003Cbr\u003E\u002B1 Espa\u00E7o de Maestria"
+    "Conteudo": "\u002B30 Pontos de Igni\u00E7\u00E3o  \u003Cbr\u003E\u002BStatus Aprimorado de Vida/Foco (Total)  \u003Cbr\u003E\u002B4 Pontos de Per\u00EDcia  \u003Cbr\u003E\u002B \u00DAltima Passiva  \u003Cbr\u003E\u002B8 Pontos de atributo  \u003Cbr\u003E\u002B1 Espa\u00E7o de Maestria"
   },
   {
     "Categoria": "Tabela",
@@ -7395,7 +7395,7 @@
     "Categoria": "Tabela",
     "Origem": "Tabela de N\u00EDveis \u2014 N\u00EDvel 8",
     "Titulo": "N\u00EDvel 8",
-    "Conteudo": "\u002B4 Pontos de Igni\u00E7\u00E3o  \u003Cbr\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco  \u003Cbr\u003E\u002B1 Espa\u00E7o de Caracteristica"
+    "Conteudo": "\u002B4 Pontos de Igni\u00E7\u00E3o  \u003Cbr\u003E\u002BStatus de Voca\u00E7\u00E3o de Vida/Foco  \u003Cbr\u003E\u002B1 Espa\u00E7o de Caracter\u00EDstica"
   },
   {
     "Categoria": "Tabela",
