@@ -50,6 +50,8 @@ public class DatabaseInitializerTests : IClassFixture<BlankDatabaseFixture>
         var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
         (await db.Database.GetPendingMigrationsAsync()).Should().BeEmpty();
         (await CountSeededTablesAsync(services)).Values.Should().OnlyContain(count => count > 0);
+        // Tabela da 2.2.0 (ainda não existe num banco da 1.5.0, por isso fora de CountSeededTablesAsync).
+        (await db.TotaisDeAfinidadePorCirculo.CountAsync()).Should().Be(10);
     }
 
     [Fact]
@@ -62,6 +64,8 @@ public class DatabaseInitializerTests : IClassFixture<BlankDatabaseFixture>
         await DatabaseInitializer.InitializeAsync(services, NullLogger.Instance);
 
         (await CountSeededTablesAsync(services)).Should().Equal(first);
+        await using var scope = services.CreateAsyncScope();
+        (await scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>().TotaisDeAfinidadePorCirculo.CountAsync()).Should().Be(10);
     }
 
     [Fact]

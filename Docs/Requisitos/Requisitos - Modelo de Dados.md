@@ -298,32 +298,32 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 
 *(Modificador e Total não são colunas — são calculados.)*
 
-**CharacterAffinities** — pontos por elemento (2.c), uma linha por (ficha, elemento) com pontos ou Experiência. Os nomes de tabelas e colunas desta seção e das três seguintes são **provisórios** (definidos na implementação); o que vale aqui são os dados.
+**CharacterPontosDeAfinidade** — pontos por elemento (2.c), uma linha por (ficha, elemento) com pontos ou Experiência. Substitui a antiga `CharacterAffinities` (linhas Essência 1/Essência 2/Sub-Elemento), convertida pela migration `AfinidadesPorElemento` da 2.2.0.
 
 | Coluna | Tipo |
 |---|---|
 | Id | PK |
 | CharacterSheetId | FK |
-| ElementoId | FK → catálogo de elementos |
+| ElementoId | FK → ElementosDeAfinidade |
 | Pontos | int, >= 0 |
 | Experiencia | int, nullable |
 
-Único por (CharacterSheetId, ElementoId). O gasto da ficha é a soma de `Pontos`.
+Único por (CharacterSheetId, ElementoId); `ElementoId` com `Restrict` (um elemento com pontos não sai do catálogo). O gasto da ficha é a soma de `Pontos`.
 
-**Catálogo de elementos** (`ElementosDeAfinidade`, provisório) — mantido pelo Auditor ("[[Requisitos - Auditoria de Regras]]" R0018/R0019). Um só catálogo para a ficha, a Criatura, as Condições e as Passivas.
+**ElementosDeAfinidade** — o catálogo de elementos, mantido pelo Auditor ("[[Requisitos - Auditoria de Regras]]" R0018/R0019). Um só catálogo para a ficha, a Criatura, as Condições e as Passivas.
 
 | Coluna | Tipo |
 |---|---|
-| Id | PK, estável: os 18 ids de hoje são os inteiros do antigo `AfinidadeElemental` (Terra=0, Agua=1, Fogo=2, Ar=3, Gelo=4, Flora=5, Ferro=6, Raio=7, Prever=8, Alma=9, Purificar=10, Ecomancia=11, Hemomancia=12, Curar=13, Vida=14, Aprimorar=15, Necromancia=16, Invocacao=17); **Mundano = 18** |
+| Id | PK (identidade; os criados pelo Auditor continuam a partir de 19), estável: os 18 ids de hoje são os inteiros do antigo `AfinidadeElemental` (Terra=0, Agua=1, Fogo=2, Ar=3, Gelo=4, Flora=5, Ferro=6, Raio=7, Prever=8, Alma=9, Purificar=10, Ecomancia=11, Hemomancia=12, Curar=13, Vida=14, Aprimorar=15, Necromancia=16, Invocacao=17); **Mundano = 18** |
 | Nome | string, único |
-| Tipo | enum: Base \| Caminho \| SubElemento |
+| Tipo | enum `TipoDeElemento` (texto): Base \| Caminho \| SubElemento |
 | Teto | int, nullable — >= 1 quando preenchido (NULL = sem limite) |
 
-**Cruzamentos** (provisório) — R0020: `ElementoAId`, `ElementoBId` (FKs ao catálogo; par único, simétrico), `SubElementoId` (FK ao catálogo, tipo Sub-Elemento), `MinimoA` e `MinimoB` (int >= 1, padrão 1). Iniciais: os 12 cruzamentos de "[[Requisitos - Auditoria de Regras]]" R0020.
+**CruzamentosDeAfinidade** — R0020: `Id` (PK), `ElementoAId`, `ElementoBId` (FKs ao catálogo, `Restrict`; par único e simétrico: gravado com `ElementoAId < ElementoBId`), `SubElementoId` (FK ao catálogo, `Restrict`, tipo Sub-Elemento), `MinimoA` e `MinimoB` (int >= 1, padrão 1; cada um vale para o elemento do seu lado). Iniciais: os 12 cruzamentos de "[[Requisitos - Auditoria de Regras]]" R0020.
 
-**Total de afinidade por Círculo** (provisório) — R0018: `Circulo` (int, PK) e `Total` (int >= 0). Semeado da coluna *Afinidade (Valores Absolutos)* da "[[Tabela de Circulo e Grau por EAP]]" **só enquanto está vazio**; depois, só o Auditor.
+**TotaisDeAfinidadePorCirculo** — R0018: `Circulo` (int, PK) e `Total` (int >= 0). Semeado da coluna *Afinidade (Valores Absolutos)* da "[[Tabela de Circulo e Grau por EAP]]" **só enquanto está vazio**; depois, só o Auditor.
 
-**Visibilidade de elementos** (provisório) — R0021: `Origem` (Vocação ou Classe), `Chave` (identificador estável da Vocação/Classe, como texto) e `ElementoId` (FK ao catálogo, Caminho ou Sub-Elemento). Iniciais: Feiticeiro, Adepto e Bruxo ligados a todos os Caminhos e Sub-Elementos.
+**VisibilidadesDeElemento** — R0021: `Origem` (enum `OrigemDaVisibilidade` (texto): Vocacao \| Classe), `Chave` (identificador estável, texto: o nome do membro do enum `Vocacao` — `Feiticeiro`, `Adepto`, `Bruxo` — ou o nome da Classe como gravado na ficha) e `ElementoId` (FK ao catálogo, `Cascade`, Caminho ou Sub-Elemento); PK (Origem, Chave, ElementoId). Iniciais: Feiticeiro, Adepto e Bruxo ligados a todos os Caminhos e Sub-Elementos.
 
 **Referências ao catálogo** — as colunas que guardavam o enum `AfinidadeElemental` passam a referenciá-lo; as que já guardavam o inteiro do enum não precisam de conversão de valor: `Afinidade` das fichas de Personagem, NPC e Criatura, o elemento alvo das linhas de Condição (`AlvoDeCondicao.AfinidadeElemental` e dano elemental) e o requisito *Afinidade Elemental* das Passivas. Colunas que guardavam o elemento por **nome** (`AlvoEspecifico` das linhas de Condição, inclusive as já aplicadas a participantes, e qualquer requisito de Passiva guardado por nome) passam a guardar o **id do catálogo**, convertido pela migration. A migration cria o catálogo, os cruzamentos, o total por Círculo e a visibilidade iniciais e converte as linhas antigas de afinidade em pontos por elemento (Ficha de Personagem 2.c, *Conversão*); muda dados, então o release usa a janela de deploy.
 
@@ -534,7 +534,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 
 *(ver "[[Requisitos - Ficha de NPCs]]")*
 
-Mesma família completa de tabelas filhas (`NpcAttributes`, `NpcSkills`, `NpcAffinities`, `NpcWeapons`, `NpcArmorSlots`, `NpcShields`, `NpcSpellAbilities`/`NpcSpellAbilityEffects`, `NpcRunes`, `NpcMasteries`, `NpcInventoryItems`, `NpcArtifacts`, `NpcAffections`, `NpcTraits`, `NpcSheetHistoriaImages`) — um espelho 1:1 das tabelas de 6.1, prefixadas `Npc` em vez de `Character`, com a FK `NpcSheetId`. Diferenças na tabela raiz:
+Mesma família completa de tabelas filhas (`NpcAttributes`, `NpcSkills`, `NpcPontosDeAfinidade`, `NpcWeapons`, `NpcArmorSlots`, `NpcShields`, `NpcSpellAbilities`/`NpcSpellAbilityEffects`, `NpcRunes`, `NpcMasteries`, `NpcInventoryItems`, `NpcArtifacts`, `NpcAffections`, `NpcTraits`, `NpcSheetHistoriaImages`) — um espelho 1:1 das tabelas de 6.1, prefixadas `Npc` em vez de `Character`, com a FK `NpcSheetId`. Diferenças na tabela raiz:
 
 - `GmId`: FK → Users — o GM dono do bestiário.
 - `OwnerId`: **nullable** (`SetNull`) — só setado se concedida a um jogador (Campanha R0010).
@@ -558,7 +558,7 @@ Mesma lógica de 6.2: família de tabelas filhas espelhando 6.1 (prefixadas `Cre
 - A raiz guarda só `Id`, `GmId`, `OwnerId`, `ImageId`, `Nome`, `Raca`, `Arquetipo`, `SubArquetipo`, `Afinidade`, `Rank`, `Nivel`, `ExperienciaAtual`, `PontosDeIgnicao`, `VitalidadeAtual`, `FocoAtual`, `AdrenalinaAtual`, `Cobertura` e `LastDismissedLevelUpLevel`. Portanto **não tem** `Propriedade`, `Estrela`, `HistoricoId`, `Historia`, `EquipmentKitId`, `PossuiCoracaoDeMana`, `AfinidadeAdicional`, `EstresseAtual`, `SinaAtual`, `Ciclos` nem `ArcaRolada`.
 - `CreatureAttributes.Atributo` usa um enum próprio de 6 valores (Força, Vigor, Agilidade, Destreza, Astúcia, **Ego**), não o de 8 valores do Personagem.
 - `CreatureSkills.PericiaId` só permite as Perícias com `DisponivelParaCriaturas` (R0005 e Auditoria de Regras R0012) — restrição de aplicação, não de schema.
-- Sem equivalente de `CharacterAffinities` (não existe aba de Afinidades pra Criatura; `Afinidade` referencia o catálogo de elementos), de `CharacterRunes` nem de `CharacterSheetHistoriaImages`.
+- Sem equivalente de `CharacterPontosDeAfinidade` (não existe aba de Afinidades pra Criatura; `Afinidade` referencia o catálogo de elementos), de `CharacterRunes` nem de `CharacterSheetHistoriaImages`.
 - `CreatureWeapons`: `ItemId` **nullable** — quando nulo, usa `ManualNome` (string), `ManualTipoDeDano` (enum), `ManualDados` (string) e `ManualDano` (int), todas nullable (ataque natural, sem Alcance/Crítico/Rank/Durabilidade); `DurabilidadeAtual` também é nullable e fica nula nesse caso.
 - `CreatureInventoryItems` → `CreatureSpoils` (Espólios): `ItemId` (FK → Items, `Restrict`), `Qtd` (int) e `DT` (int).
 - `ExperienciaAtual` é usada para computar **Abate** = `piso(ExperienciaAtual × 0,15)` e **Assistência** = `piso(ExperienciaAtual × 0,12)` — calculados, não persistidos.

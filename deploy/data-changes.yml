@@ -1,3 +1,11 @@
 # Mudanças de dados permitidas entre o snapshot A (antes) e B (depois do deploy).
 # Formato: lista de { table, columns: [..] | "*", change: altered|lost, reason }
-changes: []
+changes:
+  - table: CondicaoModificadores
+    columns: [AlvoEspecifico]
+    change: altered
+    reason: "2.2.0 (migration AfinidadesPorElemento): o elemento alvo das linhas de Afinidade/Dano elemental passa do nome do enum ao id do catálogo de elementos"
+  - table: EncounterParticipantCondicoes
+    columns: [Modificadores]
+    change: altered
+    reason: "2.2.0 (migration AfinidadesPorElemento): o mesmo nas Condições já aplicadas a participantes (AlvoEspecifico dentro do jsonb)"

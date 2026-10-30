@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Domain.Rules;
+using RuinaRPG.Infrastructure.Afinidades;
 using RuinaRPG.Infrastructure.CharacterSheets;
 using RuinaRPG.Infrastructure.Items;
 using RuinaRPG.Infrastructure.Persistence;
@@ -51,5 +52,8 @@ public static class DatabaseInitializer
         var rules = scope.ServiceProvider.GetRequiredService<IRulesDataProvider>();
         var niveisSeed = await TabelaDeNiveisSeeder.SeedAsync(db, RulesDataProvider.ReadResource("Tabela de Níveis.md"), rules.XpPorNivel, rules.EapPorNivel);
         logger.LogInformation("TabelaDeNiveis seed: {InsertedCount} new row(s)/column(s) inserted", niveisSeed);
+
+        var totaisSeed = await TotalDeAfinidadePorCirculoSeeder.SeedAsync(db, rules.CirculoGrauPorEap);
+        logger.LogInformation("TotaisDeAfinidadePorCirculo seed: {InsertedCount} new row(s) inserted", totaisSeed);
     }
 }

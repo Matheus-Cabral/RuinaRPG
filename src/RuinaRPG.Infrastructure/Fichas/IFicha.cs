@@ -184,3 +184,14 @@ public interface IAfinidadeDaFicha : ILinhaDaFicha
     int? SegundaEssenciaValor { get; set; }
     int? Experiencia { get; set; }
 }
+
+/// <summary>
+/// Os pontos de uma ficha num elemento do catálogo de Afinidades, com a Experiência dele (2.c;
+/// CharacterPontosDeAfinidade, NpcPontosDeAfinidade). Uma linha por (ficha, elemento).
+/// </summary>
+public interface IPontosDeAfinidadeDaFicha : ILinhaDaFicha
+{
+    int ElementoId { get; set; }
+    int Pontos { get; set; }
+    int? Experiencia { get; set; }
+}
