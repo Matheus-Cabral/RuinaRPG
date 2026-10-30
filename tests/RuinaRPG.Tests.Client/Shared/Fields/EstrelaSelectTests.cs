@@ -61,6 +61,31 @@ public class EstrelaSelectTests : MudBunitContext
         cut.Find("input").GetAttribute("value").Should().Be("Aeurer");
     }
 
+    // Qualquer falha da carga (tempo esgotado, tipo de conteúdo não suportado...) vai ao alerta; o select continua.
+    [Theory]
+    [InlineData("timeout")]
+    [InlineData("nao-suportado")]
+    public void A_failed_Livro_de_Regras_load_of_any_kind_reports_the_error_and_the_select_stays(string falha)
+    {
+        Services.AddScoped(_ => FakeHttpMessageHandler.CreateClient(_ => falha == "timeout"
+            ? throw new TaskCanceledException("tempo esgotado")
+            : throw new NotSupportedException("tipo de conteúdo não suportado")));
+        var erros = new List<string>();
+
+        var cut = Render(builder =>
+        {
+            builder.OpenComponent<MudDialogProvider>(0);
+            builder.CloseComponent();
+            builder.OpenComponent<EstrelaSelect>(1);
+            builder.AddAttribute(2, nameof(EstrelaSelect.Value), "Aeurer");
+            builder.AddAttribute(3, nameof(EstrelaSelect.OnError), Microsoft.AspNetCore.Components.EventCallback.Factory.Create<string>(this, erros.Add));
+            builder.CloseComponent();
+        });
+
+        cut.WaitForAssertion(() => erros.Should().Equal("Não foi possível carregar as Estrelas do Livro de Regras."));
+        cut.Find("input").GetAttribute("value").Should().Be("Aeurer");
+    }
+
     [Fact]
     public void With_no_Estrela_selected_the_info_button_is_hidden()
     {
