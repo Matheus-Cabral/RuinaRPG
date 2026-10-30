@@ -5,6 +5,7 @@ namespace RuinaRPG.Domain.Afinidades;
 public sealed record ElementoNaFicha(ElementoDoCatalogo Elemento, int Pontos, bool Bloqueado, string? Motivo);
 
 /// <summary>Regras puras de Afinidades por pontos (Ficha de Personagem 2.c; Auditoria de Regras R0018–R0021).</summary>
+/// <remarks>Chaves de Vocação na Visibilidade = nomes dos membros do enum Vocacao (ex.: "Campeao", "Feiticeiro"); o seeder da Task 3 deve gravá-las assim.</remarks>
 public static class RegrasDeAfinidade
 {
     public static int Gasto(IReadOnlyDictionary<int, int> pontos) => pontos.Values.Sum();
@@ -48,12 +49,18 @@ public static class RegrasDeAfinidade
 
         if (novoValor < atual)
         {
-            foreach (var x in c.Cruzamentos.Where(x => x.ElementoA == elementoId || x.ElementoB == elementoId))
+            // Um Sub-Elemento com pontos só trava a descida se estava cumprido (por algum cruzamento)
+            // e deixaria de estar em todos; ficha já inconsistente pode baixar.
+            var depois = new Dictionary<int, int>(pontos) { [elementoId] = novoValor };
+            var subs = c.Cruzamentos
+                .Where(x => x.ElementoA == elementoId || x.ElementoB == elementoId)
+                .Select(x => x.SubElemento).Distinct();
+            foreach (var subId in subs)
             {
-                var minimo = x.ElementoA == elementoId ? x.MinimoA : x.MinimoB;
-                if (novoValor < minimo && pontos.GetValueOrDefault(x.SubElemento) > 0)
+                if (pontos.GetValueOrDefault(subId) <= 0) continue;
+                if (RequisitoCumprido(c, subId, pontos) && !RequisitoCumprido(c, subId, depois))
                 {
-                    var sub = NomeDe(c, x.SubElemento);
+                    var sub = NomeDe(c, subId);
                     return $"{sub} depende de {elemento.Nome}: zere {sub} antes.";
                 }
             }
@@ -73,6 +80,13 @@ public static class RegrasDeAfinidade
         || c.Visibilidade.Any(x => x.ElementoId == e.Id
             && ((x.Vocacao is not null && v is not null && x.Vocacao == v.ToString())
                 || (x.Classe is not null && classe is not null && x.Classe == classe)));
+
+    private static bool RequisitoCumprido(CatalogoDeAfinidades c, int subElemento, IReadOnlyDictionary<int, int> pontos)
+    {
+        var cruzamentos = c.Cruzamentos.Where(x => x.SubElemento == subElemento).ToList();
+        return cruzamentos.Count == 0 || cruzamentos.Any(x =>
+            pontos.GetValueOrDefault(x.ElementoA) >= x.MinimoA && pontos.GetValueOrDefault(x.ElementoB) >= x.MinimoB);
+    }
 
     private static string? MotivoDeRequisito(CatalogoDeAfinidades c, ElementoDoCatalogo e, IReadOnlyDictionary<int, int> pontos)
     {

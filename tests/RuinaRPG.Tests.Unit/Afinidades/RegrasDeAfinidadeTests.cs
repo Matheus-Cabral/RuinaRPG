@@ -162,4 +162,29 @@ public class RegrasDeAfinidadeTests
     [Fact]
     public void Descer_com_o_total_acima_do_maximo_e_aceito() =>
         Assert.Null(RegrasDeAfinidade.MotivoParaRecusarMudanca(Catalogo(), Vocacao.Feiticeiro, null, P((Ar, 5), (Fogo, 5)), Ar, 4, 3));
+
+    private static CatalogoDeAfinidades CatalogoComDoisCruzamentos() => Catalogo() with
+    {
+        Cruzamentos = [new(Ar, 1, Agua, 1, Gelo), new(Fogo, 1, Terra, 1, Gelo)]
+    };
+
+    [Fact]
+    public void Baixar_Ar_e_permitido_se_outro_cruzamento_do_sub_elemento_segue_cumprido() =>
+        Assert.Null(RegrasDeAfinidade.MotivoParaRecusarMudanca(
+            CatalogoComDoisCruzamentos(), Vocacao.Feiticeiro, null,
+            P((Ar, 2), (Agua, 1), (Fogo, 1), (Terra, 1), (Gelo, 2)), Ar, 0, 10));
+
+    [Fact]
+    public void Baixar_e_recusado_se_nenhum_cruzamento_sobra()
+    {
+        var motivo = RegrasDeAfinidade.MotivoParaRecusarMudanca(
+            CatalogoComDoisCruzamentos(), Vocacao.Feiticeiro, null,
+            P((Ar, 2), (Agua, 1), (Gelo, 2)), Ar, 0, 10);
+        Assert.Equal("Gelo depende de Ar: zere Gelo antes.", motivo);
+    }
+
+    [Fact]
+    public void Sub_elemento_ja_quebrado_nao_impede_baixar_o_elemento() =>
+        Assert.Null(RegrasDeAfinidade.MotivoParaRecusarMudanca(
+            Catalogo(), Vocacao.Feiticeiro, null, P((Ar, 2), (Agua, 0), (Gelo, 2)), Ar, 0, 10));
 }
