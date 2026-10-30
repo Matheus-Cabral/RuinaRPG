@@ -6,8 +6,8 @@ namespace RuinaRPG.Client.Shared.Ficha;
 
 /// <summary>
 /// O estado de uma página de ficha que as abas compartilhadas recebem em cascata (<c>CascadingValue</c>). A página
-/// cria um por ficha, assina <see cref="Alterado"/> (re-renderiza) e continua dona da coordenação: auto-save,
-/// recarga adiada, Condições, SignalR. Este é o núcleo; os dados e as ações de cada aba entram como partes
+/// (<see cref="PaginaDeFicha{TFicha}"/>) cria um por ficha, assina <see cref="Alterado"/> (re-renderiza) e continua dona
+/// da coordenação: auto-save, recarga adiada, Condições, SignalR. Este é o núcleo; os dados e as ações de cada aba entram como partes
 /// (<c>FichaEstado.&lt;Aba&gt;.cs</c>) quando a aba se torna compartilhada.
 /// </summary>
 public sealed partial class FichaEstado(HttpClient http, TipoDeFichaCliente tipo, string sheetId)

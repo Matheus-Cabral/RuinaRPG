@@ -127,6 +127,10 @@ public class AbaCombateTests : RedeDeSegurancaBase
     private static object? CampoDaPagina(object pagina, string nome) =>
         pagina.GetType().GetField(nome, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(pagina);
 
+    // O auto-save é da base comum das páginas (PaginaDeFicha).
+    private static object? AutoSaveDaPagina(object pagina) =>
+        pagina.GetType().GetProperty("AutoSave", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(pagina);
+
     [Theory]
     [MemberData(nameof(Tipos))]
     public async Task The_tab_is_the_shared_component_with_the_page_state_form_and_saves(string tipo)
@@ -138,7 +142,7 @@ public class AbaCombateTests : RedeDeSegurancaBase
         aba.Estado.Should().BeSameAs(cut.FindComponent<CascadingValue<FichaEstado>>().Instance.Value);
         var pagina = Pagina(cut, tipo);
         aba.Formulario.Should().NotBeNull().And.BeSameAs(CampoDaPagina(pagina, "_form"));
-        aba.AutoSave.Should().NotBeNull().And.BeSameAs(CampoDaPagina(pagina, "_autoSave"));
+        aba.AutoSave.Should().NotBeNull().And.BeSameAs(AutoSaveDaPagina(pagina));
         // Os recursos vão no autosave; a Cobertura (e a Afinidade) salvam na hora e releem as abas; a Sina salva na hora.
         aba.AoMudar.HasDelegate.Should().BeTrue();
         aba.SalvarERecarregar.HasDelegate.Should().BeTrue();

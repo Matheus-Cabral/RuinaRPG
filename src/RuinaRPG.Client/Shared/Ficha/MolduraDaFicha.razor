@@ -1,0 +1,36 @@
+@using RuinaRPG.Client.Services
+
+@* O que envolve as abas em toda página de ficha (PaginaDeFicha): a raiz das Condições (sair de um campo acorda a recarga
+   adiada), o estado em cascata, o cabeçalho e, onde o tipo tem Características Raciais, o diálogo da escolha pendente.
+   Ficha no cemitério: a desabilitação em cascata do MudBlazor (o mesmo "ParentDisabled" que o MudForm propaga, sem o
+   <form>, que não pode conter os EditForm das abas) desliga todo campo e botão das abas; os cabeçalhos das abas não a
+   leem, então continuam navegáveis. Onde o tipo não tem cemitério, SomenteLeitura é sempre falso. *@
+
+<div class="ficha-condicoes-raiz" @onfocusout="@(() => Recarga.FocoSaiu())">
+<CascadingValue Value="Estado" IsFixed="false">
+<CabecalhoDaFicha Trilha="@Trilha" Concedida="Concedida" />
+@if (Estado.Tipo.TemTracosRaciais)
+{
+    <EscolhaRacialDialog />
+}
+
+<CascadingValue Name="ParentDisabled" Value="Estado.SomenteLeitura">
+@ChildContent
+</CascadingValue>
+</CascadingValue>
+
+</div>
+
+@code {
+    [Parameter, EditorRequired] public FichaEstado Estado { get; set; } = default!;
+
+    [Parameter, EditorRequired] public RecargaAdiada Recarga { get; set; } = default!;
+
+    [Parameter, EditorRequired] public List<RuinaRPG.Client.Shared.BreadcrumbItem> Trilha { get; set; } = new();
+
+    /// <summary>A ficha foi concedida a um jogador (<see cref="CabecalhoDaFicha.Concedida"/>).</summary>
+    [Parameter] public bool Concedida { get; set; }
+
+    /// <summary>As abas.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

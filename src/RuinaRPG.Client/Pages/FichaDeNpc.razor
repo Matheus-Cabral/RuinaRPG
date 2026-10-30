@@ -1,24 +1,13 @@
 @page "/npcs/{SheetId}"
-@implements IDisposable
-@inject HttpClient Http
-@inject IJSRuntime JS
-@inject SecretNoteNotifier Notifier
-@inject PericiaCatalogo Pericias
-@inject AuthenticationStateProvider AuthProvider
+@inherits PaginaDeFicha<NpcSheetResponse>
 @using RuinaRPG.Contracts.NpcSheets
-@using RuinaRPG.Contracts.Images
 @using RuinaRPG.Client.Shared.Ficha
 @using MudBlazor
-@using RuinaRPG.Contracts.Notifications
 
-<div class="ficha-condicoes-raiz" @onfocusout="@(() => _recarga.FocoSaiu())">
-<CascadingValue Value="_estado" IsFixed="false">
-<CabecalhoDaFicha Trilha="@Crumbs" Concedida="_concedida" />
-<EscolhaRacialDialog />
-
+<MolduraDaFicha Estado="Estado" Recarga="Recarga" Trilha="@Trilha" Concedida="_concedida">
 <MudTabs>
     <MudTabPanel Text="Informações Básicas">
-        <AbaInformacoesBasicas Formulario="_form" AutoSave="_autoSave" AoMudar="NotifySavedAsync" AoMudarNivel="NotifyNivelChangedAsync"
+        <AbaInformacoesBasicas Formulario="_form" AutoSave="AutoSave" AoMudar="NotifySavedAsync" AoMudarNivel="NotifyNivelChangedAsync"
                                AoMudarExperiencia="NotifyExperienciaAtualChangedAsync" AoMudarPontosDeIgnicao="NotifyPontosDeIgnicaoChangedAsync" />
     </MudTabPanel>
 
@@ -27,7 +16,7 @@
     </MudTabPanel>
 
     <MudTabPanel Text="Combate">
-        <AbaCombate Formulario="_form" AutoSave="_autoSave" AoMudar="NotifySavedAsync" SalvarAgora="SaveIgnoringResultAsync" SalvarERecarregar="SalvarERecarregarAbasAsync" />
+        <AbaCombate Formulario="_form" AutoSave="AutoSave" AoMudar="NotifySavedAsync" SalvarAgora="SaveIgnoringResultAsync" SalvarERecarregar="SalvarERecarregarAbasAsync" />
     </MudTabPanel>
 
     <MudTabPanel Text="Magias & Habilidades">
@@ -43,157 +32,21 @@
         <AbaAntecedentes Formulario="_form" AoMudar="NotifySavedAsync" />
     </MudTabPanel>
 </MudTabs>
-</CascadingValue>
-
-</div>
+</MolduraDaFicha>
 
 @code {
-    [Parameter] public string SheetId { get; set; } = "";
-
-    // O estado que as abas compartilhadas recebem em cascata (E). Os campos abaixo continuam com os nomes de antes,
-    // mas o valor mora no estado: a página e as abas leem e escrevem o mesmo.
-    private FichaEstado _estado = null!;
-    private string? _errorMessage { get => _estado.Erro; set => _estado.Erro = value; }
-    private bool _isGmCaller { get => _estado.IsGmCaller; set => _estado.IsGmCaller = value; }
-    private string? _campaignId { get => _estado.CampaignId; set => _estado.CampaignId = value; }
-    private List<ImageSummaryResponse> _myImages { get => _estado.MinhasImagens; set => _estado.MinhasImagens = value; }
-    private int _penalidadesVersao { get => _estado.PenalidadesVersao; set => _estado.PenalidadesVersao = value; }
-    private int _condicoesVersao { get => _estado.CondicoesVersao; set => _estado.CondicoesVersao = value; }
-    private bool _historiaLoaded { get => _estado.HistoriaCarregada; set => _estado.HistoriaCarregada = value; }
-
-    private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => _estado.Trilha(_form.Nome);
-
     private readonly FormularioDaFicha _form = new(TipoDeFichaCliente.Npc);
-    private readonly RuinaRPG.Client.Services.AutoSaveCoordinator _autoSave = new();
+    protected override FormularioDaFicha Formulario => _form;
 
-    protected override void OnInitialized()
-    {
-        _estado = new FichaEstado(Http, TipoDeFichaCliente.Npc, SheetId);
-        _estado.RecarregarPontosDeIgnicao = RecarregarPontosDeIgnicaoAsync;
-        _estado.Alterado += OnEstadoAlterado;
-        _autoSave.StateChanged += StateHasChangedFromAutoSave;
-        // Condições mudam no servidor (ação do GM no encontro): a ficha se recarrega sem salvar nada e sem
-        // trocar o campo que está sendo editado (RecargaAdiada).
-        _recarga = new RecargaAdiada(RecarregarPorCondicoesAsync, () => JS.InvokeAsync<bool>("ruinaFoco.campoEmEdicao").AsTask(), () => _autoSave.Ocupado,
-            aoFalhar: falha => _ = AvisarFalhaDaRecargaAsync());
-        Notifier.CondicoesAlteradas += OnCondicoesAlteradas;
-    }
-
-    // Erro de uma recarga adiada (RecargaAdiada nunca chama isto depois do Dispose). Ninguém espera esta tarefa, então
-    // ela não pode falhar: se a página sair no meio-tempo, não há onde mostrar o erro.
-    private async Task AvisarFalhaDaRecargaAsync()
-    {
-        try
-        {
-            await InvokeAsync(() =>
-            {
-                _errorMessage = "Não foi possível atualizar a ficha com as Condições.";
-                StateHasChanged();
-            });
-        }
-        catch (Exception)
-        {
-        }
-    }
-
-    private RecargaAdiada _recarga = null!;
     // Só uma ficha concedida a um jogador tem Condições vivas; a do Mestre mostra o efeito só no Resumo do encontro.
     private bool _concedida;
 
-    private void OnCondicoesAlteradas(CondicoesAlteradasNotification notificacao)
+    protected override int PontosDeIgnicaoDa(NpcSheetResponse sheet) => sheet.PontosDeIgnicaoAtual;
+
+    protected override void PreencherFormulario(NpcSheetResponse sheet)
     {
-        if (notificacao.Kind != "npc" || notificacao.SheetId != SheetId)
-            return;
-
-        _ = InvokeAsync(async () =>
-        {
-            // O aviso e a lista de Passivas mudam já; a recarga da ficha espera se há um campo em edição.
-            _condicoesVersao++;
-            StateHasChanged();
-            try
-            {
-                await _recarga.SolicitarAsync();
-            }
-            catch (Exception)
-            {
-                _errorMessage = "Não foi possível atualizar a ficha com as Condições.";
-            }
-            StateHasChanged();
-        });
-    }
-
-    // Relê os números e as listas que as Condições mexem. Não passa por _autoSave: nada é gravado.
-    private Task RecarregarPorCondicoesAsync() => InvokeAsync(async () =>
-    {
-        await LoadSheetAsync(); await _estado.CarregarAtributosECombateAsync(); await _estado.CarregarMagiasAsync(); await _estado.CarregarRunasAsync(); await _estado.CarregarArtefatosAsync();
-        _penalidadesVersao++;
-        StateHasChanged();
-    });
-
-    private void StateHasChangedFromAutoSave() => InvokeAsync(StateHasChanged);
-
-    // Uma aba filha mudou o estado fora de um evento da página (ex.: Erro depois de um POST recusado).
-    private void OnEstadoAlterado() => InvokeAsync(StateHasChanged);
-
-    public void Dispose()
-    {
-        _estado.Alterado -= OnEstadoAlterado;
-        _autoSave.StateChanged -= StateHasChangedFromAutoSave;
-        Notifier.CondicoesAlteradas -= OnCondicoesAlteradas;
-        _recarga.Dispose();
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        await Pericias.CarregarAsync();
-        var authState = await AuthProvider.GetAuthenticationStateAsync();
-        _isGmCaller = authState.User.IsInRole("GM");
-
-        // LoadSheetAsync sets _campaignId, which LoadImagesAsync now needs — see the identical
-        // note in FichaDePersonagem.razor's OnInitializedAsync.
-        await LoadSheetAsync();
-        await LoadImagesAsync();
-
-        await Task.WhenAll(
-            _estado.CarregarAvisoDeNovoNivelAsync(), _estado.CarregarAtributosECombateAsync(),
-            _estado.CarregarHabilidadeRacialAsync(), _estado.CarregarVariantesLiberadasAsync(), _estado.CarregarMagiasAsync(), _estado.CarregarRunasAsync(), _estado.CarregarMaestriasAsync(),
-            _estado.CarregarInventarioAsync(), _estado.CarregarArtefatosAsync(), _estado.CarregarAfeicoesAsync(), _estado.CarregarCaracteristicasAsync(),
-            _estado.CarregarEscolhaRacialPendenteAsync());
-    }
-
-    private async Task LoadImagesAsync()
-    {
-        var url = _isGmCaller ? "images/mine" : $"campaigns/{_campaignId}/available-images";
-        var response = await Http.GetAsync(url);
-        if (response.IsSuccessStatusCode)
-            _myImages = await response.Content.ReadFromJsonAsync<List<ImageSummaryResponse>>() ?? new();
-    }
-
-    // Relê a ficha pelo auto-save: um campo com edição pendente ou em envio nunca é sobrescrito (spec 2.1.0 A.4).
-    private Task LoadSheetAsync() => _autoSave.RecarregarAsync(LerFichaAsync, sheet =>
-    {
-        AplicarFicha(sheet);
-        return Task.CompletedTask;
-    });
-
-    private async Task<NpcSheetResponse?> LerFichaAsync()
-    {
-        var response = await Http.GetAsync($"npc-sheets/{SheetId}");
-        return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<NpcSheetResponse>() : null;
-    }
-
-    private const string ErroAoCarregarAFicha = "Não foi possível carregar a ficha.";
-
-    private void AplicarFicha(NpcSheetResponse? sheet)
-    {
-        if (sheet is null)
-        {
-            _errorMessage = ErroAoCarregarAFicha;
-            return;
-        }
-
-        _campaignId = sheet.CampaignId;
-        _estado.CampaignName = sheet.CampaignName;
+        Estado.CampaignId = sheet.CampaignId;
+        Estado.CampaignName = sheet.CampaignName;
         _concedida = sheet.OwnerId is not null;
         _form.ImageUrl = sheet.ImageUrl;
         _form.ImageId = sheet.ImageId;
@@ -207,10 +60,10 @@
         _form.Estrela = sheet.Estrela;
         _form.SinaAtual = sheet.SinaAtual;
         _form.HistoricoId = sheet.HistoricoId;
-        if (!_historiaLoaded)
+        if (!Estado.HistoriaCarregada)
         {
             _form.Historia = sheet.Historia;
-            _historiaLoaded = true;
+            Estado.HistoriaCarregada = true;
         }
         _form.EquipmentKitId = sheet.EquipmentKitId;
         _form.Nivel = sheet.Nivel;
@@ -244,12 +97,9 @@
         _form.FocoMaximo = sheet.FocoMaximo;
         _form.AdrenalinaMaximo = sheet.AdrenalinaMaximo;
         _form.EstresseMaximo = sheet.EstresseMaximo;
-        // Só some o erro da própria releitura: uma recusa de outro salvamento (ex.: o 409 do cemitério) continua à vista.
-        if (_errorMessage == ErroAoCarregarAFicha)
-            _errorMessage = null;
     }
 
-    private async Task<bool> SaveIfValidAsync()
+    protected override async Task<bool> SaveIfValidAsync()
     {
         if (_form.Nivel is null || _form.ExperienciaAtual is null
             || _form.NucleosRankF is null || _form.NucleosRankE is null || _form.NucleosRankD is null
@@ -257,7 +107,7 @@
             || _form.PontosDeIgnicaoAtual is null
             || _form.VitalidadeAtual is null || _form.FocoAtual is null || _form.AdrenalinaAtual is null || _form.EstresseAtual is null)
         {
-            _errorMessage = "Preencha todos os campos obrigatórios da aba Informações Básicas antes de salvar.";
+            Estado.Erro = "Preencha todos os campos obrigatórios da aba Informações Básicas antes de salvar.";
             return false;
         }
 
@@ -269,167 +119,12 @@
             _form.Cobertura, _form.Ciclos, _form.ArcaRolada, _form.Estrela, _form.SinaAtual, _form.HistoricoId, null, _form.AfinidadeAdicional,
             _form.VitalidadeAtualCarregada, _form.FocoAtualCarregado, _form.AdrenalinaAtualCarregada, _form.EstresseAtualCarregado);
 
-        var response = await Http.PutAsJsonAsync($"npc-sheets/{SheetId}", request);
+        var response = await Http.PutAsJsonAsync(Tipo.Url(SheetId), request);
         if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a ficha.");
+            throw await FalhaAoSalvarAsync(response);
 
-        _errorMessage = null;
-        await LoadSheetAsync();
-        // A Variante change may have just cleared stale racial grants server-side (or made a fresh
-        // one pending for the first time) — re-check so the dialog reflects that immediately.
-        await _estado.CarregarEscolhaRacialPendenteAsync();
-        await _estado.CarregarAvisoDeNovoNivelAsync();
-        await _estado.CarregarAtributosECombateAsync();
-        _penalidadesVersao++;
-        await _estado.CarregarCaracteristicasAsync();
-        // Evoluções de Arca unlocked depend on Nível.
-        await _estado.CarregarHabilidadeRacialAsync();
+        Estado.Erro = null;
+        await RecarregarDepoisDeSalvarAsync();
         return true;
     }
-
-    private Task NotifySavedAsync()
-    {
-        _autoSave.NotifyChanged(SaveIfValidAsync);
-        return Task.CompletedTask;
-    }
-
-    // Nível and Experiência Atual go through their own dedicated endpoints, not the generic
-    // SaveIfValidAsync PUT above — that one submits every field at once, with no way to tell
-    // "the GM just edited Nível" apart from "Nível wasn't touched and still reads its old value".
-    // These two calls each say which field they mean, so the server can pull the other one to
-    // match via the same XP-threshold rule Ficha de Personagem uses (Requisitos - Ficha de NPCs).
-    private Task NotifyNivelChangedAsync()
-    {
-        _autoSave.NotifyChanged(SaveNivelAsync, "nivel");
-        return Task.CompletedTask;
-    }
-
-    private Task NotifyExperienciaAtualChangedAsync()
-    {
-        _autoSave.NotifyChanged(SaveExperienciaAtualAsync, "xp");
-        return Task.CompletedTask;
-    }
-
-    // O saldo de Pontos de Ignição também tem endpoint próprio: o servidor o altera sozinho (nível,
-    // Magias/Habilidades), e o PUT genérico o ignora para que um formulário desatualizado nunca escreva
-    // por cima disso. Editar o campo à mão salva só ele.
-    private Task NotifyPontosDeIgnicaoChangedAsync()
-    {
-        _autoSave.NotifyChanged(SavePontosDeIgnicaoAsync, "pi");
-        return Task.CompletedTask;
-    }
-
-    private async Task<bool> SavePontosDeIgnicaoAsync()
-    {
-        if (_form.PontosDeIgnicaoAtual is null)
-        {
-            _errorMessage = "Informe os Pontos de Ignição Atual.";
-            return false;
-        }
-
-        var response = await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/pontos-de-ignicao", _form.PontosDeIgnicaoAtual.Value);
-        if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a ficha.");
-
-        _errorMessage = null;
-        await RecarregarPontosDeIgnicaoAsync();
-        return true;
-    }
-
-    private async Task<bool> SaveNivelAsync()
-    {
-        if (_form.Nivel is null)
-        {
-            _errorMessage = "Informe o Nível.";
-            return false;
-        }
-
-        var response = await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/nivel", _form.Nivel.Value);
-        if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a ficha.");
-
-        _errorMessage = null;
-        await LoadSheetAsync();
-        await _estado.CarregarAvisoDeNovoNivelAsync();
-        await _estado.CarregarAtributosECombateAsync();
-        _penalidadesVersao++;
-        await _estado.CarregarCaracteristicasAsync();
-        // Evoluções de Arca unlocked depend on Nível.
-        await _estado.CarregarHabilidadeRacialAsync();
-        return true;
-    }
-
-    private async Task<bool> SaveExperienciaAtualAsync()
-    {
-        if (_form.ExperienciaAtual is null)
-        {
-            _errorMessage = "Informe a Experiência Atual.";
-            return false;
-        }
-
-        var response = await Http.PutAsJsonAsync($"npc-sheets/{SheetId}/experiencia-atual", _form.ExperienciaAtual.Value);
-        if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível salvar a ficha.");
-
-        _errorMessage = null;
-        await LoadSheetAsync();
-        await _estado.CarregarAvisoDeNovoNivelAsync();
-        await _estado.CarregarAtributosECombateAsync();
-        _penalidadesVersao++;
-        await _estado.CarregarCaracteristicasAsync();
-        // Evoluções de Arca unlocked depend on Nível.
-        await _estado.CarregarHabilidadeRacialAsync();
-        return true;
-    }
-
-    /// <summary>
-    /// Runs SaveIfValidAsync outside the autosave flow (i.e. not via _autoSave.NotifyChanged), for
-    /// the pre-existing immediate-save handlers (through SalvarAgora, the tabs' Sina, Ciclos and Arca
-    /// rolada; through SalvarERecarregarAbasAsync, the Cobertura and the Afinidade) that have no
-    /// separate sub-resource PUT endpoint of their own. Preserves their original behavior of
-    /// surfacing a save failure via _errorMessage instead of letting SaveIfValidAsync's exception go
-    /// unhandled.
-    /// </summary>
-    private async Task SaveIgnoringResultAsync()
-    {
-        try
-        {
-            await SaveIfValidAsync();
-        }
-        catch (InvalidOperationException ex)
-        {
-            _errorMessage = ex.Message;
-        }
-    }
-
-    /// <summary>
-    /// A Cobertura e a Afinidade da aba Combate: salva na hora e relê as abas 2 e 3 (a Defesa Natural, a
-    /// Eficiência e o Dano Elemental vêm com os Sub-Atributos; o salvamento só relê a ficha), num evento só da
-    /// página.
-    /// </summary>
-    private async Task SalvarERecarregarAbasAsync()
-    {
-        await SaveIgnoringResultAsync();
-        await _estado.CarregarAtributosECombateAsync();
-    }
-
-    /// <summary>
-    /// A API mexe no saldo de PI ao adicionar, editar e remover uma Magia/Habilidade (4.b), e é ela quem
-    /// guarda o valor: o formulário só o exibe. Relê o saldo depois de cada operação que o altera. Se a
-    /// releitura falhar, o campo fica como está — a operação em si já deu certo.
-    /// </summary>
-    private Task RecarregarPontosDeIgnicaoAsync() => _autoSave.RecarregarAsync(LerFichaAsync, sheet =>
-    {
-        if (sheet is not null)
-            _form.PontosDeIgnicaoAtual = sheet.PontosDeIgnicaoAtual;
-        return Task.CompletedTask;
-    });
-
-    private async Task OnEquipagemChosenAsync()
-    {
-        await LoadSheetAsync();
-        await Task.WhenAll(_estado.CarregarAtributosECombateAsync(), _estado.CarregarInventarioAsync(), _estado.CarregarArtefatosAsync());
-        _penalidadesVersao++;
-    }
-
 }

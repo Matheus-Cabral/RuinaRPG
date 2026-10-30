@@ -140,7 +140,7 @@ public abstract class FichasController<TSheet, TStats>(RuinaRpgDbContext db, ITa
     // Nível editável pelo GM — mas os dois campos ainda precisam cair no mesmo par que a tabela de XP daria a partir de
     // qualquer um deles. O Update geral não consegue aplicar essa regra: recebe sempre os dois campos no formulário
     // inteiro, sem como distinguir "o GM acabou de editar o Nível" de "o Nível não foi tocado". Por isso o cliente chama
-    // um endpoint ou o outro, dizendo qual campo de fato quer (FichaDeNpc.razor / FichaDeCriatura.razor).
+    // um endpoint ou o outro, dizendo qual campo de fato quer (PaginaDeFicha no cliente).
 
     /// <summary>Define o Nível e leva a Experiência Atual ao mínimo dele. Só para NPC/Criatura: o Nível do Personagem é calculado, não usar nele.</summary>
     protected async Task<IActionResult> DefinirNivelAsync(Guid id, int nivel)
