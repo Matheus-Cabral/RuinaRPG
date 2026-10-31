@@ -28,11 +28,6 @@ public sealed partial class FichaEstado
     /// <summary>As Afinidades por elemento (2.c): gasto, máximo, se a seção aparece e os elementos; <c>null</c> até a carga.</summary>
     public AfinidadesDaFichaResponse? Afinidades { get; set; }
 
-    /// <summary>
-    /// Um elemento está sendo gravado (o PUT e a recarga): o − e o + esperam, para um clique não calcular sobre os
-    /// pontos de antes do anterior.
-    /// </summary>
-    public bool SalvandoAfinidade { get; private set; }
 
     /// <summary>
     /// Os pontos de Acerto Crítico digitados e ainda não aplicados. Moram aqui, e não na seção, para sobreviver à troca de
@@ -118,22 +113,39 @@ public sealed partial class FichaEstado
 
     // ---------------- Afinidades ----------------
 
-    /// <summary>
-    /// Grava os pontos e a Experiência de um elemento (<c>PUT afinidades/{id}</c>) e relê as abas (a Eficiência e o Dano
-    /// Elemental vêm com os Sub-Atributos). A recusa do servidor vai para o alerta; um salvamento certo o apaga.
-    /// </summary>
-    public async Task AtualizarAfinidadeAsync(int elementoId, int pontos, int? experiencia)
+    /// <summary>Sobe ou desce os pontos de um elemento (o − e o +), com a Experiência que ele tem.</summary>
+    public Task MudarPontosDaAfinidadeAsync(int elementoId, int delta) =>
+        GravarAfinidadeAsync(elementoId, e => new AtualizarAfinidadeRequest(e.Pontos + delta, e.Experiencia));
+
+    /// <summary>Grava a Experiência de um elemento, com os pontos que ele tem.</summary>
+    public Task AtualizarExperienciaDaAfinidadeAsync(int elementoId, int? experiencia) =>
+        GravarAfinidadeAsync(elementoId, e => new AtualizarAfinidadeRequest(e.Pontos, experiencia));
+
+    // Uma gravação de cada vez: a seguinte espera a anterior e a recarga dela, e monta o pedido com os valores relidos —
+    // um + seguido da Experiência (ou dois +) nunca manda os pontos de antes e desfaz o que o anterior gravou.
+    private readonly SemaphoreSlim _filaDeAfinidades = new(1, 1);
+
+    private async Task GravarAfinidadeAsync(int elementoId, Func<ElementoDaFichaResponse, AtualizarAfinidadeRequest> pedido)
     {
-        SalvandoAfinidade = true;
+        await _filaDeAfinidades.WaitAsync();
         try
         {
-            var response = await Http.PutAsJsonAsync(Tipo.Url(SheetId, $"afinidades/{elementoId}"), new AtualizarAfinidadeRequest(pontos, experiencia));
-            Erro = response.IsSuccessStatusCode ? null : await response.Content.ReadErrorMessageAsync();
+            var elemento = Afinidades?.Elementos.SingleOrDefault(e => e.Id == elementoId);
+            if (elemento is null)
+                return;
+            var response = await Http.PutAsJsonAsync(Tipo.Url(SheetId, $"afinidades/{elementoId}"), pedido(elemento));
+            if (response.IsSuccessStatusCode)
+                Erro = null;
+            else
+            {
+                var mensagem = await response.Content.ReadErrorMessageAsync();
+                Erro = string.IsNullOrWhiteSpace(mensagem) ? "Não foi possível gravar a afinidade." : mensagem;
+            }
             await CarregarAtributosECombateAsync();
         }
         finally
         {
-            SalvandoAfinidade = false;
+            _filaDeAfinidades.Release();
         }
         NotificarAlteracao();
     }

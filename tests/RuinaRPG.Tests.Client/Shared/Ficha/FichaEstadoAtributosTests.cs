@@ -268,8 +268,9 @@ public class FichaEstadoAtributosTests
     }
 
     [Theory]
-    [MemberData(nameof(TiposComAfinidades))]
-    public async Task Setting_an_element_puts_its_points_and_experience_then_reloads(string tipo)
+    [InlineData("Personagem", 1, """{"pontos":3,"experiencia":1}""")]
+    [InlineData("NPC", -1, """{"pontos":1,"experiencia":1}""")]
+    public async Task Changing_the_points_puts_them_with_the_experience_then_reloads(string tipo, int delta, string corpo)
     {
         var estado = Estado(tipo);
         await estado.CarregarAtributosECombateAsync();
@@ -278,12 +279,25 @@ public class FichaEstadoAtributosTests
         var notificacoes = 0;
         estado.Alterado += () => notificacoes++;
 
-        await estado.AtualizarAfinidadeAsync(2, 3, 1);
+        await estado.MudarPontosDaAfinidadeAsync(2, delta);
 
-        _requisicoes.Should().Equal(new[] { $"PUT {K(tipo)}/afinidades/2 {{\"pontos\":3,\"experiencia\":1}}" }.Concat(Recarga(tipo)));
+        _requisicoes.Should().Equal(new[] { $"PUT {K(tipo)}/afinidades/2 {corpo}" }.Concat(Recarga(tipo)));
         estado.Erro.Should().BeNull();
         estado.PenalidadesVersao.Should().Be(0);
         notificacoes.Should().Be(1);
+    }
+
+    [Theory]
+    [MemberData(nameof(TiposComAfinidades))]
+    public async Task Changing_the_experience_puts_it_with_the_points_then_reloads(string tipo)
+    {
+        var estado = Estado(tipo);
+        await estado.CarregarAtributosECombateAsync();
+        _requisicoes.Clear();
+
+        await estado.AtualizarExperienciaDaAfinidadeAsync(2, null);
+
+        _requisicoes.Should().Equal(new[] { $"PUT {K(tipo)}/afinidades/2 {{\"pontos\":2,\"experiencia\":null}}" }.Concat(Recarga(tipo)));
     }
 
     [Theory]
@@ -293,30 +307,82 @@ public class FichaEstadoAtributosTests
         var estado = Estado(tipo);
         await estado.CarregarAtributosECombateAsync();
         _requisicoes.Clear();
-        _respostas[$"PUT {K(tipo)}/afinidades/3"] = (HttpStatusCode.BadRequest, "\"Gelo depende de Ar: zere Gelo antes.\"");
+        _respostas[$"PUT {K(tipo)}/afinidades/4"] = (HttpStatusCode.BadRequest, "\"Gelo depende de Ar: zere Gelo antes.\"");
 
-        await estado.AtualizarAfinidadeAsync(3, 0, null);
+        await estado.MudarPontosDaAfinidadeAsync(4, -1);
 
         estado.Erro.Should().Be("Gelo depende de Ar: zere Gelo antes.");
         _requisicoes.Skip(1).Should().Equal(Recarga(tipo));
     }
 
-    // Um clique enquanto o anterior ainda grava calcularia sobre os pontos velhos: os botões esperam.
-    [Fact]
-    public async Task The_state_says_an_element_is_being_saved_until_the_reload_ends()
+    // Uma recusa sem mensagem (corpo vazio, ou um texto JSON vazio) ainda aparece no alerta.
+    [Theory]
+    [InlineData("")]
+    [InlineData("\"\"")]
+    public async Task A_refusal_without_a_message_shows_the_fallback(string corpo)
     {
         var estado = Estado("Personagem");
         await estado.CarregarAtributosECombateAsync();
-        var duranteOPut = false;
-        var duranteARecarga = false;
-        _aoPedir = caminho =>
+        _respostas[$"PUT {K("Personagem")}/afinidades/2"] = (HttpStatusCode.InternalServerError, corpo);
+
+        await estado.MudarPontosDaAfinidadeAsync(2, 1);
+
+        estado.Erro.Should().Be("Não foi possível gravar a afinidade.");
+    }
+
+    // Uma edição feita enquanto a anterior ainda grava espera por ela e parte dos valores já relidos: um + seguido da
+    // Experiência (ou dois + seguidos) nunca manda os pontos de antes e desfaz o que o primeiro gravou.
+    [Fact]
+    public async Task Edits_made_while_another_is_saving_wait_and_use_the_reloaded_values()
+    {
+        var (estado, puts, liberar) = EstadoComServidorLento();
+        await estado.CarregarAtributosECombateAsync();
+
+        var mais = estado.MudarPontosDaAfinidadeAsync(2, 1);
+        var experiencia = estado.AtualizarExperienciaDaAfinidadeAsync(2, 4);
+        var outroMais = estado.MudarPontosDaAfinidadeAsync(2, 1);
+        liberar();
+        await Task.WhenAll(mais, experiencia, outroMais);
+
+        puts.Should().Equal("""{"pontos":3,"experiencia":1}""", """{"pontos":3,"experiencia":4}""", """{"pontos":4,"experiencia":4}""");
+        estado.Afinidades!.Elementos.Single().Pontos.Should().Be(4);
+    }
+
+    /// <summary>
+    /// Um servidor que guarda os pontos e a Experiência do Fogo e só responde o primeiro PUT quando liberado; o GET de
+    /// afinidades devolve o que ele guardou.
+    /// </summary>
+    private static (FichaEstado Estado, List<string> Puts, Action Liberar) EstadoComServidorLento()
+    {
+        var (pontos, experiencia) = (2, (int?)1);
+        var puts = new List<string>();
+        var portao = new TaskCompletionSource();
+        var http = new HttpClient(new HandlerAssincrono(async req =>
         {
-            if (caminho.EndsWith("/afinidades/2")) duranteOPut = estado.SalvandoAfinidade;
-            if (caminho.EndsWith("/weapons")) duranteARecarga = estado.SalvandoAfinidade;
-        };
+            var caminho = req.RequestUri!.AbsolutePath;
+            if (req.Method == HttpMethod.Put)
+            {
+                var corpo = await req.Content!.ReadAsStringAsync();
+                lock (puts)
+                    puts.Add(corpo);
+                if (puts.Count == 1)
+                    await portao.Task;
+                var json = System.Text.Json.JsonDocument.Parse(corpo).RootElement;
+                pontos = json.GetProperty("pontos").GetInt32();
+                experiencia = json.GetProperty("experiencia").ValueKind == System.Text.Json.JsonValueKind.Null ? null : json.GetProperty("experiencia").GetInt32();
+                return Resposta("{}");
+            }
+            if (caminho.EndsWith("/afinidades"))
+                return Resposta($$"""{"gasto":{{pontos}},"maximo":9,"secaoVisivel":true,"elementos":[{"id":2,"nome":"Fogo","tipo":"Base","teto":null,"pontos":{{pontos}},"experiencia":{{(experiencia?.ToString() ?? "null")}},"bloqueado":false,"motivo":null,"pontosComCondicoes":{{pontos}}}]}""");
+            return Resposta(caminho.EndsWith("/budget") || caminho.EndsWith("/sub-attributes") || caminho.EndsWith("/modificador-de-dano") ? "{}" : "[]");
+        })) { BaseAddress = new Uri("http://localhost/api/") };
+        return (new FichaEstado(http, TipoDeFichaCliente.Personagem, "s1"), puts, () => portao.SetResult());
+    }
 
-        await estado.AtualizarAfinidadeAsync(2, 3, 1);
+    private static HttpResponseMessage Resposta(string json) => new(HttpStatusCode.OK) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
 
-        (duranteOPut, duranteARecarga, estado.SalvandoAfinidade).Should().Be((true, true, false));
+    private sealed class HandlerAssincrono(Func<HttpRequestMessage, Task<HttpResponseMessage>> responder) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => responder(request);
     }
 }

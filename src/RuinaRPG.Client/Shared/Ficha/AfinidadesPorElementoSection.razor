@@ -4,7 +4,8 @@
 @* As Afinidades por elemento (Ficha de Personagem 2.c e R0007; Personagem e NPC): no topo, "Distribuídos gasto/máximo"
    (vermelho acima do máximo), a mensagem de validação e a Afinidade Adicional (do formulário auto-salvo da página,
    AoMudar); depois, um elemento por linha com o nome (e a dica de um bloqueado), − valor +, a barra de segmentos e a
-   Experiência. Cada − / + / Experiência grava o elemento na hora (FichaEstado.AtualizarAfinidadeAsync); gasto, máximo,
+   Experiência. Cada − / + / Experiência grava o elemento na hora, em fila e sobre os valores já relidos
+   (FichaEstado.MudarPontosDaAfinidadeAsync / AtualizarExperienciaDaAfinidadeAsync); gasto, máximo,
    bloqueios e o que aparece vêm do servidor. Quem as regras não recusam (o GM do NPC: AfinidadesLivresParaOGm) vê a
    dica mas não perde o +. Seção oculta (marcial sem Afinidade Adicional nem coração de mana): só a Afinidade
    Adicional fica, que é como ela volta. *@
@@ -39,13 +40,13 @@
                             <div class="d-flex align-center flex-wrap" style="gap:4px">
                                 <MudIconButton Icon="@Icons.Material.Filled.Remove" Size="Size.Small" Variant="Variant.Outlined"
                                                aria-label="@($"Tirar 1 ponto de {elemento.Nome}")" title="Tirar 1 ponto"
-                                               Disabled="@(Estado.SalvandoAfinidade || elemento.Pontos == 0)"
-                                               OnClick="@(() => Estado.AtualizarAfinidadeAsync(elemento.Id, elemento.Pontos - 1, elemento.Experiencia))" />
+                                               Disabled="@(elemento.Pontos == 0)"
+                                               OnClick="@(() => Estado.MudarPontosDaAfinidadeAsync(elemento.Id, -1))" />
                                 <MudText Typo="Typo.subtitle1" Align="Align.Center" Style="min-width:2rem">@elemento.Pontos</MudText>
                                 <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
                                                aria-label="@($"Pôr 1 ponto em {elemento.Nome}")" title="Pôr 1 ponto"
-                                               Disabled="@(Estado.SalvandoAfinidade || !PodeSubir(afinidades, elemento))"
-                                               OnClick="@(() => Estado.AtualizarAfinidadeAsync(elemento.Id, elemento.Pontos + 1, elemento.Experiencia))" />
+                                               Disabled="@(!PodeSubir(afinidades, elemento))"
+                                               OnClick="@(() => Estado.MudarPontosDaAfinidadeAsync(elemento.Id, 1))" />
                                 @{ var segmentos = Segmentos(afinidades, elemento); }
                                 <div class="d-flex flex-wrap ml-2" style="gap:2px" role="img" aria-label="@($"{elemento.Pontos} de {segmentos} pontos")">
                                     @for (var i = 0; i < segmentos; i++)
@@ -61,7 +62,7 @@
                         </td>
                         <td>
                             <MudNumericField T="int?" Value="@elemento.Experiencia" Min="0" Margin="Margin.Dense" Style="max-width:6rem"
-                                             ValueChanged="@(v => Estado.AtualizarAfinidadeAsync(elemento.Id, elemento.Pontos, v))" />
+                                             ValueChanged="@(v => Estado.AtualizarExperienciaDaAfinidadeAsync(elemento.Id, v))" />
                         </td>
                     </tr>
                 }
