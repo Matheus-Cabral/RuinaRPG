@@ -9,14 +9,14 @@ using Xunit;
 
 namespace RuinaRPG.Tests.Client.Services;
 
-public class SecretNoteNotifierTests
+public class AvisosDoHubTests
 {
     private readonly FakeNotificationConnection _connection = new();
     private readonly List<HttpRequestMessage> _requests = new();
     private List<UnreadSecretNotesResponse> _unread = new();
     private HttpStatusCode _unreadStatus = HttpStatusCode.OK;
 
-    private SecretNoteNotifier CreateNotifier() => new(FakeHttpMessageHandler.CreateClient(request =>
+    private AvisosDoHub CreateNotifier() => new(FakeHttpMessageHandler.CreateClient(request =>
     {
         _requests.Add(request);
         if (request.RequestUri!.AbsolutePath.EndsWith("secret-notes/unread"))

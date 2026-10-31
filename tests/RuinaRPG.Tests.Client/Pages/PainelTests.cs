@@ -88,7 +88,7 @@ public class PainelTests : MudBunitContext
                     Content = JsonContent.Create(new { Id = "u", Nickname = "Ana", Email = "a@x.com", Role = "Jogador", IsRulesAuditor = false })
                 }
                 : new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(fichas) }));
-        await Services.GetRequiredService<SecretNoteNotifier>().StartAsync(notasSecretas: false);
+        await Services.GetRequiredService<AvisosDoHub>().StartAsync(notasSecretas: false);
         var cut = Render<Painel>();
         cut.WaitForAssertion(() => cut.Markup.Should().Contain("Aria"));
         cut.Markup.Should().NotContain("Cemitério");

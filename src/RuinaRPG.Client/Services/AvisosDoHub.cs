@@ -9,7 +9,7 @@ namespace RuinaRPG.Client.Services;
 /// notifications hub. Scoped — one per app instance — so the layout, the nav menu and the
 /// campaign pages all read the same counters.
 /// </summary>
-public class SecretNoteNotifier(HttpClient http, INotificationConnection connection)
+public class AvisosDoHub(HttpClient http, INotificationConnection connection)
 {
     private Dictionary<string, int> _unread = new();
     private Task? _starting;

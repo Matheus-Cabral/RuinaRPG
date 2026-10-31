@@ -32,7 +32,7 @@
     <ItemFieldsEditor Model="_form" TipoBloqueado="@(ItemId is not null || FixedTipo is not null)"
                       OcultarTipo="@(ItemId is not null || FixedTipo is not null)" MostrarImagem="true"
                       ImagensDisponiveis="_myImages" ImagemIds="_imageIds" ImagemIdsChanged="OnImagesChanged"
-                      OnImageError="@(e => _errorMessage = e)" DurabilidadeHint="@_durabilidadeHint"
+                      OnError="@(e => _errorMessage = e)" DurabilidadeHint="@_durabilidadeHint"
                       OnRankChanged="RecomputeDurabilidadeHint" OnChanged="NotifySavedAsync"
                       SubcategoriasExistentes="LoadSubcategoriasExistentesAsync" />
 

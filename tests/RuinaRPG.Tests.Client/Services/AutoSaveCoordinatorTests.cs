@@ -279,6 +279,53 @@ public class AutoSaveCoordinatorTests
     }
 
     [Fact]
+    public async Task Recargas_adiadas_iguais_numa_rajada_viram_uma_so_leitura()
+    {
+        var coordinator = new AutoSaveCoordinator();
+        var leituras = 0;
+        Task<int> Ler() { leituras++; return Task.FromResult(1); }
+        Task Aplicar(int _) => Task.CompletedTask;
+
+        coordinator.NotifyChanged(async () =>
+        {
+            await coordinator.RecarregarAsync(Ler, Aplicar);
+            await coordinator.RecarregarAsync(Ler, Aplicar);
+            await coordinator.RecarregarAsync(Ler, Aplicar);
+            return true;
+        });
+        await Task.Delay(50);
+        coordinator.NotifyChanged(() => Task.FromResult(true), "pi");
+
+        await WaitUntilAsync(() => leituras > 0 && !coordinator.Ocupado, TimeSpan.FromSeconds(3));
+        await Task.Delay(100);
+
+        Assert.Equal(1, leituras);
+    }
+
+    [Fact]
+    public async Task Recargas_adiadas_diferentes_continuam_todas_a_rodar()
+    {
+        var coordinator = new AutoSaveCoordinator();
+        var leituras = 0;
+        Task<int> LerA() { leituras++; return Task.FromResult(1); }
+        Task<int> LerB() { leituras++; return Task.FromResult(2); }
+        Task Aplicar(int _) => Task.CompletedTask;
+
+        coordinator.NotifyChanged(async () =>
+        {
+            await coordinator.RecarregarAsync(LerA, Aplicar);
+            await coordinator.RecarregarAsync(LerB, Aplicar);
+            return true;
+        });
+        await Task.Delay(50);
+        coordinator.NotifyChanged(() => Task.FromResult(true), "pi");
+
+        await WaitUntilAsync(() => leituras >= 2 && !coordinator.Ocupado, TimeSpan.FromSeconds(3));
+
+        Assert.Equal(2, leituras);
+    }
+
+    [Fact]
     public async Task Uma_recarga_adiada_que_falha_poe_o_estado_em_Error_e_libera_o_Ocupado()
     {
         var coordinator = new AutoSaveCoordinator();

@@ -330,7 +330,7 @@ public class AbaAtributosEPericiasTests : RedeDeSegurancaBase
     public async Task A_page_reload_shows_fresh_attributes_in_the_tab(string tipo)
     {
         var cut = await AbrirAsync(tipo, "Jogador");
-        await Services.GetRequiredService<SecretNoteNotifier>().StartAsync(notasSecretas: false);
+        await Services.GetRequiredService<AvisosDoHub>().StartAsync(notasSecretas: false);
         Responder("/attributes", new[] { new { atributo = "Vigor", gasto = 2, bonus = 1, temMaestria = false, total = 1 } });
         Responder("/attributes/budget", new { gastoTotal = 2, pontosDisponiveis = 12 });
         var k = tipo switch { "Personagem" => "character", "NPC" => "npc", _ => "creature" };

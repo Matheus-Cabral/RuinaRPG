@@ -3,7 +3,7 @@ using RuinaRPG.Contracts.Notifications;
 namespace RuinaRPG.Client.Services;
 
 /// <summary>
-/// The realtime channel behind SecretNoteNotifier. An interface only so the notifier can be
+/// The realtime channel behind AvisosDoHub. An interface only so the notifier can be
 /// tested without a SignalR server — SignalRNotificationConnection is the one real implementation.
 /// </summary>
 public interface INotificationConnection : IAsyncDisposable

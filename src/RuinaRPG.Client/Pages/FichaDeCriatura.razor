@@ -4,7 +4,7 @@
 @using RuinaRPG.Client.Shared.Ficha
 @using MudBlazor
 
-<MolduraDaFicha Estado="Estado" Recarga="Recarga" Trilha="@Trilha" Concedida="_concedida">
+<MolduraDaFicha Estado="Estado" Recarga="Recarga" Trilha="@Trilha" Concedida="Concedida">
 <MudTabs>
     <MudTabPanel Text="Informações Básicas">
         <AbaInformacoesBasicas Formulario="_form" AutoSave="AutoSave" AoMudar="NotifySavedAsync" AoMudarNivel="NotifyNivelChangedAsync"
@@ -34,16 +34,13 @@
     private readonly FormularioDaFicha _form = new(TipoDeFichaCliente.Criatura) { Abate = 0, Assistencia = 0 };
     protected override FormularioDaFicha Formulario => _form;
 
-    // Só uma ficha concedida a um jogador tem Condições vivas; a do Mestre mostra o efeito só no Resumo do encontro.
-    private bool _concedida;
+    protected override (string? CampaignId, string? CampaignName, string? OwnerId) OrigemDa(CreatureSheetResponse sheet) =>
+        (sheet.CampaignId, sheet.CampaignName, sheet.OwnerId);
 
     protected override int PontosDeIgnicaoDa(CreatureSheetResponse sheet) => sheet.PontosDeIgnicao;
 
     protected override void PreencherFormulario(CreatureSheetResponse sheet)
     {
-        Estado.CampaignId = sheet.CampaignId;
-        Estado.CampaignName = sheet.CampaignName;
-        _concedida = sheet.OwnerId is not null;
         _form.ImageUrl = sheet.ImageUrl;
         _form.ImageId = sheet.ImageId;
         _form.Nome = sheet.Nome;

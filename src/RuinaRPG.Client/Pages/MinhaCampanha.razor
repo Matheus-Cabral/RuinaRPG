@@ -2,7 +2,7 @@
 @implements IDisposable
 @inject HttpClient Http
 @inject NavigationManager Navigation
-@inject SecretNoteNotifier Notifier
+@inject AvisosDoHub Notifier
 @using Microsoft.AspNetCore.Components.Routing
 @using RuinaRPG.Client.Services
 @using RuinaRPG.Contracts.Campaigns
@@ -228,14 +228,13 @@
     // Campanha R0018: se o GM tirou o jogador desta campanha, a tela dela já não existe para ele: volta ao painel.
     private void OnCampanhasDoJogadorAlteradas() => _ = InvokeAsync(async () =>
     {
-        var response = await Http.GetAsync($"campaigns/{CampaignId}/player-view");
-        if (response.StatusCode is System.Net.HttpStatusCode.NotFound or System.Net.HttpStatusCode.Forbidden)
+        var status = await LoadAsync();
+        if (status is System.Net.HttpStatusCode.NotFound or System.Net.HttpStatusCode.Forbidden)
         {
             Navigation.NavigateTo("painel");
             return;
         }
 
-        await LoadAsync();
         StateHasChanged();
     });
 
@@ -247,17 +246,19 @@
         Navigation.LocationChanged -= OnLocationChanged;
     }
 
-    private async Task LoadAsync()
+    // Devolve o status da leitura: quem recebe o aviso de saída da campanha decide o que fazer com um 404/403.
+    private async Task<System.Net.HttpStatusCode> LoadAsync()
     {
         var response = await Http.GetAsync($"campaigns/{CampaignId}/player-view");
         if (!response.IsSuccessStatusCode)
         {
             _errorMessage = "Não foi possível carregar a campanha.";
-            return;
+            return response.StatusCode;
         }
 
         _view = await response.Content.ReadFromJsonAsync<PlayerCampaignViewResponse>() ?? _view;
         _errorMessage = null;
+        return response.StatusCode;
     }
 
     private async Task LoadSecretNotesAsync()

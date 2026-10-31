@@ -170,7 +170,7 @@ public class NavMenuTests : MudBunitContext
     public async Task Minhas_Campanhas_link_shows_the_unread_total_and_follows_live_changes()
     {
         var cut = RenderForJogador(new() { new("c1", "Ruína", 2) });
-        var notifier = Services.GetRequiredService<SecretNoteNotifier>();
+        var notifier = Services.GetRequiredService<AvisosDoHub>();
         cut.FindAll(".rr-unread-chip").Should().BeEmpty();
 
         await cut.InvokeAsync(() => notifier.StartAsync());

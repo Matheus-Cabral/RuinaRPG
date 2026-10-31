@@ -77,7 +77,7 @@ public class FichaCondicoesTests : MudBunitContext
     private async Task<IRenderedComponent<FichaDePersonagem>> RenderPersonagemAsync()
     {
         // MainLayout is what opens the notification connection in the app; here the test plays that part.
-        await Services.GetRequiredService<SecretNoteNotifier>().StartAsync();
+        await Services.GetRequiredService<AvisosDoHub>().StartAsync();
         var cut = Render<FichaDePersonagem>(p => p.Add(x => x.SheetId, "sheet-1"));
         await Task.Delay(100);
         return cut;
@@ -155,7 +155,7 @@ public class FichaCondicoesTests : MudBunitContext
                 new { Id = "w2", ItemId = "i2", Nome = "Adaga", Dados = "1d4" },
             })
             : null);
-        await Services.GetRequiredService<SecretNoteNotifier>().StartAsync();
+        await Services.GetRequiredService<AvisosDoHub>().StartAsync();
         var cut = await RenderPaginaAsync(pagina);
         await GoToTabAsync(cut, "Combate");
 

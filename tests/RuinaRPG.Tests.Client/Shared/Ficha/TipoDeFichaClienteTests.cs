@@ -100,26 +100,29 @@ public class TipoDeFichaClienteTests
     }
 
     // 2.1.0 C.2: Personagem e NPC compartilham os records; a Criatura tem os próprios (a flag de interface não decide).
-    [Theory]
-    [InlineData(nameof(TipoDeFichaCliente.Formato), FormatoDosDados.Comum, FormatoDosDados.Comum, FormatoDosDados.Criatura)]
-    public void Formato_dos_dados_por_tipo(string membro, FormatoDosDados personagem, FormatoDosDados npc, FormatoDosDados criatura)
+    [Fact]
+    public void Formato_dos_dados_por_tipo()
     {
-        Ler<FormatoDosDados>(TipoDeFichaCliente.Personagem, membro).Should().Be(personagem);
-        Ler<FormatoDosDados>(TipoDeFichaCliente.Npc, membro).Should().Be(npc);
-        Ler<FormatoDosDados>(TipoDeFichaCliente.Criatura, membro).Should().Be(criatura);
+        const string membro = nameof(TipoDeFichaCliente.Formato);
+        Ler<FormatoDosDados>(TipoDeFichaCliente.Personagem, membro).Should().Be(FormatoDosDados.Comum);
+        Ler<FormatoDosDados>(TipoDeFichaCliente.Npc, membro).Should().Be(FormatoDosDados.Comum);
+        Ler<FormatoDosDados>(TipoDeFichaCliente.Criatura, membro).Should().Be(FormatoDosDados.Criatura);
     }
 
     // 2.1.0 A.1: a lista do GM é o segundo item da trilha do GM; o Personagem não tem (a trilha dele passa pela campanha).
-    [Theory]
-    [InlineData(nameof(TipoDeFichaCliente.ListaDoGm), "NPCs do GM", "npcs", "Bestiário do GM", "bestiario")]
-    public void Lista_do_GM_per_kind(string membro, string npcRotulo, string npcRota, string criaturaRotulo, string criaturaRota)
+    [Fact]
+    public void Lista_do_GM_per_kind()
     {
+        const string membro = nameof(TipoDeFichaCliente.ListaDoGm);
         Ler<(string Rotulo, string Rota)?>(TipoDeFichaCliente.Personagem, membro).Should().BeNull();
-        Ler<(string Rotulo, string Rota)?>(TipoDeFichaCliente.Npc, membro).Should().Be((npcRotulo, npcRota));
-        Ler<(string Rotulo, string Rota)?>(TipoDeFichaCliente.Criatura, membro).Should().Be((criaturaRotulo, criaturaRota));
+        Ler<(string Rotulo, string Rota)?>(TipoDeFichaCliente.Npc, membro).Should().Be(("NPCs do GM", "npcs"));
+        Ler<(string Rotulo, string Rota)?>(TipoDeFichaCliente.Criatura, membro).Should().Be(("Bestiário do GM", "bestiario"));
     }
 
-    // Nenhum fato fica sem teste: cada propriedade pública de TipoDeFichaCliente aparece num InlineData acima.
+    // Os membros fixados por um [Fact] em vez de um InlineData (um só valor por tipo, sem tabela).
+    private static readonly string[] FixadosPorFato = { nameof(TipoDeFichaCliente.Formato), nameof(TipoDeFichaCliente.ListaDoGm) };
+
+    // Nenhum fato fica sem teste: cada propriedade pública de TipoDeFichaCliente aparece num InlineData acima (ou em FixadosPorFato).
     [Fact]
     public void Every_member_is_pinned_by_a_test()
     {
@@ -127,6 +130,7 @@ public class TipoDeFichaClienteTests
             .SelectMany(m => m.GetCustomAttributes(typeof(InlineDataAttribute), false).Cast<InlineDataAttribute>())
             .Where(a => a.GetData(null!).First() is object[] { Length: > 0 } valores && valores[0] is string)
             .Select(a => (string)a.GetData(null!).First()[0])
+            .Concat(FixadosPorFato)
             .ToHashSet();
         var membros = typeof(TipoDeFichaCliente).GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
             .Select(p => p.Name)

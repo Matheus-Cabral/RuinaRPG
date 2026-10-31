@@ -106,7 +106,7 @@ public class FichaAtuaisCarregadosTests : MudBunitContext
     {
         _ficha = Ficha(12, 9, 6, 3);
         Prepare();
-        await Services.GetRequiredService<SecretNoteNotifier>().StartAsync();
+        await Services.GetRequiredService<AvisosDoHub>().StartAsync();
         var cut = RenderPagina(pagina);
         await Task.Delay(100);
         var combate = cut.FindAll("div.mud-tab").Single(e => e.TextContent.Trim() == "Combate");
@@ -141,7 +141,7 @@ public class FichaAtuaisCarregadosTests : MudBunitContext
     {
         _ficha = Ficha(12, 9, 6, 3);
         Prepare();
-        await Services.GetRequiredService<SecretNoteNotifier>().StartAsync();
+        await Services.GetRequiredService<AvisosDoHub>().StartAsync();
         var cut = RenderPagina(pagina);
         await Task.Delay(100);
         var combate = cut.FindAll("div.mud-tab").Single(e => e.TextContent.Trim() == "Combate");

@@ -140,7 +140,7 @@ public class AbaInformacoesBasicasTests : RedeDeSegurancaBase
     {
         JSInterop.Setup<bool>("ruinaFoco.campoEmEdicao").SetResult(true);
         var cut = await RenderFichaAsync(tipo, "Jogador");
-        await Services.GetRequiredService<SecretNoteNotifier>().StartAsync(notasSecretas: false);
+        await Services.GetRequiredService<AvisosDoHub>().StartAsync(notasSecretas: false);
         LimparRequisicoes();
         var nome = CampoNaAba(cut, "Nome");
 

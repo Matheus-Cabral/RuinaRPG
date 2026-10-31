@@ -15,7 +15,8 @@ public class AutoSaveCoordinator
     // Quantos commits já chegaram: um recarregamento cuja leitura começou antes de um commit não aplica o que leu.
     private long _commits;
     // Recarregamentos adiados porque havia edição pendente; rodam quando o auto-save fica ocioso.
-    private readonly List<Func<Task>> _recargasAdiadas = new();
+    // Duas recargas com a mesma leitura e a mesma aplicação (Delegate.Equals) pedem o mesmo: numa rajada vira uma só.
+    private readonly List<(Delegate Ler, Delegate Aplicar, Func<Task> Rodar)> _recargasAdiadas = new();
     private bool _executandoRecargasAdiadas;
     // Este coordenador só dentro do delegate de salvamento em execução: o próprio salvamento não conta como "outra"
     // pendência. Como todo AsyncLocal, o valor também flui para tarefas disparadas sem await dentro do salvamento; uma
@@ -72,6 +73,7 @@ public class AutoSaveCoordinator
     /// Com outra edição pendente (em qualquer canal), ou se um commit chegar durante a leitura, nada é aplicado agora:
     /// o recarregamento roda de novo quando o auto-save ficar ocioso, e então o formulário mostra o servidor.
     /// <paramref name="aplicar"/> deve escrever no formulário antes do primeiro await.
+    /// Pedidos adiados iguais (mesma leitura e mesma aplicação) são coalescidos em um.
     /// </summary>
     public async Task RecarregarAsync<T>(Func<Task<T>> ler, Func<T, Task> aplicar)
     {
@@ -79,7 +81,8 @@ public class AutoSaveCoordinator
         {
             if (HaOutraEdicaoPendente)
             {
-                _recargasAdiadas.Add(() => RecarregarAsync(ler, aplicar));
+                if (!_recargasAdiadas.Exists(r => r.Ler.Equals(ler) && r.Aplicar.Equals(aplicar)))
+                    _recargasAdiadas.Add((ler, aplicar, () => RecarregarAsync(ler, aplicar)));
                 return;
             }
 
@@ -104,7 +107,7 @@ public class AutoSaveCoordinator
         {
             while (_recargasAdiadas.Count > 0 && _emAndamento == 0)
             {
-                var recarga = _recargasAdiadas[0];
+                var recarga = _recargasAdiadas[0].Rodar;
                 _recargasAdiadas.RemoveAt(0);
                 try
                 {

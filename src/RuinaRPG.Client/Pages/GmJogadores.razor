@@ -99,11 +99,9 @@
         new("Jogadores"),
     };
 
-    private const string EstadoDesativada = nameof(EstadoDaConta.Desativada);
-
     private string _query = "";
-    private IEnumerable<PlayerSearchResultResponse> Ativos => _players.Where(p => p.Estado != EstadoDesativada);
-    private IEnumerable<PlayerSearchResultResponse> Desativados => _players.Where(p => p.Estado == EstadoDesativada);
+    private IEnumerable<PlayerSearchResultResponse> Ativos => _players.Where(p => p.ComoEstadoDaConta() != EstadoDaConta.Desativada);
+    private IEnumerable<PlayerSearchResultResponse> Desativados => _players.Where(p => p.ComoEstadoDaConta() == EstadoDaConta.Desativada);
     private PlayerSearchResultResponse? _deletingPlayer;
     private bool _deleteDialogOpen;
     private string _typedNickname = "";

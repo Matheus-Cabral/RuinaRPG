@@ -31,7 +31,7 @@ public class MinhasCampanhasTests : MudBunitContext
             request.RequestUri!.AbsolutePath.EndsWith("secret-notes/unread")
                 ? new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(unread) }
                 : new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(campaigns) }));
-        await Services.GetRequiredService<SecretNoteNotifier>().StartAsync();
+        await Services.GetRequiredService<AvisosDoHub>().StartAsync();
 
         var cut = Render<MinhasCampanhas>();
 
@@ -53,7 +53,7 @@ public class MinhasCampanhasTests : MudBunitContext
         var campaigns = new List<CampaignResponse> { new("c1", "Ruína", "", null), new("c2", "Outra", "", null) };
         Services.AddScoped(_ => FakeHttpMessageHandler.CreateClient(request =>
             new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(campaigns) }));
-        await Services.GetRequiredService<SecretNoteNotifier>().StartAsync(notasSecretas: false);
+        await Services.GetRequiredService<AvisosDoHub>().StartAsync(notasSecretas: false);
         var cut = Render<MinhasCampanhas>();
         cut.WaitForAssertion(() => cut.Markup.Should().Contain("Outra"));
 

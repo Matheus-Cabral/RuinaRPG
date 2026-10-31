@@ -23,7 +23,7 @@ public abstract class PaginaDeFicha<TFicha> : ComponentBase, IDisposable where T
 
     [Inject] protected HttpClient Http { get; set; } = default!;
     [Inject] protected IJSRuntime JS { get; set; } = default!;
-    [Inject] protected SecretNoteNotifier Notifier { get; set; } = default!;
+    [Inject] protected AvisosDoHub Notifier { get; set; } = default!;
     [Inject] protected PericiaCatalogo Pericias { get; set; } = default!;
     [Inject] protected CatalogoDeElementos Elementos { get; set; } = default!;
     [Inject] protected AuthenticationStateProvider AuthProvider { get; set; } = default!;
@@ -72,9 +72,8 @@ public abstract class PaginaDeFicha<TFicha> : ComponentBase, IDisposable where T
         var authState = await AuthProvider.GetAuthenticationStateAsync();
         Estado.IsGmCaller = authState.User.IsInRole("GM");
 
-        // LoadSheetAsync sets the CampaignId, which LoadImagesAsync needs (a Jogador's image list is scoped to that
-        // campaign). LoadSheetAsync also sets the form's ImageId directly from the sheet's own ImageId, so it no longer
-        // needs to be resolved by matching the gallery.
+        // LoadSheetAsync define o CampaignId, de que LoadImagesAsync precisa (a lista de imagens do Jogador é da campanha).
+        // Ela também define o ImageId do formulário direto do ImageId da ficha, sem casar com a galeria.
         await LoadSheetAsync();
         await LoadImagesAsync();
 
@@ -143,11 +142,24 @@ public abstract class PaginaDeFicha<TFicha> : ComponentBase, IDisposable where T
             return;
         }
 
+        var (campaignId, campaignName, ownerId) = OrigemDa(ficha);
+        Estado.CampaignId = campaignId;
+        Estado.CampaignName = campaignName;
+        Concedida = ownerId is not null;
         PreencherFormulario(ficha);
         // Só some o erro da própria releitura: uma recusa de outro salvamento (ex.: o 409 do cemitério) continua à vista.
         if (Estado.Erro == ErroAoCarregarAFicha)
             Estado.Erro = null;
     }
+
+    /// <summary>De onde a ficha vem no record do tipo: a campanha (id e nome) e o dono (nulo enquanto não foi concedida).</summary>
+    protected abstract (string? CampaignId, string? CampaignName, string? OwnerId) OrigemDa(TFicha ficha);
+
+    /// <summary>
+    /// A ficha foi concedida a um jogador. Só uma ficha concedida tem Condições vivas; a do Mestre mostra o efeito só no
+    /// Resumo do encontro (<see cref="TipoDeFichaCliente.CondicoesSoSeConcedida"/>).
+    /// </summary>
+    protected bool Concedida { get; private set; }
 
     /// <summary>Copia a ficha lida para o formulário e o estado (o record é do tipo).</summary>
     protected abstract void PreencherFormulario(TFicha ficha);
@@ -301,11 +313,11 @@ public abstract class PaginaDeFicha<TFicha> : ComponentBase, IDisposable where T
     }
 
     /// <summary>
-    /// Runs SaveIfValidAsync outside the autosave flow (i.e. not via AutoSave.NotifyChanged), for the immediate-save
-    /// handlers that saved before the sheet had autosave: through SalvarAgora, the tabs' Sina, "Aplicar" of XP/PI,
-    /// Ciclos and Arca rolada; through SalvarERecarregarAbasAsync, the Cobertura, the Afinidade and the Acerto Crítico.
-    /// Preserves their original behavior of surfacing a save failure in the page alert instead of letting
-    /// SaveIfValidAsync's exception go unhandled.
+    /// Roda <see cref="SaveIfValidAsync"/> fora do auto-save (sem passar por <c>AutoSave.NotifyChanged</c>), para os
+    /// tratadores de salvamento imediato, que já salvavam antes de a ficha ter auto-save: pelo SalvarAgora, o Sina das
+    /// abas, o "Aplicar" de XP/PI, os Ciclos e a Arca rolada; pelo <see cref="SalvarERecarregarAbasAsync"/>, a Cobertura,
+    /// a Afinidade e o Acerto Crítico. Mantém o comportamento original: a falha de um salvamento vai ao alerta da página,
+    /// em vez de deixar a exceção de <see cref="SaveIfValidAsync"/> sem tratamento.
     /// </summary>
     protected async Task SaveIgnoringResultAsync()
     {
