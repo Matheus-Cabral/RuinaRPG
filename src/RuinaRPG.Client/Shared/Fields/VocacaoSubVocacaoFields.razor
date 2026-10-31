@@ -34,16 +34,10 @@ else
         ("Campeao", "Campeão"), ("Cacador", "Caçador"), ("Feiticeiro", "Feiticeiro"), ("Adepto", "Adepto"), ("Bruxo", "Bruxo"),
     ];
 
-    // From "Relação de Vocacão e Classes.md" — Classe (displayed label; SubVocacao is the internal
-    // property/DB column name, kept as-is) is free text server-side (no enum), so value == label.
-    public static readonly Dictionary<string, string[]> SubVocacoesPorVocacao = new()
-    {
-        ["Campeao"] = ["Cavalheiro", "Duelista", "Paladino", "Lamina Holística", "Guardião"],
-        ["Cacador"] = ["Arqueiro", "Domador", "Assassino"],
-        ["Feiticeiro"] = ["Aeromante", "Biomante", "Fluxomante", "Piromante", "Sábio"],
-        ["Adepto"] = ["Paladino", "Arauto", "Trovador", "Eremita"],
-        ["Bruxo"] = ["Ecomante", "Hemomante", "Osteomante", "Nexomante", "Cultista"],
-    };
+    // Classe (displayed label; SubVocacao is the internal property/DB column name, kept as-is) is free text
+    // server-side (no enum), so value == label; the list lives in the Domain (ClassesPorVocacao), which the
+    // Auditoria de Afinidades also uses for the per-Classe visibility.
+    public static IReadOnlyDictionary<string, string[]> SubVocacoesPorVocacao => RuinaRPG.Domain.CharacterSheets.ClassesPorVocacao.Todas;
 
     internal string[] SubVocacaoOptions() =>
         !string.IsNullOrEmpty(Vocacao) && SubVocacoesPorVocacao.TryGetValue(Vocacao, out var options) ? options : [];

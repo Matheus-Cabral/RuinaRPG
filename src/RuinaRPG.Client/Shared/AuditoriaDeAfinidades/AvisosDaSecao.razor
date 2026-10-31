@@ -1,0 +1,14 @@
+@using MudBlazor
+
+@* Os avisos comuns das seções da Auditoria de Afinidades: o erro do servidor e o de sem permissão. *@
+<DismissibleAlert Message="@Mensagem" MessageChanged="MensagemChanged" Class="mb-3" />
+@if (SemPermissao)
+{
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Class="mb-3">Você não é o Auditor de Regras designado — sem permissão para editar.</MudAlert>
+}
+
+@code {
+    [Parameter] public string? Mensagem { get; set; }
+    [Parameter] public EventCallback<string?> MensagemChanged { get; set; }
+    [Parameter] public bool SemPermissao { get; set; }
+}

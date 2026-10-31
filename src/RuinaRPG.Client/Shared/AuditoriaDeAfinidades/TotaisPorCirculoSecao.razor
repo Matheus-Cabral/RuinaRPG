@@ -1,0 +1,48 @@
+@inherits SecaoDaAuditoriaDeAfinidades
+@using MudBlazor
+@using RuinaRPG.Contracts.Rules
+
+@* Auditoria de Regras R0018: o máximo de pontos de afinidade de cada Círculo. *@
+<Section Title="Total por Círculo">
+    <TitleInfo>
+        <InfoPopup Title="Como funciona o total por Círculo">
+            O máximo de pontos de afinidade de uma ficha de Vocação mágica é o total do Círculo atual dela (sem coração de mana, o Círculo 0) mais a Afinidade Adicional; Vocações marciais e fichas sem Vocação têm só a Afinidade Adicional. Baixar um total não apaga pontos: a ficha só passa a aceitar tirar pontos.
+        </InfoPopup>
+    </TitleInfo>
+    <ChildContent>
+        <AvisosDaSecao @bind-Mensagem="MensagemDeErro" SemPermissao="SemPermissao" />
+        <MudSimpleTable Dense="true" Hover="true">
+            <thead>
+                <tr><th>Círculo</th><th>Total</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var linha in _totais)
+                {
+                    <tr>
+                        <td>@linha.Circulo</td>
+                        <td><MudNumericField T="int" Value="@linha.Total" ValueChanged="@(v => SalvarAsync(linha.Circulo, v))" Min="0"
+                                             aria-label="@($"Total do Círculo {linha.Circulo}")" /></td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </ChildContent>
+</Section>
+
+@code {
+    private List<TotalDeAfinidadePorCirculoResponse> _totais = new();
+
+    protected override async Task CarregarAsync()
+    {
+        var response = await Http.GetAsync("afinidades/totais-por-circulo");
+        if (!response.IsSuccessStatusCode)
+        {
+            MensagemDeErro = "Não foi possível carregar os totais por Círculo.";
+            return;
+        }
+        _totais = await response.Content.ReadFromJsonAsync<List<TotalDeAfinidadePorCirculoResponse>>() ?? new();
+    }
+
+    private async Task SalvarAsync(int circulo, int total) =>
+        await ConcluirAsync(await Http.PutAsJsonAsync($"afinidades/totais-por-circulo/{circulo}", new SalvarTotalDeAfinidadePorCirculoRequest(total)));
+}

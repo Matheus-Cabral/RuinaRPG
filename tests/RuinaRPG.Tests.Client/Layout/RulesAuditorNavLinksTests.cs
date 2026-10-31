@@ -31,7 +31,7 @@ public class RulesAuditorNavLinksTests : MudBunitContext
         ("Perícias", "auditoria/pericias"),
         ("Equipagem", "auditoria/equipagem"),
         ("Durabilidade por Rank", "auditoria/durabilidade-por-rank"),
-        ("Tabela de Afinidades", "auditoria/tabela-de-afinidades"),
+        ("Afinidades", "auditoria/tabela-de-afinidades"),
         ("Tabela de Níveis", "auditoria/tabela-de-niveis"),
     };
 

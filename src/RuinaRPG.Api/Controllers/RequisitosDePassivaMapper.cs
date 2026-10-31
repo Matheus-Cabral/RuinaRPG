@@ -27,7 +27,7 @@ public static class RequisitosDePassivaMapper
         // A Afinidade é o id de um elemento do catálogo do Auditor (Auditoria de Regras R0018).
         var afinidade = dto.Afinidade;
         if (afinidade is { } afinidadeId && afinidades.Elementos.All(e => e.Id != afinidadeId))
-            return Fail($"Afinidade desconhecido(a): {afinidadeId}.", out erro);
+            return Fail($"Elemento de afinidade inexistente: {afinidadeId}.", out erro);
 
         var classe = string.IsNullOrWhiteSpace(dto.Classe) ? null : dto.Classe.Trim();
         if (classe is not null && vocacao is null)

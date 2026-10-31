@@ -2,9 +2,12 @@
 @inject HttpClient Http
 @using RuinaRPG.Contracts.Rules
 @using MudBlazor
+@using RuinaRPG.Client.Shared.AuditoriaDeAfinidades
 
+@* Auditoria de Regras R0016 (a Tabela de Afinidades) e R0018–R0021 (total por Círculo, elementos, cruzamentos e
+   elementos por Vocação/Classe), uma aba cada. Só a aba aberta é renderizada, então cada seção lê a sua parte ao abrir. *@
 <Breadcrumbs Items="@Crumbs" />
-<MudText Typo="Typo.h3">Auditoria: Tabela de Afinidades</MudText>
+<MudText Typo="Typo.h3">Auditoria: Afinidades</MudText>
 
 <DismissibleAlert @bind-Message="_errorMessage" Class="mt-3" />
 
@@ -14,6 +17,8 @@
 }
 else
 {
+    <MudTabs Class="mt-3">
+    <MudTabPanel Text="Tabela de Afinidades">
     <Section Title="Tabela de Afinidades">
         <TitleInfo>
             <InfoPopup Title="Como funciona a Tabela de Afinidades">
@@ -55,6 +60,12 @@ else
         }
         </ChildContent>
     </Section>
+    </MudTabPanel>
+    <MudTabPanel Text="Total por Círculo"><TotaisPorCirculoSecao /></MudTabPanel>
+    <MudTabPanel Text="Elementos"><ElementosSecao /></MudTabPanel>
+    <MudTabPanel Text="Cruzamentos"><CruzamentosSecao /></MudTabPanel>
+    <MudTabPanel Text="Vocações e Classes"><VisibilidadeSecao /></MudTabPanel>
+    </MudTabs>
 }
 
 <MudDialog @bind-Visible="_removeDialogOpen">
@@ -72,7 +83,7 @@ else
     private List<RuinaRPG.Client.Shared.BreadcrumbItem> Crumbs => new()
     {
         new("Painel", "painel"),
-        new("Auditoria: Tabela de Afinidades"),
+        new("Auditoria: Afinidades"),
     };
 
     private List<LinhaDaTabelaDeAfinidadesResponse> _linhas = new();

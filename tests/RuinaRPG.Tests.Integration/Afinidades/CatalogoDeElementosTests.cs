@@ -129,5 +129,6 @@ public class CatalogoDeElementosTests(ApiFixture fixture) : ApiTestBase(fixture)
             new CreateSpellAbilityEntryRequest("Aura Nenhuma", "Passiva", 0, "d", [], false, "Livre", new RequisitosDePassivaDto(Afinidade: 999))));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("Elemento de afinidade inexistente: 999.");
     }
 }

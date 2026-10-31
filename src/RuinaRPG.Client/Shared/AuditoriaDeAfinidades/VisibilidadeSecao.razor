@@ -1,0 +1,67 @@
+@inherits SecaoDaAuditoriaDeAfinidades
+@using MudBlazor
+@using RuinaRPG.Client.Shared.Fields
+@using RuinaRPG.Contracts.Rules
+@using RuinaRPG.Domain.Afinidades
+@using RuinaRPG.Domain.CharacterSheets
+
+@* Auditoria de Regras R0021: os Caminhos e Sub-Elementos que cada Vocação mágica e cada Classe vê. *@
+<Section Title="Elementos por Vocação e por Classe">
+    <TitleInfo>
+        <InfoPopup Title="Como funciona a visibilidade">
+            Um Caminho ou Sub-Elemento aparece na ficha se estiver ligado à Vocação ou à Classe dela; os Elementos base aparecem sempre. As Vocações marciais (Campeão e Caçador) veem todos os elementos e não têm ligação. Desligar um elemento não apaga pontos: a ficha que já os tem só passa a aceitar tirar pontos.
+        </InfoPopup>
+    </TitleInfo>
+    <ChildContent>
+        <AvisosDaSecao @bind-Mensagem="MensagemDeErro" SemPermissao="SemPermissao" />
+        <MudSelect T="string" @bind-Value="_opcao" Label="Vocação ou Classe">
+            @foreach (var (valor, rotulo) in Opcoes)
+            {
+                <MudSelectItem Value="@valor">@rotulo</MudSelectItem>
+            }
+        </MudSelect>
+        <div class="mt-3">
+            @foreach (var e in Catalogo.Where(e => e.Tipo != TipoDeElemento.Base))
+            {
+                <MudCheckBox T="bool" Value="@Ligado(e.Id)" ValueChanged="@(v => AlterarAsync(e.Id, v))" Label="@e.Nome" Color="Color.Primary" />
+            }
+        </div>
+    </ChildContent>
+</Section>
+
+@code {
+    // "Origem:Chave": as Vocações mágicas pelo nome do membro do enum, depois as Classes delas, sem repetir.
+    private static readonly IReadOnlyList<(string Valor, string Rotulo)> Opcoes = MontarOpcoes();
+
+    private static List<(string, string)> MontarOpcoes()
+    {
+        var magicas = VocacaoSubVocacaoFields.Vocacoes
+            .Where(v => Enum.TryParse<Vocacao>(v.Valor, out var vocacao) && VocacaoArcanaCalculator.EhMagica(vocacao)).ToList();
+        var opcoes = magicas.Select(v => ($"{nameof(OrigemDaVisibilidade.Vocacao)}:{v.Valor}", $"Vocação: {v.Rotulo}")).ToList();
+        opcoes.AddRange(magicas.SelectMany(v => ClassesPorVocacao.Todas[v.Valor]).Distinct()
+            .Select(c => ($"{nameof(OrigemDaVisibilidade.Classe)}:{c}", $"Classe: {c}")));
+        return opcoes;
+    }
+
+    private string _opcao = Opcoes[0].Valor;
+    private List<VisibilidadeDeElementoResponse> _ligacoes = new();
+
+    private (string Origem, string Chave) Escolhida => (_opcao[.._opcao.IndexOf(':')], _opcao[(_opcao.IndexOf(':') + 1)..]);
+
+    private bool Ligado(int elementoId) => _ligacoes.Contains(new VisibilidadeDeElementoResponse(Escolhida.Origem, Escolhida.Chave, elementoId));
+
+    protected override async Task CarregarAsync()
+    {
+        var response = await Http.GetAsync("afinidades/visibilidade");
+        if (!response.IsSuccessStatusCode)
+        {
+            MensagemDeErro = "Não foi possível carregar a visibilidade dos elementos.";
+            return;
+        }
+        _ligacoes = await response.Content.ReadFromJsonAsync<List<VisibilidadeDeElementoResponse>>() ?? new();
+    }
+
+    private async Task AlterarAsync(int elementoId, bool visivel) =>
+        await ConcluirAsync(await Http.PutAsJsonAsync("afinidades/visibilidade",
+            new AlterarVisibilidadeDeElementoRequest(Escolhida.Origem, Escolhida.Chave, elementoId, visivel)));
+}

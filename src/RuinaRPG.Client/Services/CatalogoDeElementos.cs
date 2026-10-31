@@ -39,6 +39,15 @@ public class CatalogoDeElementos(HttpClient http)
         return tarefa;
     }
 
+    /// <summary>Recarrega após uma edição na Auditoria de Afinidades, para os nomes da sessão não ficarem velhos.</summary>
+    public async Task RecarregarAsync()
+    {
+        // Uma leitura em andamento pode ser de antes da edição: espera-a e só então descarta o que ela trouxe.
+        await (_carregando ?? Task.CompletedTask);
+        _catalogo = null;
+        await CarregarAsync();
+    }
+
     private async Task BuscarAsync()
     {
         try
