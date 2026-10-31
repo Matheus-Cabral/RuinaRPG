@@ -170,7 +170,7 @@ public abstract class RedeCabecalhoEInformacoesBasicasTests : RedeDeSegurancaBas
         if (tipo == "Personagem")
             lista.Add($"GET {k}/skills/budget");
         if (tipo != "Criatura")
-            lista.Add($"GET {k}/affinities");
+            lista.Add($"GET {k}/afinidades");
         lista.AddRange(new[] { $"GET {k}/weapons", $"GET {k}/armor-slots", $"GET {k}/shields", $"GET {k}/sub-attributes", $"GET {k}/modificador-de-dano", $"GET {k}/traits" });
         if (tipo != "Criatura")
             lista.Add($"GET {k}/racial-ability");

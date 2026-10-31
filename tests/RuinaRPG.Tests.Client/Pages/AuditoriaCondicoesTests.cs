@@ -340,6 +340,44 @@ public class AuditoriaCondicoesTests : MudBunitContext
         _calls.Single(c => c.Method == HttpMethod.Put).Body.Should().Contain("\"Apagada\"");
     }
 
+    // Uma linha antiga que cita um elemento fora do catálogo (removido, ou um nome que a conversão não casou) continua
+    // visível, marcada, e guarda o valor dela até o Auditor escolher outro.
+    [Theory]
+    [InlineData("AfinidadeElemental")]
+    [InlineData("DanoElemental")]
+    public async Task A_line_whose_Elemento_is_not_in_the_catalog_shows_a_flagged_option_and_keeps_the_value(string alvo)
+    {
+        _catalogo = [new("c3", "Queimado", "", "Lentidao", null,
+            [new CondicaoModificadorDto(alvo, "99", "Fixo", -1, null)], [])];
+        var cut = RenderPage();
+        await Task.Delay(50);
+
+        cut.Find("button[aria-label='Editar Queimado']").Click();
+
+        Escolha(cut, "Específico").Should().Be("99");
+        var opcoes = Opcoes(cut, "Específico");
+        opcoes.Should().Contain("Fogo").And.NotContain("Alma");
+        opcoes.Last().Should().Be("(Elemento fora do catálogo)");
+
+        cut.FindAll("button").First(b => b.TextContent.Contains("Salvar")).Click();
+        await Task.Delay(50);
+        _calls.Single(c => c.Method == HttpMethod.Put).Body.Should().Contain("\"99\"");
+    }
+
+    [Fact]
+    public async Task A_line_with_an_Elemento_of_the_catalog_has_no_flagged_option()
+    {
+        _catalogo = [new("c3", "Queimado", "", "Lentidao", null,
+            [new CondicaoModificadorDto("AfinidadeElemental", "2", "Fixo", -1, null)], [])];
+        var cut = RenderPage();
+        await Task.Delay(50);
+
+        cut.Find("button[aria-label='Editar Queimado']").Click();
+
+        Escolha(cut, "Específico").Should().Be("2");
+        Opcoes(cut, "Específico").Should().NotContain("(Elemento fora do catálogo)");
+    }
+
     [Fact]
     public async Task A_line_with_an_existing_Pericia_shows_no_removed_warning()
     {

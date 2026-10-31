@@ -51,7 +51,7 @@ public class FichaEstadoPossesTests
                 : caminho.EndsWith("/spoils") ? (HttpStatusCode.OK, Espolios)
                 : caminho.EndsWith("/artifacts") ? (HttpStatusCode.OK, Artefatos)
                 : caminho.EndsWith("/affections") ? (HttpStatusCode.OK, Afeicoes)
-                : caminho.EndsWith("/attributes") || caminho.EndsWith("/skills") || caminho.EndsWith("/affinities")
+                : caminho.EndsWith("/attributes") || caminho.EndsWith("/skills")
                     || caminho.EndsWith("/weapons") || caminho.EndsWith("/armor-slots") || caminho.EndsWith("/shields") ? (HttpStatusCode.OK, "[]")
                 : caminho.StartsWith("items?") || caminho.StartsWith("campaigns/c1/available-items?") ? (HttpStatusCode.OK, Itens)
                 : (HttpStatusCode.OK, "{}");
@@ -69,7 +69,7 @@ public class FichaEstadoPossesTests
         if (tipo == "Personagem")
             lista.Add($"GET {K(tipo)}/skills/budget");
         if (tipo != "Criatura")
-            lista.Add($"GET {K(tipo)}/affinities");
+            lista.Add($"GET {K(tipo)}/afinidades");
         lista.AddRange(new[] { $"GET {K(tipo)}/weapons", $"GET {K(tipo)}/armor-slots", $"GET {K(tipo)}/shields", $"GET {K(tipo)}/sub-attributes", $"GET {K(tipo)}/modificador-de-dano" });
         return lista.ToArray();
     }

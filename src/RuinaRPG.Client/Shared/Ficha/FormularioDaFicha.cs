@@ -57,7 +57,6 @@ public sealed class FormularioDaFicha(TipoDeFichaCliente tipo)
     public string GraduacaoLabel { get; set; } = "Grau";
     public bool PossuiCoracaoDeMana { get; set; }
     public int AfinidadeAdicional { get; set; }
-    public int VocacaoArcanaMaxima { get; set; }
 
     [Required(ErrorMessage = "Informe a Experiência Atual.")]
     public int? ExperienciaAtual { get; set; }

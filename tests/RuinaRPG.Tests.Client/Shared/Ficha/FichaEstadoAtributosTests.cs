@@ -33,7 +33,7 @@ public class FichaEstadoAtributosTests
     // A Criatura não tem contaHistorico no record dela: mesmo que viesse no JSON, o Modificador fica sem negrito.
     private const string Pericias = """[{"pericia":"Atletismo","gasto":2,"modificador":1,"atributoEscolhido":"Vigor","total":3,"contaHistorico":true,"nome":"Atletismo","descricao":"Correr."}]""";
 
-    private const string Afinidades = """[{"id":"afi1","elemento":"Fogo","elementoValor":2,"segundaEssencia":"Vida","segundaEssenciaValor":1,"subElemento":"Curar","subElementoValor":3,"experiencia":1,"elementoValorComCondicoes":2}]""";
+    private const string Afinidades = """{"gasto":3,"maximo":6,"secaoVisivel":true,"elementos":[{"id":2,"nome":"Fogo","tipo":"Base","teto":null,"pontos":2,"experiencia":1,"bloqueado":false,"motivo":null,"pontosComCondicoes":2},{"id":4,"nome":"Gelo","tipo":"SubElemento","teto":null,"pontos":1,"experiencia":null,"bloqueado":true,"motivo":"Precisa de 1 em Água e 1 em Ar","pontosComCondicoes":1}]}""";
 
     // Chamado a cada requisição, com o caminho (para ver o estado no meio da recarga).
     private Action<string>? _aoPedir;
@@ -54,7 +54,7 @@ public class FichaEstadoAtributosTests
                 : caminho.EndsWith("/attributes/budget") ? (HttpStatusCode.OK, """{"gastoTotal":2,"pontosDisponiveis":10}""")
                 : caminho.EndsWith("/skills") ? (HttpStatusCode.OK, Pericias)
                 : caminho.EndsWith("/skills/budget") ? (HttpStatusCode.OK, """{"gastoTotal":2,"pontosDisponiveis":8}""")
-                : caminho.EndsWith("/affinities") ? (HttpStatusCode.OK, Afinidades)
+                : caminho.EndsWith("/afinidades") ? (HttpStatusCode.OK, Afinidades)
                 : (HttpStatusCode.OK, "{}");
             return new HttpResponseMessage(resposta.Item1) { Content = new StringContent(resposta.Item2, Encoding.UTF8, "application/json") };
         });
@@ -70,7 +70,7 @@ public class FichaEstadoAtributosTests
         if (tipo == "Personagem")
             lista.Add($"GET {K(tipo)}/skills/budget");
         if (tipo != "Criatura")
-            lista.Add($"GET {K(tipo)}/affinities");
+            lista.Add($"GET {K(tipo)}/afinidades");
         lista.AddRange(new[] { $"GET {K(tipo)}/weapons", $"GET {K(tipo)}/armor-slots", $"GET {K(tipo)}/shields", $"GET {K(tipo)}/sub-attributes", $"GET {K(tipo)}/modificador-de-dano" });
         return lista.ToArray();
     }
@@ -94,7 +94,10 @@ public class FichaEstadoAtributosTests
             estado.OrcamentoDePericias.Should().NotBeNull();
         else
             estado.OrcamentoDePericias.Should().BeNull();
-        estado.Afinidades.Select(a => a.Id).Should().Equal(tipo == "Criatura" ? Array.Empty<string>() : new[] { "afi1" });
+        if (tipo == "Criatura")
+            estado.Afinidades.Should().BeNull();
+        else
+            estado.Afinidades!.Elementos.Select(e => e.Id).Should().Equal(2, 4);
     }
 
     [Theory]
@@ -117,13 +120,13 @@ public class FichaEstadoAtributosTests
         var estado = Estado(tipo);
         _respostas[$"GET {K(tipo)}/attributes"] = (HttpStatusCode.OK, "null");
         _respostas[$"GET {K(tipo)}/skills"] = (HttpStatusCode.OK, "null");
-        _respostas[$"GET {K(tipo)}/affinities"] = (HttpStatusCode.OK, "null");
+        _respostas[$"GET {K(tipo)}/afinidades"] = (HttpStatusCode.OK, "null");
 
         await estado.CarregarAtributosECombateAsync();
 
         estado.Atributos.Should().BeEmpty();
         estado.Pericias.Should().BeEmpty();
-        estado.Afinidades.Should().BeEmpty();
+        estado.Afinidades.Should().BeNull();
     }
 
     // ---------------- atributos ----------------
@@ -251,157 +254,69 @@ public class FichaEstadoAtributosTests
 
     [Theory]
     [MemberData(nameof(TiposComAfinidades))]
-    public async Task Adding_an_afinidade_posts_resets_the_row_and_reloads(string tipo)
+    public async Task The_reload_reads_the_points_per_element(string tipo)
     {
         var estado = Estado(tipo);
-        var notificacoes = 0;
-        estado.Alterado += () => notificacoes++;
-        var form = estado.FormularioDeAfinidade;
-        (form.Elemento, form.ElementoValor, form.SegundaEssencia, form.SegundaEssenciaValor, form.SubElementoValor, form.Experiencia) = ("Fogo", 3, "Terra", 1, 2, 4);
 
-        await estado.AdicionarAfinidadeAsync();
-
-        _requisicoes.Should().Equal(new[]
-        {
-            $"POST {K(tipo)}/affinities {{\"elemento\":\"Fogo\",\"elementoValor\":3,\"segundaEssencia\":\"Terra\",\"segundaEssenciaValor\":1,\"subElementoValor\":2,\"experiencia\":4}}",
-        }.Concat(Recarga(tipo)));
-        new object?[] { form.Elemento, form.ElementoValor, form.SegundaEssencia, form.SegundaEssenciaValor, form.SubElementoValor, form.Experiencia }
-            .Should().AllSatisfy(v => v.Should().BeNull());
-        estado.PenalidadesVersao.Should().Be(0);
-        notificacoes.Should().Be(1);
-    }
-
-    [Theory]
-    [InlineData("\"Essência inválida.\"", "Essência inválida.")]
-    [InlineData("", "Não foi possível adicionar a afinidade.")]
-    public async Task A_refused_afinidade_shows_the_message_keeps_the_row_and_reloads_nothing(string corpo, string mensagem)
-    {
-        var estado = Estado("Personagem");
-        var notificacoes = 0;
-        estado.Alterado += () => notificacoes++;
-        _respostas[$"POST {K("Personagem")}/affinities"] = (HttpStatusCode.BadRequest, corpo);
-        estado.FormularioDeAfinidade.Elemento = "Fogo";
-
-        await estado.AdicionarAfinidadeAsync();
-
-        estado.Erro.Should().Be(mensagem);
-        _requisicoes.Should().ContainSingle();
-        estado.FormularioDeAfinidade.Elemento.Should().Be("Fogo");
-        notificacoes.Should().Be(1);
-    }
-
-    [Theory]
-    [InlineData("Experiencia", 4, "\"elemento\":\"Fogo\",\"elementoValor\":2,\"segundaEssencia\":\"Vida\",\"segundaEssenciaValor\":1,\"subElementoValor\":3,\"experiencia\":4")]
-    [InlineData("ElementoValor", 5, "\"elemento\":\"Fogo\",\"elementoValor\":5,\"segundaEssencia\":\"Vida\",\"segundaEssenciaValor\":1,\"subElementoValor\":3,\"experiencia\":1")]
-    [InlineData("SubElementoValor", null, "\"elemento\":\"Fogo\",\"elementoValor\":2,\"segundaEssencia\":\"Vida\",\"segundaEssenciaValor\":1,\"subElementoValor\":null,\"experiencia\":1")]
-    // Trocar a Essência 1 por uma que não cruza com a Essência 2 a descarta, e o valor dela junto.
-    [InlineData("Elemento", "Agua", "\"elemento\":\"Agua\",\"elementoValor\":2,\"segundaEssencia\":null,\"segundaEssenciaValor\":null,\"subElementoValor\":3,\"experiencia\":1")]
-    // Uma que cruza a mantém.
-    [InlineData("Elemento", "Terra", "\"elemento\":\"Terra\",\"elementoValor\":2,\"segundaEssencia\":\"Vida\",\"segundaEssenciaValor\":1,\"subElementoValor\":3,\"experiencia\":1")]
-    [InlineData("SegundaEssencia", null, "\"elemento\":\"Fogo\",\"elementoValor\":2,\"segundaEssencia\":null,\"segundaEssenciaValor\":null,\"subElementoValor\":3,\"experiencia\":1")]
-    [InlineData("SegundaEssenciaValor", 4, "\"elemento\":\"Fogo\",\"elementoValor\":2,\"segundaEssencia\":\"Vida\",\"segundaEssenciaValor\":4,\"subElementoValor\":3,\"experiencia\":1")]
-    public async Task An_afinidade_edit_puts_the_row_and_reloads(string campo, object? valor, string corpo)
-    {
-        foreach (var tipo in new[] { "Personagem", "NPC" })
-        {
-            _requisicoes.Clear();
-            var estado = Estado(tipo);
-            await estado.CarregarAtributosECombateAsync();
-            _requisicoes.Clear();
-            estado.Erro = "antigo";
-            var notificacoes = 0;
-            estado.Alterado += () => notificacoes++;
-
-            await estado.AtualizarAfinidadeAsync("afi1", campo, valor);
-
-            _requisicoes.Should().Equal(new[] { $"PUT {K(tipo)}/affinities/afi1 {{{corpo}}}" }.Concat(Recarga(tipo)));
-            estado.Erro.Should().BeNull();
-            estado.PenalidadesVersao.Should().Be(0);
-            notificacoes.Should().Be(1);
-        }
-    }
-
-    [Fact]
-    public async Task A_refused_afinidade_edit_shows_the_server_message_and_still_reloads()
-    {
-        var estado = Estado("NPC");
         await estado.CarregarAtributosECombateAsync();
-        _requisicoes.Clear();
-        _respostas[$"PUT {K("NPC")}/affinities/afi1"] = (HttpStatusCode.BadRequest, "\"Valor acima do máximo.\"");
 
-        await estado.AtualizarAfinidadeAsync("afi1", "Experiencia", 40);
-
-        estado.Erro.Should().Be("Valor acima do máximo.");
-        _requisicoes.Skip(1).Should().Equal(Recarga("NPC"));
+        estado.Afinidades!.Gasto.Should().Be(3);
+        estado.Afinidades.Maximo.Should().Be(6);
+        estado.Afinidades.SecaoVisivel.Should().BeTrue();
+        estado.Afinidades.Elementos.Select(e => (e.Id, e.Nome, e.Pontos, e.Experiencia, e.Bloqueado)).Should().Equal(
+            (2, "Fogo", 2, (int?)1, false), (4, "Gelo", 1, (int?)null, true));
     }
 
     [Theory]
     [MemberData(nameof(TiposComAfinidades))]
-    public async Task Removing_an_afinidade_deletes_and_reloads(string tipo)
+    public async Task Setting_an_element_puts_its_points_and_experience_then_reloads(string tipo)
     {
         var estado = Estado(tipo);
+        await estado.CarregarAtributosECombateAsync();
+        _requisicoes.Clear();
+        estado.Erro = "antigo";
         var notificacoes = 0;
         estado.Alterado += () => notificacoes++;
 
-        await estado.RemoverAfinidadeAsync("afi1");
+        await estado.AtualizarAfinidadeAsync(2, 3, 1);
 
-        _requisicoes.Should().Equal(new[] { $"DELETE {K(tipo)}/affinities/afi1" }.Concat(Recarga(tipo)));
+        _requisicoes.Should().Equal(new[] { $"PUT {K(tipo)}/afinidades/2 {{\"pontos\":3,\"experiencia\":1}}" }.Concat(Recarga(tipo)));
+        estado.Erro.Should().BeNull();
         estado.PenalidadesVersao.Should().Be(0);
         notificacoes.Should().Be(1);
     }
 
-    // ---------------- a linha nova da afinidade ----------------
-
-    [Fact]
-    public void A_new_essencia_1_that_does_not_cross_the_essencia_2_drops_it_and_its_value()
-    {
-        var form = new AffinityFormModel { Elemento = "Fogo", SegundaEssencia = "Vida", SegundaEssenciaValor = 2 };
-
-        form.TrocarEssencia1("Agua");
-
-        form.Elemento.Should().Be("Agua");
-        form.SegundaEssencia.Should().BeNull();
-        form.SegundaEssenciaValor.Should().BeNull();
-    }
-
-    [Fact]
-    public void A_new_essencia_1_that_crosses_the_essencia_2_keeps_it()
-    {
-        var form = new AffinityFormModel { Elemento = "Fogo", SegundaEssencia = "Vida", SegundaEssenciaValor = 2 };
-
-        form.TrocarEssencia1("Terra");
-
-        (form.Elemento, form.SegundaEssencia, form.SegundaEssenciaValor).Should().Be(("Terra", "Vida", (int?)2));
-    }
-
-    [Fact]
-    public void Clearing_the_essencia_2_drops_its_value()
-    {
-        var form = new AffinityFormModel { Elemento = "Fogo", SegundaEssencia = "Vida", SegundaEssenciaValor = 2 };
-
-        form.TrocarEssencia2(null);
-
-        form.SegundaEssencia.Should().BeNull();
-        form.SegundaEssenciaValor.Should().BeNull();
-    }
-
-    [Fact]
-    public void Another_essencia_2_keeps_its_value()
-    {
-        var form = new AffinityFormModel { Elemento = "Fogo", SegundaEssencia = "Vida", SegundaEssenciaValor = 2 };
-
-        form.TrocarEssencia2("Terra");
-
-        (form.SegundaEssencia, form.SegundaEssenciaValor).Should().Be(("Terra", (int?)2));
-    }
-
     [Theory]
-    [InlineData("Fogo", "Vida", "Curar")]
-    [InlineData("Agua", "Ar", "Gelo")]
-    [InlineData("Fogo", null, null)]
-    [InlineData(null, "Vida", null)]
-    public void The_new_row_sub_elemento_is_where_the_essencias_cross(string? e1, string? e2, string? sub)
+    [MemberData(nameof(TiposComAfinidades))]
+    public async Task A_refused_element_shows_the_server_message_and_still_reloads(string tipo)
     {
-        new AffinityFormModel { Elemento = e1, SegundaEssencia = e2 }.SubElemento.Should().Be(sub);
+        var estado = Estado(tipo);
+        await estado.CarregarAtributosECombateAsync();
+        _requisicoes.Clear();
+        _respostas[$"PUT {K(tipo)}/afinidades/3"] = (HttpStatusCode.BadRequest, "\"Gelo depende de Ar: zere Gelo antes.\"");
+
+        await estado.AtualizarAfinidadeAsync(3, 0, null);
+
+        estado.Erro.Should().Be("Gelo depende de Ar: zere Gelo antes.");
+        _requisicoes.Skip(1).Should().Equal(Recarga(tipo));
+    }
+
+    // Um clique enquanto o anterior ainda grava calcularia sobre os pontos velhos: os botões esperam.
+    [Fact]
+    public async Task The_state_says_an_element_is_being_saved_until_the_reload_ends()
+    {
+        var estado = Estado("Personagem");
+        await estado.CarregarAtributosECombateAsync();
+        var duranteOPut = false;
+        var duranteARecarga = false;
+        _aoPedir = caminho =>
+        {
+            if (caminho.EndsWith("/afinidades/2")) duranteOPut = estado.SalvandoAfinidade;
+            if (caminho.EndsWith("/weapons")) duranteARecarga = estado.SalvandoAfinidade;
+        };
+
+        await estado.AtualizarAfinidadeAsync(2, 3, 1);
+
+        (duranteOPut, duranteARecarga, estado.SalvandoAfinidade).Should().Be((true, true, false));
     }
 }

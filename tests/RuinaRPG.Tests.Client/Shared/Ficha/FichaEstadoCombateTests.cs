@@ -54,7 +54,7 @@ public class FichaEstadoCombateTests
                 : caminho.EndsWith("/masteries") ? (HttpStatusCode.OK, Maestrias)
                 : caminho.EndsWith("/sub-attributes") ? (HttpStatusCode.OK, """{"iniciativa":5,"defesaNatural":13}""")
                 : caminho.EndsWith("/modificador-de-dano") ? (HttpStatusCode.OK, """{"cortante":1,"perfurante":0,"contundente":0,"arcano":0,"danoElemental":{}}""")
-                : caminho.EndsWith("/attributes") || caminho.EndsWith("/skills") || caminho.EndsWith("/affinities") ? (HttpStatusCode.OK, "[]")
+                : caminho.EndsWith("/attributes") || caminho.EndsWith("/skills") ? (HttpStatusCode.OK, "[]")
                 : (HttpStatusCode.OK, "{}");
             return new HttpResponseMessage(resposta.Item1) { Content = new StringContent(resposta.Item2, Encoding.UTF8, "application/json") };
         });
@@ -85,7 +85,7 @@ public class FichaEstadoCombateTests
         if (tipo == "Personagem")
             lista.Add($"GET {K(tipo)}/skills/budget");
         if (tipo != "Criatura")
-            lista.Add($"GET {K(tipo)}/affinities");
+            lista.Add($"GET {K(tipo)}/afinidades");
         lista.AddRange(Combate(tipo));
         return lista.ToArray();
     }

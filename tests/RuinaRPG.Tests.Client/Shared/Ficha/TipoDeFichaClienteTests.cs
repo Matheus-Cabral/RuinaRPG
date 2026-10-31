@@ -63,6 +63,8 @@ public class TipoDeFichaClienteTests
     [InlineData(nameof(TipoDeFichaCliente.CadastraItemNoPicker), false, true, true)]
     [InlineData(nameof(TipoDeFichaCliente.MostraPesoDasArmas), true, true, false)]
     [InlineData(nameof(TipoDeFichaCliente.CriaCaracteristicaNoPicker), false, false, true)]
+    // 2.2.0: o GM de um NPC não é recusado pelas regras das Afinidades (mostra, não recusa); no Personagem ninguém passa.
+    [InlineData(nameof(TipoDeFichaCliente.AfinidadesLivresParaOGm), false, true, false)]
     public void Flag_per_kind(string flag, bool personagem, bool npc, bool criatura)
     {
         Ler<bool>(TipoDeFichaCliente.Personagem, flag).Should().Be(personagem);

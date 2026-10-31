@@ -46,7 +46,7 @@ public class FichaArsenalDurabilidadeTests : MudBunitContext
     // _levelUpBonuses is left at its default empty list instead of being overwritten with null.
     private static readonly string[] SingleObjectSuffixes =
     {
-        "/attributes/budget", "/skills/budget", "/sub-attributes", "/modificador-de-dano",
+        "/attributes/budget", "/skills/budget", "/afinidades", "/sub-attributes", "/modificador-de-dano",
         "/racial-ability", "/racial-traits/pending", "/traits",
     };
 

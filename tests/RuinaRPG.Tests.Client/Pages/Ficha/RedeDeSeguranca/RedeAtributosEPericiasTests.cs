@@ -10,7 +10,7 @@ namespace RuinaRPG.Tests.Client.Pages.Ficha.RedeDeSeguranca;
 /// <summary>
 /// Rede de segurança do E: a aba Atributos &amp; Perícias das três fichas, como GM e como jogador — o que se lê
 /// (Progressão do nível, Atributos e o orçamento, Perícias e o orçamento de cada tipo, Afinidades) e as
-/// requisições de cada edição (atributo, gasto e atributo da perícia, adicionar/remover afinidade), com a
+/// requisições de cada edição (atributo, gasto e atributo da perícia, pontos e Experiência de um elemento), com a
 /// recarga que vem depois, na ordem. Fixa o que a tela faz hoje; precisa passar sem mudanças depois de cada
 /// passo do E. As classes aninhadas existem só para o xUnit rodá-las em paralelo.
 /// </summary>
@@ -61,12 +61,13 @@ public abstract class RedeAtributosEPericiasTests : RedeDeSegurancaBase
         "Atletismo", "«2»", "1", "Vigor", "3",
     };
 
-    protected static string[] Afinidades(string vocacaoArcana) => new[]
+    // 2.2.0: pontos por elemento (Ficha de Personagem 2.c) no lugar da tabela de linhas; igual no Personagem e no NPC.
+    protected static readonly string[] Afinidades =
     {
-        "Afinidades", vocacaoArcana, "«0»", "Afinidade Adicional",
-        "Essência Básica 1", "Essência Básica 2", "Sub-Elemento", "Experiência",
-        "Fogo", "«2»", "«»", "«»", "—", "«»", "«1»", "Remover",
-        "«»", "«»", "«»", "«»", "—", "«»", "«»", "Adicionar",
+        "Afinidades", "Distribuídos 2/6", "Restam 4 ponto(s) para distribuir.", "«0»", "Afinidade Adicional",
+        "Elemento", "Pontos", "Experiência",
+        "Fogo", "2", "«1»",
+        "Gelo", "Precisa de 1 em Água e 1 em Ar", "0", "«»",
     };
 
     protected static IEnumerable<string> LeituraDaAba(string tipo) => tipo switch
@@ -80,12 +81,12 @@ public abstract class RedeAtributosEPericiasTests : RedeDeSegurancaBase
                 "«»", "Adicionar/subtrair pontos de Acerto Crítico", "Aplicar",
             })
             .Concat(TabelaDePericias)
-            .Concat(Afinidades("Vocação Arcana: 2 / 6")),
+            .Concat(Afinidades),
         "NPC" => new[] { "Progressão do nível", "Ver saldos e limites do nível", "Pontos de Perícia", "8" }
             .Concat(Atributos)
             .Concat(new[] { "Perícias", "Pontos de Perícia Gastos: 2" })
             .Concat(TabelaDePericias)
-            .Concat(Afinidades("Vocação Arcana: 2 / 0")),
+            .Concat(Afinidades),
         _ => Atributos
             .Concat(new[] { "Perícias", "Pontos de Perícia Gastos: 2" })
             .Concat(TabelaDePericias),
@@ -107,8 +108,9 @@ public abstract class RedeAtributosEPericiasTests : RedeDeSegurancaBase
 
     protected static IElement LinhaDaPericia(IRenderedComponent<IComponent> cut) => Linha(Tabela(AbaAberta(cut), "Perícia"), "Atletismo");
 
-    protected static IElement NovaAfinidade(IRenderedComponent<IComponent> cut) =>
-        Tabela(AbaAberta(cut), "Essência Básica 1").QuerySelectorAll("tbody tr").Last();
+    /// <summary>O botão − ou + (pelo rótulo acessível) de um elemento na seção Afinidades.</summary>
+    protected static IElement BotaoDoElemento(IRenderedComponent<IComponent> cut, string rotulo) =>
+        AbaAberta(cut).QuerySelector($"button[aria-label='{rotulo}']")!;
 
     /// <summary>Abre o MudSelect de <paramref name="controle"/> e clica na opção <paramref name="opcao"/>.</summary>
     protected static async Task EscolherAsync(IRenderedComponent<IComponent> cut, Func<IElement> controle, string opcao)
@@ -148,8 +150,9 @@ public abstract class RedeAtributosEPericiasTests : RedeDeSegurancaBase
             }, TimeSpan.FromSeconds(5));
         }
 
-        // A Leitura não vê atributos: o Modificador em negrito ("Inclui bônus de Histórico") e os campos desabilitados
-        // ficam afirmados aqui. GM e jogador editam a aba igual; só a Essência 2 da linha nova (sem Essência 1) fica desabilitada.
+        // A Leitura não vê atributos: o Modificador em negrito ("Inclui bônus de Histórico") e os controles desabilitados
+        // ficam afirmados aqui. Nenhum campo fica desabilitado; nas Afinidades, o − de um elemento sem pontos e o + do
+        // Gelo bloqueado — menos para o GM do NPC, que as regras não recusam (Ficha de NPCs R0010).
         [Theory]
         [MemberData(nameof(TiposEPapeis))]
         public async Task O_modificador_do_historico_e_os_campos_desabilitados_sao_os_de_hoje(string tipo, string papel)
@@ -159,11 +162,14 @@ public abstract class RedeAtributosEPericiasTests : RedeDeSegurancaBase
             var negrito = LinhaDaPericia(cut).QuerySelectorAll("b[title='Inclui bônus de Histórico']").Select(TextoNormalizado);
             negrito.Should().Equal(tipo == "Criatura" ? Array.Empty<string>() : new[] { "1" });
 
-            var desabilitados = AbaAberta(cut).QuerySelectorAll("input[disabled]").Count();
-            desabilitados.Should().Be(tipo == "Criatura" ? 0 : 1);
-            if (tipo != "Criatura")
-                NovaAfinidade(cut).QuerySelectorAll("input[disabled]").Should().HaveCount(1);
-            AbaAberta(cut).QuerySelectorAll("button[disabled]").Should().BeEmpty();
+            AbaAberta(cut).QuerySelectorAll("input[disabled]").Should().BeEmpty();
+            var botoes = AbaAberta(cut).QuerySelectorAll("button[disabled]").Select(b => b.GetAttribute("aria-label"));
+            botoes.Should().Equal(tipo switch
+            {
+                "Criatura" => Array.Empty<string>(),
+                "NPC" when papel == "GM" => new[] { "Tirar 1 ponto de Gelo" },
+                _ => new[] { "Tirar 1 ponto de Gelo", "Pôr 1 ponto em Gelo" },
+            });
         }
     }
 
@@ -301,35 +307,41 @@ public abstract class RedeAtributosEPericiasTests : RedeDeSegurancaBase
         }
     }
 
-    /// <summary>Afinidades (Personagem e NPC): adicionar e remover.</summary>
+    /// <summary>Afinidades (Personagem e NPC): os pontos e a Experiência de um elemento.</summary>
     public sealed class AfinidadesDaFicha : RedeAtributosEPericiasTests
     {
         [Theory]
         [MemberData(nameof(TiposComAfinidades))]
-        public async Task Adicionar_uma_afinidade_grava_a_linha_nova_e_recarrega(string tipo, string papel)
+        public async Task Por_um_ponto_grava_o_elemento_e_recarrega(string tipo, string papel)
         {
             var cut = await AbrirAbaAsync(tipo, papel);
 
-            await EscolherAsync(cut, () => NovaAfinidade(cut).QuerySelectorAll("td")[0], "Terra");
-            await cut.InvokeAsync(() => NovaAfinidade(cut).QuerySelectorAll("td")[0].QuerySelectorAll("input")[1].Change("3"));
-            await cut.InvokeAsync(() => NovaAfinidade(cut).QuerySelectorAll("td")[3].QuerySelector("input")!.Change("2"));
-            Requisicoes.Should().BeEmpty();
-            await cut.InvokeAsync(() => Botao(NovaAfinidade(cut), "Adicionar").Click());
+            await cut.InvokeAsync(() => BotaoDoElemento(cut, "Pôr 1 ponto em Fogo").Click());
 
-            await AfirmarGravacaoAsync(cut, tipo,
-                $"POST /{Prefixo(tipo)}/s1/affinities {{\"elemento\":\"Terra\",\"elementoValor\":3,\"experiencia\":2,\"segundaEssencia\":null,\"segundaEssenciaValor\":null,\"subElementoValor\":null}}",
-                recarregaPenalidades: false);
+            await AfirmarGravacaoAsync(cut, tipo, $"PUT /{Prefixo(tipo)}/s1/afinidades/2 {{\"experiencia\":1,\"pontos\":3}}", recarregaPenalidades: false);
         }
 
         [Theory]
         [MemberData(nameof(TiposComAfinidades))]
-        public async Task Remover_uma_afinidade_apaga_e_recarrega(string tipo, string papel)
+        public async Task Tirar_um_ponto_grava_o_elemento_e_recarrega(string tipo, string papel)
         {
             var cut = await AbrirAbaAsync(tipo, papel);
 
-            await cut.InvokeAsync(() => Botao(Tabela(AbaAberta(cut), "Essência Básica 1").QuerySelectorAll("tbody tr")[0], "Remover").Click());
+            await cut.InvokeAsync(() => BotaoDoElemento(cut, "Tirar 1 ponto de Fogo").Click());
 
-            await AfirmarGravacaoAsync(cut, tipo, $"DELETE /{Prefixo(tipo)}/s1/affinities/afi1", recarregaPenalidades: false);
+            await AfirmarGravacaoAsync(cut, tipo, $"PUT /{Prefixo(tipo)}/s1/afinidades/2 {{\"experiencia\":1,\"pontos\":1}}", recarregaPenalidades: false);
+        }
+
+        [Theory]
+        [MemberData(nameof(TiposComAfinidades))]
+        public async Task Editar_a_experiencia_grava_o_elemento_e_recarrega(string tipo, string papel)
+        {
+            var cut = await AbrirAbaAsync(tipo, papel);
+            var linha = BotaoDoElemento(cut, "Pôr 1 ponto em Fogo").Closest("tr")!;
+
+            await cut.InvokeAsync(() => linha.QuerySelector("input")!.Change("4"));
+
+            await AfirmarGravacaoAsync(cut, tipo, $"PUT /{Prefixo(tipo)}/s1/afinidades/2 {{\"experiencia\":4,\"pontos\":2}}", recarregaPenalidades: false);
         }
     }
 }

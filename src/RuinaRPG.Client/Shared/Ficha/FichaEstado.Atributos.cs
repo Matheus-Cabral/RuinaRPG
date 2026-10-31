@@ -1,6 +1,5 @@
 using System.Net.Http.Json;
 using RuinaRPG.Client.Services;
-using RuinaRPG.Client.Shared.Fields;
 using RuinaRPG.Contracts.CharacterSheets;
 using RuinaRPG.Contracts.CreatureSheets;
 using RuinaRPG.Contracts.Fichas;
@@ -26,9 +25,14 @@ public sealed partial class FichaEstado
     /// <summary>"Pontos de Perícia: gasto / disponível" (só onde o tipo tem orçamento de Perícias).</summary>
     public SkillPointBudgetResponse? OrcamentoDePericias { get; set; }
 
-    public List<AffinityResponse> Afinidades { get; set; } = new();
+    /// <summary>As Afinidades por elemento (2.c): gasto, máximo, se a seção aparece e os elementos; <c>null</c> até a carga.</summary>
+    public AfinidadesDaFichaResponse? Afinidades { get; set; }
 
-    public AffinityFormModel FormularioDeAfinidade { get; } = new();
+    /// <summary>
+    /// Um elemento está sendo gravado (o PUT e a recarga): o − e o + esperam, para um clique não calcular sobre os
+    /// pontos de antes do anterior.
+    /// </summary>
+    public bool SalvandoAfinidade { get; private set; }
 
     /// <summary>
     /// Os pontos de Acerto Crítico digitados e ainda não aplicados. Moram aqui, e não na seção, para sobreviver à troca de
@@ -48,7 +52,7 @@ public sealed partial class FichaEstado
         if (Tipo.TemOrcamentoDePericias)
             OrcamentoDePericias = await Http.GetFromJsonAsync<SkillPointBudgetResponse>(Tipo.Url(SheetId, "skills/budget"));
         if (Tipo.TemAfinidades)
-            Afinidades = await Http.GetFromJsonAsync<List<AffinityResponse>>(Tipo.Url(SheetId, "affinities")) ?? new();
+            Afinidades = await Http.GetFromJsonAsync<AfinidadesDaFichaResponse>(Tipo.Url(SheetId, "afinidades"));
         await CarregarCombateAsync();
     }
 
@@ -114,50 +118,24 @@ public sealed partial class FichaEstado
 
     // ---------------- Afinidades ----------------
 
-    public async Task AdicionarAfinidadeAsync()
-    {
-        var form = FormularioDeAfinidade;
-        var response = await Http.PostAsJsonAsync(Tipo.Url(SheetId, "affinities"),
-            new AddAffinityRequest(form.Elemento, form.ElementoValor, form.SegundaEssencia, form.SegundaEssenciaValor, form.SubElementoValor, form.Experiencia));
-        if (!response.IsSuccessStatusCode)
-        {
-            MostrarErro(await response.Content.ReadErrorMessageAsync() ?? "Não foi possível adicionar a afinidade.");
-            return;
-        }
-
-        form.Limpar();
-        await RecarregarAbasAsync();
-    }
-
     /// <summary>
-    /// Grava um campo da linha. Trocar a Essência 1 descarta a Essência 2 que não cruza mais com ela, e sem a Essência 2
-    /// o valor dela também vai embora (como na linha nova).
+    /// Grava os pontos e a Experiência de um elemento (<c>PUT afinidades/{id}</c>) e relê as abas (a Eficiência e o Dano
+    /// Elemental vêm com os Sub-Atributos). A recusa do servidor vai para o alerta; um salvamento certo o apaga.
     /// </summary>
-    public async Task AtualizarAfinidadeAsync(string id, string campo, object? valor)
+    public async Task AtualizarAfinidadeAsync(int elementoId, int pontos, int? experiencia)
     {
-        var atual = Afinidades.Single(a => a.Id == id);
-        var elemento = campo == "Elemento" ? valor?.ToString() : atual.Elemento;
-        var elementoValor = campo == "ElementoValor" ? valor as int? : atual.ElementoValor;
-        var segunda = campo == "SegundaEssencia" ? valor?.ToString() : atual.SegundaEssencia;
-        var segundaValor = campo == "SegundaEssenciaValor" ? valor as int? : atual.SegundaEssenciaValor;
-        var subElementoValor = campo == "SubElementoValor" ? valor as int? : atual.SubElementoValor;
-        var experiencia = campo == "Experiencia" ? valor as int? : atual.Experiencia;
-
-        if (campo == "Elemento" && !AfinidadeEssenciaField.OpcoesSegundaEssencia(elemento, null).Any(o => o.Valor == segunda))
-            segunda = null;
-        if (segunda is null)
-            segundaValor = null;
-
-        var response = await Http.PutAsJsonAsync(Tipo.Url(SheetId, $"affinities/{id}"),
-            new UpdateAffinityRequest(elemento, elementoValor, segunda, segundaValor, subElementoValor, experiencia));
-        Erro = response.IsSuccessStatusCode ? null : await response.Content.ReadErrorMessageAsync();
-        await RecarregarAbasAsync();
-    }
-
-    public async Task RemoverAfinidadeAsync(string id)
-    {
-        await Http.DeleteAsync(Tipo.Url(SheetId, $"affinities/{id}"));
-        await RecarregarAbasAsync();
+        SalvandoAfinidade = true;
+        try
+        {
+            var response = await Http.PutAsJsonAsync(Tipo.Url(SheetId, $"afinidades/{elementoId}"), new AtualizarAfinidadeRequest(pontos, experiencia));
+            Erro = response.IsSuccessStatusCode ? null : await response.Content.ReadErrorMessageAsync();
+            await CarregarAtributosECombateAsync();
+        }
+        finally
+        {
+            SalvandoAfinidade = false;
+        }
+        NotificarAlteracao();
     }
 
     private async Task RecarregarAbasAsync()

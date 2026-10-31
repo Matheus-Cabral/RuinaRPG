@@ -39,7 +39,7 @@ public class FichaCondicoesTests : MudBunitContext
 
     private static readonly string[] SingleObjectSuffixes =
     {
-        "/attributes/budget", "/skills/budget", "/sub-attributes", "/modificador-de-dano", "/racial-ability", "/racial-traits/pending", "/traits",
+        "/attributes/budget", "/skills/budget", "/afinidades", "/sub-attributes", "/modificador-de-dano", "/racial-ability", "/racial-traits/pending", "/traits",
     };
 
     private int Contagem(string sufixo) => _requests.Count(r => r.StartsWith("GET ") && r.EndsWith(sufixo));
@@ -220,26 +220,30 @@ public class FichaCondicoesTests : MudBunitContext
 
     // ---- afinidade e dano elemental ----
 
-    [Fact]
-    public async Task The_affinity_shows_the_adjusted_value_but_the_input_keeps_the_stored_one()
+    private static HttpResponseMessage AfinidadesComFogo(int pontosComCondicoes) => Json(new
     {
-        Prepare(r => r.RequestUri!.AbsolutePath.EndsWith("/affinities")
-            ? Json(new object[] { new { Id = "af1", Elemento = "Fogo", ElementoValor = 2, ElementoValorComCondicoes = 5 } })
-            : null);
+        Gasto = 2, Maximo = 6, SecaoVisivel = true,
+        Elementos = new[] { new { Id = 2, Nome = "Fogo", Tipo = "Base", Teto = (int?)null, Pontos = 2, Experiencia = (int?)null, Bloqueado = false, Motivo = (string?)null, PontosComCondicoes = pontosComCondicoes } },
+    });
+
+    // Ficha de Personagem R0009: o valor exibido do elemento muda com as Condições; o que o − e o + mexem (e a barra
+    // mostra) continua sendo os pontos guardados.
+    [Fact]
+    public async Task The_affinity_shows_the_adjusted_value_but_the_points_stay_the_stored_ones()
+    {
+        Prepare(r => r.RequestUri!.AbsolutePath.EndsWith("/afinidades") ? AfinidadesComFogo(5) : null);
         var cut = await RenderPersonagemAsync();
         await GoToTabAsync(cut, "Atributos & Perícias");
 
-        cut.Markup.Should().Contain("com Condições: 5");
-        cut.FindAll("tr").Single(t => t.TextContent.Contains("com Condições: 5")).QuerySelectorAll("input[type=number], input.mud-input-slot")
-            .Select(i => i.GetAttribute("value")).Should().Contain("2");
+        var linha = cut.Find("button[aria-label='Pôr 1 ponto em Fogo']").Closest("tr")!;
+        linha.TextContent.Should().Contain("com Condições: 5");
+        linha.QuerySelector("div[role=img]")!.GetAttribute("aria-label").Should().Be("2 de 6 pontos");
     }
 
     [Fact]
     public async Task The_affinity_shows_no_adjusted_value_when_nothing_changed_it()
     {
-        Prepare(r => r.RequestUri!.AbsolutePath.EndsWith("/affinities")
-            ? Json(new object[] { new { Id = "af1", Elemento = "Fogo", ElementoValor = 2, ElementoValorComCondicoes = 2 } })
-            : null);
+        Prepare(r => r.RequestUri!.AbsolutePath.EndsWith("/afinidades") ? AfinidadesComFogo(2) : null);
         var cut = await RenderPersonagemAsync();
         await GoToTabAsync(cut, "Atributos & Perícias");
 

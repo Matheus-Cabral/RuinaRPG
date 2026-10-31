@@ -103,7 +103,7 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
         if (tipo == "Personagem")
             lista.Add($"GET {k}/skills/budget");
         if (tipo != "Criatura")
-            lista.Add($"GET {k}/affinities");
+            lista.Add($"GET {k}/afinidades");
         lista.AddRange(new[] { $"GET {k}/weapons", $"GET {k}/armor-slots", $"GET {k}/shields", $"GET {k}/sub-attributes", $"GET {k}/modificador-de-dano" });
         if (tipo != "Criatura")
             lista.AddRange(new[] { $"GET {k}/racial-ability", $"GET {k}/variantes-liberadas" });
@@ -136,7 +136,7 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
         if (tipo == "Personagem")
             lista.Add($"GET {k}/skills/budget");
         if (tipo != "Criatura")
-            lista.Add($"GET {k}/affinities");
+            lista.Add($"GET {k}/afinidades");
         lista.AddRange(new[] { $"GET {k}/weapons", $"GET {k}/armor-slots", $"GET {k}/shields", $"GET {k}/sub-attributes", $"GET {k}/modificador-de-dano" });
         return lista.ToArray();
     }
@@ -428,7 +428,15 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
             "attributes/budget" => new { gastoTotal = 2, pontosDisponiveis = 10 },
             "skills" => new[] { new { pericia = "Atletismo", gasto = 2, modificador = 1, atributoEscolhido = "Vigor", total = 3, contaHistorico = true, nome = "Atletismo", descricao = "Correr e saltar." } },
             "skills/budget" => new { gastoTotal = 2, pontosDisponiveis = 8 },
-            "affinities" => new[] { new { id = "afi1", elemento = "Fogo", elementoValor = 2, segundaEssencia = (string?)null, segundaEssenciaValor = (int?)null, subElemento = (string?)null, subElementoValor = (int?)null, experiencia = 1, elementoValorComCondicoes = 2 } },
+            "afinidades" => new
+            {
+                gasto = 2, maximo = 6, secaoVisivel = true,
+                elementos = new[]
+                {
+                    new { id = 2, nome = "Fogo", tipo = "Base", teto = (int?)null, pontos = 2, experiencia = (int?)1, bloqueado = false, motivo = (string?)null, pontosComCondicoes = 2 },
+                    new { id = 4, nome = "Gelo", tipo = "SubElemento", teto = (int?)null, pontos = 0, experiencia = (int?)null, bloqueado = true, motivo = (string?)"Precisa de 1 em Água e 1 em Ar", pontosComCondicoes = 0 },
+                },
+            },
             "weapons" => new[]
             {
                 new
