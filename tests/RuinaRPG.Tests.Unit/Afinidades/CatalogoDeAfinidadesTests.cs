@@ -36,6 +36,14 @@ public class CatalogoDeAfinidadesTests
     public void NomeDoAlvo_le_o_nome_pelo_id_em_texto_e_mantem_um_valor_que_nao_casa(string valor, string esperado) =>
         Assert.Equal(esperado, Catalogo.NomeDoAlvo(valor));
 
+    [Fact]
+    public void NomeDoAlvo_de_um_id_fora_do_catalogo_e_elemento_removido() =>
+        Assert.Equal("(elemento removido)", Catalogo.NomeDoAlvo("77"));
+
+    [Fact]
+    public void NomeDoAlvo_com_o_catalogo_ainda_vazio_mantem_o_valor() =>
+        Assert.Equal("4", new CatalogoDeAfinidades([], [], new Dictionary<int, int>(), []).NomeDoAlvo("4"));
+
     [Theory]
     [InlineData(null, null, null)]
     [InlineData(2, null, null)]

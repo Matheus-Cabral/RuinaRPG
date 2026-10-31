@@ -56,7 +56,11 @@
 <MudDialog @bind-Visible="_dialogoAberto">
     <TitleContent>Remover elemento</TitleContent>
     <DialogContent>
-        Remover @_aRemover?.Nome do catálogo? Os cruzamentos e as ligações de Vocação/Classe dele saem junto.
+        Remover @_aRemover?.Nome do catálogo? As ligações de Vocação/Classe dele saem junto.
+        @if (_aRemover is { } r && CruzamentosDe(r.Id) is { Count: > 0 } cruzamentos)
+        {
+            <MudText Typo="Typo.body2" Class="mt-2">Remove também os cruzamentos: @string.Join(", ", cruzamentos).</MudText>
+        }
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="@(() => _dialogoAberto = false)">Cancelar</MudButton>
@@ -70,6 +74,20 @@
     private int? _novoTeto;
     private bool _dialogoAberto;
     private ElementoDoCatalogo? _aRemover;
+    private List<CruzamentoDeAfinidadeResponse> _cruzamentos = new();
+
+    // Os cruzamentos lidos para a confirmação de remoção dizer quais saem junto com o elemento.
+    protected override async Task CarregarAsync()
+    {
+        var response = await Http.GetAsync("afinidades/cruzamentos");
+        if (response.IsSuccessStatusCode)
+            _cruzamentos = await response.Content.ReadFromJsonAsync<List<CruzamentoDeAfinidadeResponse>>() ?? new();
+    }
+
+    private List<string> CruzamentosDe(int id) => _cruzamentos
+        .Where(c => c.ElementoAId == id || c.ElementoBId == id || c.SubElementoId == id)
+        .Select(c => $"{Elementos.Nome(c.SubElementoId)} ({Elementos.Nome(c.ElementoAId)} + {Elementos.Nome(c.ElementoBId)})")
+        .ToList();
 
     private async Task AdicionarAsync()
     {

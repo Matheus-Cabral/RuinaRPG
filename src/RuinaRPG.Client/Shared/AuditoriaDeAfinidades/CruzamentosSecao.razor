@@ -13,12 +13,12 @@
     <ChildContent>
         <AvisosDaSecao @bind-Mensagem="MensagemDeErro" SemPermissao="SemPermissao" />
         <MudText Typo="Typo.subtitle1">Novo cruzamento</MudText>
-        <MudSelect T="int" ToStringFunc="@Nome" @bind-Value="_novo.A" Label="Elemento">@OpcoesDeElemento(Catalogo)</MudSelect>
+        <MudSelect T="int?" ToStringFunc="@NomeOuVazio" @bind-Value="_novo.A" Label="Elemento" Placeholder="Escolha um elemento">@OpcoesNovas(Catalogo)</MudSelect>
         <MudNumericField T="int" @bind-Value="_novo.MinimoA" Label="Mínimo" Min="1" />
-        <MudSelect T="int" ToStringFunc="@Nome" @bind-Value="_novo.B" Label="Outro elemento">@OpcoesDeElemento(Catalogo)</MudSelect>
+        <MudSelect T="int?" ToStringFunc="@NomeOuVazio" @bind-Value="_novo.B" Label="Outro elemento" Placeholder="Escolha um elemento">@OpcoesNovas(Catalogo)</MudSelect>
         <MudNumericField T="int" @bind-Value="_novo.MinimoB" Label="Mínimo do outro" Min="1" />
-        <MudSelect T="int" ToStringFunc="@Nome" @bind-Value="_novo.Sub" Label="Sub-Elemento">@OpcoesDeElemento(SubElementos)</MudSelect>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2 mb-4" StartIcon="@Icons.Material.Filled.Add" OnClick="AdicionarAsync">Adicionar cruzamento</MudButton>
+        <MudSelect T="int?" ToStringFunc="@NomeOuVazio" @bind-Value="_novo.Sub" Label="Sub-Elemento" Placeholder="Escolha um Sub-Elemento">@OpcoesNovas(SubElementos)</MudSelect>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2 mb-4" StartIcon="@Icons.Material.Filled.Add" Disabled="@(!_novo.Completo)" OnClick="AdicionarAsync">Adicionar cruzamento</MudButton>
 
         <MudSimpleTable Dense="true" Hover="true">
             <thead>
@@ -58,11 +58,13 @@
 @code {
     private sealed class NovoCruzamento
     {
-        public int A { get; set; }
+        // Nada vem escolhido: o Auditor escolhe os dois elementos e o Sub-Elemento antes de poder adicionar.
+        public int? A { get; set; }
         public int MinimoA { get; set; } = 1;
-        public int B { get; set; }
+        public int? B { get; set; }
         public int MinimoB { get; set; } = 1;
-        public int Sub { get; set; }
+        public int? Sub { get; set; }
+        public bool Completo => A is not null && B is not null && Sub is not null;
     }
 
     private List<CruzamentoDeAfinidadeResponse> _cruzamentos = new();
@@ -73,6 +75,16 @@
     private IEnumerable<ElementoDoCatalogo> SubElementos => Catalogo.Where(e => e.Tipo == TipoDeElemento.SubElemento);
 
     private string Nome(int id) => Elementos.Nome(id);
+
+    private string NomeOuVazio(int? id) => id is { } i ? Elementos.Nome(i) : "";
+
+    private static RenderFragment OpcoesNovas(IEnumerable<ElementoDoCatalogo> elementos) => __builder =>
+    {
+        foreach (var e in elementos)
+        {
+            <MudSelectItem T="int?" Value="@e.Id">@e.Nome</MudSelectItem>
+        }
+    };
 
     private static RenderFragment OpcoesDeElemento(IEnumerable<ElementoDoCatalogo> elementos) => __builder =>
     {
@@ -95,8 +107,10 @@
 
     private async Task AdicionarAsync()
     {
+        if (_novo is not { A: { } a, B: { } b, Sub: { } sub })
+            return;
         var response = await Http.PostAsJsonAsync("afinidades/cruzamentos",
-            new SalvarCruzamentoDeAfinidadeRequest(_novo.A, _novo.MinimoA, _novo.B, _novo.MinimoB, _novo.Sub));
+            new SalvarCruzamentoDeAfinidadeRequest(a, _novo.MinimoA, b, _novo.MinimoB, sub));
         if (await ConcluirAsync(response))
             _novo = new();
     }

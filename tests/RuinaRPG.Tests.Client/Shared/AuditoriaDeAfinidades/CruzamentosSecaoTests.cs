@@ -39,7 +39,7 @@ public class CruzamentosSecaoTests : SecoesDeAfinidadesTestes
     {
         var cut = await RenderizarAsync<CruzamentosSecao>();
 
-        Opcoes<int>(cut, "Sub-Elemento").Should().Equal("Gelo", "Raio");
+        Opcoes<int?>(cut, "Sub-Elemento").Should().Equal("Gelo", "Raio");
     }
 
     [Fact]
@@ -47,13 +47,13 @@ public class CruzamentosSecaoTests : SecoesDeAfinidadesTestes
     {
         var cut = await RenderizarAsync<CruzamentosSecao>();
 
-        MudSelect<int> Select(string label) => cut.FindComponents<MudSelect<int>>().Single(s => s.Instance.Label == label).Instance;
+        MudSelect<int?> Select(string label) => cut.FindComponents<MudSelect<int?>>().Single(s => s.Instance.Label == label).Instance;
         MudNumericField<int> Minimo(string label) => cut.FindComponents<MudNumericField<int>>().Single(s => s.Instance.Label == label).Instance;
-        await DefinirAsync(cut, Select("Elemento").ValueChanged, 9);
+        await DefinirAsync(cut, Select("Elemento").ValueChanged, (int?)9);
         await DefinirAsync(cut, Minimo("Mínimo").ValueChanged, 2);
-        await DefinirAsync(cut, Select("Outro elemento").ValueChanged, 3);
+        await DefinirAsync(cut, Select("Outro elemento").ValueChanged, (int?)3);
         await DefinirAsync(cut, Minimo("Mínimo do outro").ValueChanged, 1);
-        await DefinirAsync(cut, Select("Sub-Elemento").ValueChanged, 7);
+        await DefinirAsync(cut, Select("Sub-Elemento").ValueChanged, (int?)7);
         cut.FindAll("button").First(b => b.TextContent.Contains("Adicionar cruzamento")).Click();
         await Task.Delay(50);
 
@@ -68,6 +68,7 @@ public class CruzamentosSecaoTests : SecoesDeAfinidadesTestes
     {
         var cut = await RenderizarAsync<CruzamentosSecao>();
         Api.Recusa = (HttpStatusCode.BadRequest, "Já existe um cruzamento de Água e Ar.");
+        await EscolherNovoAsync(cut, 3, 1, 4);
 
         cut.FindAll("button").First(b => b.TextContent.Contains("Adicionar cruzamento")).Click();
         await Task.Delay(50);
@@ -86,5 +87,32 @@ public class CruzamentosSecaoTests : SecoesDeAfinidadesTestes
 
         Api.Escritas.Should().ContainSingle().Which.Should().Be(new ApiFalsaDeAfinidades.Pedido("DELETE", $"afinidades/cruzamentos/{Gelo}", null));
         cut.FindAll("button[aria-label='Remover cruzamento de Água e Ar']").Should().BeEmpty();
+    }
+
+    private static async Task EscolherNovoAsync(Bunit.IRenderedComponent<Bunit.Rendering.ContainerFragment> cut, int? a, int? b, int? sub)
+    {
+        MudSelect<int?> Select(string label) => cut.FindComponents<MudSelect<int?>>().Single(s => s.Instance.Label == label).Instance;
+        await DefinirAsync(cut, Select("Elemento").ValueChanged, a);
+        await DefinirAsync(cut, Select("Outro elemento").ValueChanged, b);
+        await DefinirAsync(cut, Select("Sub-Elemento").ValueChanged, sub);
+    }
+
+    private static bool AdicionarHabilitado(Bunit.IRenderedComponent<Bunit.Rendering.ContainerFragment> cut) =>
+        !cut.FindAll("button").First(b => b.TextContent.Contains("Adicionar cruzamento")).HasAttribute("disabled");
+
+    [Fact]
+    public async Task O_cruzamento_novo_comeca_sem_nada_escolhido_e_so_habilita_Adicionar_com_os_tres()
+    {
+        var cut = await RenderizarAsync<CruzamentosSecao>();
+
+        cut.FindComponents<MudSelect<int?>>().Where(s => s.Instance.Label is not null)
+            .Select(s => s.Find("input").GetAttribute("value") ?? "").Should().Equal("", "", "");
+        AdicionarHabilitado(cut).Should().BeFalse();
+
+        await EscolherNovoAsync(cut, 9, 3, null);
+        AdicionarHabilitado(cut).Should().BeFalse();
+
+        await EscolherNovoAsync(cut, 9, 3, 7);
+        AdicionarHabilitado(cut).Should().BeTrue();
     }
 }

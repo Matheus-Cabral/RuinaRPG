@@ -379,6 +379,48 @@ public class AuditoriaDeAfinidadesTests(ApiFixture fixture) : ApiTestBase(fixtur
             HttpStatusCode.BadRequest, "Gelo é gerado por um cruzamento");
     }
 
+    [Fact]
+    public async Task Mudar_as_regras_pela_Auditoria_deixa_a_ficha_inconsistente_sem_apagar_pontos()
+    {
+        var auditor = await AuditorAsync();
+        var ficha = await PersonagemAsync(auditor, Vocacao.Feiticeiro);
+        var sheetId = Guid.Parse(ficha);
+        await MudarNoBancoAsync(db =>
+        {
+            foreach (var (elemento, pontos) in new[] { (Ar, 2), (Agua, 1), (Gelo, 1), (Alma, 1) })
+                db.CharacterPontosDeAfinidade.Add(new CharacterPontosDeAfinidade { Id = Guid.NewGuid(), SheetId = sheetId, ElementoId = elemento, Pontos = pontos });
+            return Task.CompletedTask;
+        });
+        var gelo = (await LerAsync<List<CruzamentoDeAfinidadeResponse>>($"{Base}/cruzamentos", auditor)).Single(c => c.SubElementoId == Gelo);
+        try
+        {
+            // (a) Alma sai da Vocação, (b) o teto de Ar fica abaixo dos 2 pontos, (c) o requisito de Ar para Gelo sobe a 3.
+            await AlterarVisibilidadeAsync(auditor, "Vocacao", "Feiticeiro", Alma, false);
+            (await EnviarAsync(HttpMethod.Put, $"{Base}/elementos/{Ar}", auditor, new SalvarElementoDeAfinidadeRequest("Ar", "Base", 1)))
+                .StatusCode.Should().Be(HttpStatusCode.NoContent);
+            (await EnviarAsync(HttpMethod.Put, $"{Base}/cruzamentos/{gelo.Id}", auditor, new SalvarCruzamentoDeAfinidadeRequest(Agua, 1, Ar, 3, Gelo)))
+                .StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+            var afinidades = await LerAsync<AfinidadesDaFichaResponse>($"/api/character-sheets/{ficha}/afinidades", auditor);
+
+            afinidades.Gasto.Should().Be(5);
+            var porId = afinidades.Elementos.ToDictionary(e => e.Id);
+            porId[Alma].Should().BeEquivalentTo(new { Pontos = 1, Bloqueado = true, Motivo = "Indisponível para esta Vocação/Classe" });
+            porId[Ar].Should().BeEquivalentTo(new { Pontos = 2, Bloqueado = true, Motivo = "Acima do teto (1)" });
+            porId[Gelo].Should().BeEquivalentTo(new { Pontos = 1, Bloqueado = true, Motivo = "Precisa de 1 em Água e 3 em Ar" });
+            porId[Agua].Should().BeEquivalentTo(new { Pontos = 1, Bloqueado = false });
+            await using var scope = Factory.Services.CreateAsyncScope();
+            scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>().CharacterPontosDeAfinidade
+                .Where(p => p.SheetId == sheetId).Sum(p => p.Pontos).Should().Be(5);
+        }
+        finally
+        {
+            await AlterarVisibilidadeAsync(auditor, "Vocacao", "Feiticeiro", Alma, true);
+            await EnviarAsync(HttpMethod.Put, $"{Base}/elementos/{Ar}", auditor, new SalvarElementoDeAfinidadeRequest("Ar", "Base", null));
+            await EnviarAsync(HttpMethod.Put, $"{Base}/cruzamentos/{gelo.Id}", auditor, new SalvarCruzamentoDeAfinidadeRequest(Agua, 1, Ar, 1, Gelo));
+        }
+    }
+
     // ── Visibilidade ──
 
     [Fact]

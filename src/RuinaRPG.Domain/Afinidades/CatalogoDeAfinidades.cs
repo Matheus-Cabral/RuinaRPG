@@ -29,10 +29,19 @@ public sealed record CatalogoDeAfinidades(
 
     /// <summary>
     /// O nome exibido do alvo específico de uma linha de Condição; um valor que não é id do catálogo (um nome antigo
-    /// que a conversão não casou) aparece como está.
+    /// que a conversão não casou) aparece como está. Um id que o catálogo não tem mais (o Auditor removeu o elemento;
+    /// uma Condição já aplicada é uma cópia e continua com ele) aparece como "(elemento removido)" — salvo com o
+    /// catálogo ainda vazio (não carregado), quando o valor aparece como está.
     /// </summary>
-    public string NomeDoAlvo(string valor) =>
-        IdDoAlvo(valor) is { } id && Elementos.FirstOrDefault(e => e.Id == id) is { } e ? e.Nome : valor;
+    public string NomeDoAlvo(string valor) => IdDoAlvo(valor) switch
+    {
+        { } id when Elementos.FirstOrDefault(e => e.Id == id) is { } e => e.Nome,
+        not null when Elementos.Count > 0 => ElementoRemovido,
+        _ => valor,
+    };
+
+    /// <summary>Como aparece um id de elemento que o catálogo não tem mais.</summary>
+    public const string ElementoRemovido = "(elemento removido)";
 
     /// <summary>
     /// Null quando a Afinidade escolhida numa ficha ou Criatura (1.a/2.b) é aceita. Reenviar o valor já salvo nunca é

@@ -95,4 +95,24 @@ public class ElementosSecaoTests : SecoesDeAfinidadesTestes
 
         Api.Escritas.Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task A_confirmacao_nomeia_os_cruzamentos_que_saem_junto()
+    {
+        var cut = await RenderizarAsync<ElementosSecao>();
+
+        await ClicarAsync(cut, "button[aria-label='Remover Água']");
+
+        cut.Find(".mud-dialog").TextContent.Should().Contain("Remove também os cruzamentos: Gelo (Água + Ar).");
+    }
+
+    [Fact]
+    public async Task A_confirmacao_de_um_elemento_sem_cruzamentos_nao_fala_deles()
+    {
+        var cut = await RenderizarAsync<ElementosSecao>();
+
+        await ClicarAsync(cut, "button[aria-label='Remover Raio']");
+
+        cut.Find(".mud-dialog").TextContent.Should().NotContain("Remove também");
+    }
 }
