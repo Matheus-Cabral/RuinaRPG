@@ -36,6 +36,7 @@
   - *Raça*: text input livre (não há uma tabela fixa de raças de criatura).
   - *Arquétipo*: dropdown com os 2 valores da "[[Tabela de Arquetipos]]": **Físico** ou **Arcano**. Substitui o papel da Vocação — determina as colunas de Vida e Arcana usadas na progressão (ver Recursos abaixo).
   - *Sub Arquétipo*: text input livre (não há uma tabela equivalente à Tabela de Classes para criaturas).
+- *Afinidade*: dropdown com os elementos do **catálogo de elementos** do Auditor ("[[Requisitos - Auditoria de Regras]]" R0018), exceto os Caminhos, como no Personagem ("[[Requisitos - Ficha de Personagem]]" 1.a). Um elemento criado pelo Auditor aparece aqui; guarda-se o elemento, não o nome (renomear não perde a escolha).
 - *Rank*: dropdown com os valores **F**, **E**, **D**, **C**, **B**, **A**, **S**. Substitui inteiramente o sistema de Círculo/Grau/VIS/Âmbares Absorvidos do Personagem (ver 1.b abaixo) — a Criatura tem uma classificação de poder fixa, não uma progressão calculada. É o mesmo Rank referenciado em "Âmbares Absorvidos" (Personagem, 1.b) e em "Contrato Mágico" ("[[GRAUS & CÍRCULOS]]" §1).
 
 **1.b Nível e Progressão** — diferenças:
@@ -68,7 +69,7 @@ A seção também exibe **Pontos de Atributo: gasto / disponíveis**, como em "[
 - *Peso Atual* e *Peso Máximo* não são exibidos, mas a *Movimentação* os usa. O Peso Atual segue a mesma fórmula do Personagem ("[[Requisitos - Ficha de Personagem]]" 2.b): só Armas e Escudos do Catálogo **desequipados** pesam (equipados, Armaduras e ataques naturais não); a Criatura não tem Inventário e não há bônus de carga de Campanha.
 - *Eficiência Elemental* e *Dano Elemental* não aparecem na Ficha de Criatura — ambos dependem da lista de Afinidades (2.c) do Personagem/NPC, que a Criatura não tem (ver 2.c abaixo).
 
-**2.c Afinidades** não existe na Ficha de Criatura — a lista incremental de Elemento/Sub-Elemento/Caminho e Experiência do Personagem não tem equivalente aqui; a Criatura tem apenas o campo único *Afinidade* em 1.a.
+**2.c Afinidades** não existe na Ficha de Criatura — a lista incremental de Elemento/Sub-Elemento/Caminho e Experiência do Personagem não tem equivalente aqui; a Criatura tem apenas o campo único *Afinidade* em 1.a, que lê o catálogo de elementos.
 
 **2.d Perícias** — lista fixa mais curta que a do Personagem, com apenas: Acrobacia, Artefatos Mágicos, Atletismo, Brigar, Empatia, Enganação, Força de Vontade, Fortitude, Furtividade, Intimidação, Intuição, Investigação, Navegação, Ocultismo, Percepção, Pontaria, Prontidão, Reflexos, Sedução e Sobrevivência. O dropdown de Atributo oferece apenas os 6 atributos de Criatura (2.a). A lista passa a ser as perícias marcadas como *Disponível para Criaturas* na Auditoria de Perícias ("[[Requisitos - Auditoria de Regras]]" R0012); a lista acima é a inicial.
 

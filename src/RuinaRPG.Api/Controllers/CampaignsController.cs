@@ -107,7 +107,7 @@ public class CampaignsController(RuinaRpgDbContext db, UserManager<ApplicationUs
             return BadRequest("O jogador informado não está vinculado à sua conta.");
 
         var player = await userManager.FindByIdAsync(request.UserId);
-        if (player is null || player.InvitedByGmId != gmId || player.Estado != EstadoDaConta.Ativa)
+        if (player is null || player.InvitedByGmId != gmId || !ContaDeJogador.PodeEntrar(player.Estado))
             return BadRequest("O jogador informado não está vinculado à sua conta.");
 
         if (await db.CampaignMembers.AnyAsync(m => m.CampaignId == campaignId && m.UserId == player.Id))

@@ -45,14 +45,14 @@ public class CampaignGrantsControllerTests(ApiFixture fixture) : ApiTestBase(fix
             new UpdateNpcSheetRequest(null, "Ficha de Teste", null, null, vocacao, null, null, null,
                 1, false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, "Nenhuma", 0, null, null, 0, null, null, 0)));
 
-    private async Task AddNpcAffinityAsync(string gmToken, string sheetId, string? elemento, int? elementoValor, string? segundaEssencia, int? segundaEssenciaValor, int? subElementoValor, int? experiencia) =>
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/npc-sheets/{sheetId}/affinities", gmToken,
-            new AddAffinityRequest(elemento, elementoValor, segundaEssencia, segundaEssenciaValor, subElementoValor, experiencia)));
+    private async Task PutNpcAfinidadeAsync(string gmToken, string sheetId, int elementoId, int pontos, int? experiencia) =>
+        (await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/npc-sheets/{sheetId}/afinidades/{elementoId}", gmToken,
+            new AtualizarAfinidadeRequest(pontos, experiencia)))).EnsureSuccessStatusCode();
 
-    private async Task<List<AffinityResponse>> GetNpcAffinitiesAsync(string gmToken, string sheetId)
+    private async Task<AfinidadesDaFichaResponse> GetNpcAfinidadesAsync(string gmToken, string sheetId)
     {
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/affinities", gmToken));
-        return (await response.Content.ReadFromJsonAsync<List<AffinityResponse>>())!;
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/npc-sheets/{sheetId}/afinidades", gmToken));
+        return (await response.Content.ReadFromJsonAsync<AfinidadesDaFichaResponse>())!;
     }
 
     private async Task<HttpResponseMessage> GrantAsync(string gmToken, string campaignId, GrantSheetRequest request) =>
@@ -216,7 +216,7 @@ public class CampaignGrantsControllerTests(ApiFixture fixture) : ApiTestBase(fix
     }
 
     [Fact]
-    public async Task Grant_from_an_existing_Npc_deep_copies_Affinity_ElementoValor_and_SubElementoValor()
+    public async Task Grant_from_an_existing_Npc_deep_copies_the_affinity_points_and_Experiencia()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("GrantGm2b", "grant2b@teste.com");
         var (playerId, _) = await RegisterJogadorLinkedToAsync(gmToken, "GrantPlayer2b", "grantplayer2b@teste.com");
@@ -224,28 +224,18 @@ public class CampaignGrantsControllerTests(ApiFixture fixture) : ApiTestBase(fix
         await AddMemberAsync(gmToken, campaignId, playerId);
 
         var sourceId = await CreateNpcSheetAsync(gmToken);
-        await SetNpcVocacaoAsync(gmToken, sourceId, "Adepto"); // Vocação não restringe mais a Afinidade (Task 3)
-        // Fogo + Vida = Curar na Matriz Elemental — o Sub-Elemento é derivado, não enviado.
-        await AddNpcAffinityAsync(gmToken, sourceId, "Fogo", 3, "Vida", 5, 2, 10);
+        await SetNpcVocacaoAsync(gmToken, sourceId, "Adepto");
+        await PutNpcAfinidadeAsync(gmToken, sourceId, elementoId: 2, pontos: 3, experiencia: null); // Fogo
+        await PutNpcAfinidadeAsync(gmToken, sourceId, elementoId: 14, pontos: 5, experiencia: null); // Vida
+        await PutNpcAfinidadeAsync(gmToken, sourceId, elementoId: 13, pontos: 2, experiencia: 10); // Curar
 
         var response = await GrantAsync(gmToken, campaignId, new GrantSheetRequest(playerId, "Npc", sourceId));
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var body = await response.Content.ReadFromJsonAsync<GrantSheetResponse>();
 
-        var copiedAffinities = await GetNpcAffinitiesAsync(gmToken, body!.SheetId);
-        var copied = copiedAffinities.Single(a => a.Elemento == "Fogo");
-        copied.ElementoValor.Should().Be(3);
-        copied.SubElemento.Should().Be("Curar");
-        copied.SubElementoValor.Should().Be(2);
-
-        await using (var scope = Factory.Services.CreateAsyncScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
-            var copiedRow = await db.NpcAffinities.AsNoTracking()
-                .SingleAsync(a => a.SheetId == Guid.Parse(body.SheetId) && a.Elemento == RuinaRPG.Domain.CharacterSheets.Elemento.Fogo);
-            copiedRow.SegundaEssencia.Should().Be(RuinaRPG.Domain.CharacterSheets.EssenciaBasica.Vida);
-            copiedRow.SegundaEssenciaValor.Should().Be(5);
-        }
+        var copiadas = (await GetNpcAfinidadesAsync(gmToken, body!.SheetId)).Elementos.Where(e => e.Pontos > 0)
+            .Select(e => (e.Nome, e.Pontos, e.Experiencia));
+        copiadas.Should().BeEquivalentTo(new[] { ("Fogo", 3, (int?)null), ("Vida", 5, (int?)null), ("Curar", 2, (int?)10) });
     }
 
     [Fact]

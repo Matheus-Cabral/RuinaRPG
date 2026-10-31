@@ -15,8 +15,8 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/npc-sheets/{sheetId}/spell-abilities")]
-public sealed class NpcSpellAbilitiesController(RuinaRpgDbContext db, NpcSheetStats stats, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis, ITipoDeFicha<NpcSheet> tipo)
-    : MagiasDaFichaController<NpcSheet, NpcSpellAbility, NpcSpellAbilityEffect>(db, pericias, tabelaDeNiveis, tipo)
+public sealed class NpcSpellAbilitiesController(RuinaRpgDbContext db, NpcSheetStats stats, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis, ITipoDeFicha<NpcSheet> tipo, CatalogoDeAfinidadesService afinidades)
+    : MagiasDaFichaController<NpcSheet, NpcSpellAbility, NpcSpellAbilityEffect>(db, pericias, tabelaDeNiveis, tipo, afinidades)
 {
     protected override (string? SourceBankEntryId, string? Nome, string? Tipo, int? Grau, string? Descricao, List<SpellAbilityEffectRequest>? Efeitos) Ler(AddSpellAbilityRequest r) =>
         (r.SourceBankEntryId, r.Nome, r.Tipo, r.Grau, r.Descricao, r.Efeitos);

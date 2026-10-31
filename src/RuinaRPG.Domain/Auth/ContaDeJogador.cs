@@ -4,6 +4,9 @@ namespace RuinaRPG.Domain.Auth;
 // transições válidas (Ativa <-> Desativada; Ativa/Desativada -> Excluida, sem volta).
 public static class ContaDeJogador
 {
+    /// <summary>Só uma conta Ativa entra (login, renovação do token) e pode ser membro de campanha.</summary>
+    public static bool PodeEntrar(EstadoDaConta estado) => estado == EstadoDaConta.Ativa;
+
     public static bool PodeGerir(Guid gmId, Guid? invitedByGmId) => invitedByGmId == gmId;
 
     /// <summary>O novo estado, ou <c>null</c> se a ação não vale para o estado atual.</summary>

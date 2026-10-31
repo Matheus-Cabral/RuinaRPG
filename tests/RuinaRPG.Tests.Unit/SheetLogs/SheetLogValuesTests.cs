@@ -55,11 +55,6 @@ public class SheetLogValuesTests
         SheetLogValues.Render(Vocacao.Cacador).Should().Be("Caçador");
         SheetLogValues.Render(Variante.PhylacTai).Should().Be("Phylac'tai (Sol)");
         SheetLogValues.Render(Variante.Alora).Should().Be("Alóra (Lua)");
-        SheetLogValues.Render(AfinidadeElemental.Agua).Should().Be("Água");
-        SheetLogValues.Render(AfinidadeElemental.Invocacao).Should().Be("Invocação");
-        SheetLogValues.Render(Elemento.Agua).Should().Be("Água");
-        SheetLogValues.Render(EssenciaBasica.Agua).Should().Be("Água");
-        SheetLogValues.Render(SubElemento.Invocacao).Should().Be("Invocação");
         SheetLogValues.Render(Arquetipo.Fisico).Should().Be("Físico");
         SheetLogValues.Render(TipoDeRuna.Negra).Should().Be("Runa Negra");
         SheetLogValues.Render(CategoriaDePassiva.DeClasse).Should().Be("Passiva de Classe");

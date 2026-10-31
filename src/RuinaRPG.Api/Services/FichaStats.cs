@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.CharacterSheets;
+using RuinaRPG.Domain.Afinidades;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Domain.Items;
@@ -46,6 +47,7 @@ public interface IFichaStats<in TSheet> where TSheet : class, IFicha
     Task<SubAttributesResponse> SubAtributosAsync(TSheet sheet, EfeitosDeCondicao? efeitos = null);
     Task<List<PenalidadeAtiva>> PenalidadesAtivasAsync(TSheet sheet, EfeitosDeCondicao? efeitos = null);
     Task<List<ArtifactBonusInput>> ModificadoresAsync(TSheet sheet, EfeitosDeCondicao? efeitos = null);
+    Task<ModificadorDeDanoResponse> ModificadorDeDanoAsync(TSheet sheet, EfeitosDeCondicao efeitos);
 }
 
 /// <summary>
@@ -55,7 +57,7 @@ public interface IFichaStats<in TSheet> where TSheet : class, IFicha
 /// Somente leitura, tudo derivado ao vivo — nada aqui é persistido.
 /// </summary>
 public abstract class FichaStats<TSheet, TAtributo, TLinhaAtributo, TLinhaPericia, TEscudo, TSlot, TArtefato>(
-    RuinaRpgDbContext db, IRulesDataProvider rules, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades)
+    RuinaRpgDbContext db, IRulesDataProvider rules, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, CatalogoDeAfinidadesService afinidades)
     : IFichaStats<TSheet>
     where TSheet : class, IFicha
     where TAtributo : struct, Enum
@@ -239,6 +241,10 @@ public abstract class FichaStats<TSheet, TAtributo, TLinhaAtributo, TLinhaPerici
     public async Task<List<PenalidadeAtiva>> PenalidadesAtivasAsync(TSheet sheet, EfeitosDeCondicao? efeitos = null) =>
         await penalidades.AtivasAsync(await EquipamentosAsync(sheet.Id, efeitos), () => FichaParaRequisitosAsync(sheet));
 
+    /// <summary>3.f: o modificador de dano por Tipo de Dano e, das Condições, por elemento do catálogo que pode ser Afinidade.</summary>
+    public async Task<ModificadorDeDanoResponse> ModificadorDeDanoAsync(TSheet sheet, EfeitosDeCondicao efeitos) =>
+        efeitos.NoModificadorDeDano(await ModificadoresAsync(sheet, efeitos), (await afinidades.CarregarAsync()).Afinidades.Select(e => e.Id));
+
     /// <summary>Artefatos + penalidades de equipamento ativas — o que as fórmulas exibidas somam no termo Artefatos.</summary>
     public async Task<List<ArtifactBonusInput>> ModificadoresAsync(TSheet sheet, EfeitosDeCondicao? efeitos = null)
     {
@@ -334,16 +340,14 @@ public abstract class FichaStats<TSheet, TAtributo, TLinhaAtributo, TLinhaPerici
             .Select(x => (x.Qtd, x.Peso, x.CapacidadeExtra)).ToList();
 
     /// <summary>
-    /// Eficiência e Dano Elemental do Personagem e do NPC: saem do valor da Afinidade correspondente já com as
-    /// Condições (o mesmo que a lista 2.c exibe).
+    /// Eficiência e Dano Elemental do Personagem e do NPC: saem dos pontos da ficha (2.c, a tabela de pontos do tipo) no
+    /// elemento escolhido como Afinidade (o id do catálogo), já com as Condições daquele elemento.
     /// </summary>
-    protected async Task<(int? Eficiencia, int? Dano)> ElementalDasAfinidadesAsync<TAfinidade>(Guid id, AfinidadeElemental? afinidade, EfeitosDeCondicao efeitos, TabelaDeAfinidadesProvider tabelaDeAfinidades)
-        where TAfinidade : class, IAfinidadeDaFicha
+    protected async Task<(int? Eficiencia, int? Dano)> ElementalDasAfinidadesAsync<TPontos>(Guid id, int? afinidade, EfeitosDeCondicao efeitos, TabelaDeAfinidadesProvider tabelaDeAfinidades)
+        where TPontos : class, IPontosDeAfinidadeDaFicha
     {
-        var linhasDeAfinidade = await Db.Set<TAfinidade>().Where(a => a.SheetId == id)
-            .Select(a => new LinhaDeAfinidade(a.Elemento, a.ElementoValor, a.SubElemento, a.SubElementoValor, a.SegundaEssencia, a.SegundaEssenciaValor))
-            .ToListAsync();
-        var valorDaAfinidade = SubAttributeFormulas.ValorDaAfinidadeCorrespondente(afinidade, efeitos.NasAfinidades(linhasDeAfinidade));
+        var pontos = await Db.Set<TPontos>().AsNoTracking().Where(p => p.SheetId == id).ToDictionaryAsync(p => p.ElementoId, p => p.Pontos);
+        var valorDaAfinidade = efeitos.NaAfinidade(afinidade, SubAttributeFormulas.ValorDaAfinidadeCorrespondente(afinidade, pontos)) ?? 0;
         var linhasDaTabelaDeAfinidades = await tabelaDeAfinidades.LinhasAsync();
         return (SubAttributeFormulas.EficienciaElemental(valorDaAfinidade, linhasDaTabelaDeAfinidades), SubAttributeFormulas.DanoElemental(valorDaAfinidade, linhasDaTabelaDeAfinidades));
     }

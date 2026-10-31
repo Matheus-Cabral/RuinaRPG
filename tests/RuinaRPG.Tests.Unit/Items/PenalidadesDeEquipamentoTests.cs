@@ -17,13 +17,14 @@ public class PenalidadesDeEquipamentoTests
     private static RequisitosDePassiva ExigeVigor(int minimo) => new() { Atributos = [new(Atributo.Vigor, minimo)] };
     private static PenalidadeDeEquipamento MenosForca(int valor) => new() { Atributos = [new(Atributo.Forca, valor)] };
     private static string Nome(int id) => $"Perícia {id}";
+    private static string NomeDoElemento(int id) => $"Elemento {id}";
 
     [Fact]
     public void An_item_that_meets_its_requirements_is_not_active()
     {
         var emUso = new[] { new EquipamentoEmUso("Cota", ExigeVigor(5), MenosForca(2)) };
 
-        PenalidadesDeEquipamento.Ativas(emUso, Ficha(vigor: 5), Nome).Should().BeEmpty();
+        PenalidadesDeEquipamento.Ativas(emUso, Ficha(vigor: 5), Nome, NomeDoElemento).Should().BeEmpty();
     }
 
     [Fact]
@@ -31,7 +32,7 @@ public class PenalidadesDeEquipamentoTests
     {
         var emUso = new[] { new EquipamentoEmUso("Cota", ExigeVigor(8), MenosForca(2)) };
 
-        var ativa = PenalidadesDeEquipamento.Ativas(emUso, Ficha(vigor: 5), Nome).Single();
+        var ativa = PenalidadesDeEquipamento.Ativas(emUso, Ficha(vigor: 5), Nome, NomeDoElemento).Single();
 
         ativa.Nome.Should().Be("Cota");
         ativa.Pendencias.Should().Equal("Vigor ≥ 8");
@@ -43,7 +44,7 @@ public class PenalidadesDeEquipamentoTests
     {
         var emUso = new[] { new EquipamentoEmUso("Elmo", null, MenosForca(2)) };
 
-        PenalidadesDeEquipamento.Ativas(emUso, Ficha(), Nome).Should().BeEmpty();
+        PenalidadesDeEquipamento.Ativas(emUso, Ficha(), Nome, NomeDoElemento).Should().BeEmpty();
     }
 
     [Fact]
@@ -51,7 +52,7 @@ public class PenalidadesDeEquipamentoTests
     {
         var emUso = new[] { new EquipamentoEmUso("Elmo", ExigeVigor(9), null) };
 
-        PenalidadesDeEquipamento.Ativas(emUso, Ficha(), Nome).Single().Penalidade.Should().BeNull();
+        PenalidadesDeEquipamento.Ativas(emUso, Ficha(), Nome, NomeDoElemento).Single().Penalidade.Should().BeNull();
     }
 
     [Fact]

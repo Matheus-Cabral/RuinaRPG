@@ -104,7 +104,7 @@ public class FichaEstadoNaPaginaTests : RedeDeSegurancaBase
     public async Task A_CondicoesAlteradas_notification_rerenders_with_fresh_data_and_the_same_requests(string tipo)
     {
         var cut = await RenderFichaAsync(tipo, "Jogador");
-        await Services.GetRequiredService<SecretNoteNotifier>().StartAsync(notasSecretas: false);
+        await Services.GetRequiredService<AvisosDoHub>().StartAsync(notasSecretas: false);
         await IrParaAbaAsync(cut, "Combate");
         await EsperarCalmariaAsync();
         var condicoesAntes = Estado(cut).CondicoesVersao;

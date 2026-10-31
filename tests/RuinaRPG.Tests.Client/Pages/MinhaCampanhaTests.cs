@@ -84,7 +84,7 @@ public class MinhaCampanhaTests : MudBunitContext
     {
         RegisterJogadorBackend();
         _unread = new() { new("campaign-1", "Ruína", 2) };
-        await Services.GetRequiredService<SecretNoteNotifier>().StartAsync();
+        await Services.GetRequiredService<AvisosDoHub>().StartAsync();
         var cut = Render<MinhaCampanha>(p => p.Add(x => x.CampaignId, "campaign-1"));
         IElement NotasTab() => cut.FindAll("div.mud-tab").Single(e => e.TextContent.Contains("Notas Secretas"));
         cut.WaitForAssertion(() => NotasTab().TextContent.Should().Contain("2"));
@@ -103,7 +103,7 @@ public class MinhaCampanhaTests : MudBunitContext
     {
         RegisterJogadorBackend();
         Services.GetRequiredService<NavigationManager>().NavigateTo("campanhas/campaign-1/jogador?aba=notas");
-        var notifier = Services.GetRequiredService<SecretNoteNotifier>();
+        var notifier = Services.GetRequiredService<AvisosDoHub>();
         await notifier.StartAsync();
         var cut = Render<MinhaCampanha>(p => p.Add(x => x.CampaignId, "campaign-1"));
         cut.WaitForAssertion(() => MarkReadCalls.Should().Be(1));
@@ -124,7 +124,7 @@ public class MinhaCampanhaTests : MudBunitContext
     {
         RegisterJogadorBackend();
         Services.GetRequiredService<NavigationManager>().NavigateTo("campanhas/campaign-1/jogador?aba=notas");
-        await Services.GetRequiredService<SecretNoteNotifier>().StartAsync();
+        await Services.GetRequiredService<AvisosDoHub>().StartAsync();
         var cut = Render<MinhaCampanha>(p => p.Add(x => x.CampaignId, "campaign-1"));
         cut.WaitForAssertion(() => MarkReadCalls.Should().Be(1));
 
@@ -236,7 +236,7 @@ public class MinhaCampanhaTests : MudBunitContext
                     : new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new PlayerCampaignViewResponse(new(), new(), new())) };
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new List<SecretNoteResponse>()) };
         }));
-        await Services.GetRequiredService<SecretNoteNotifier>().StartAsync(notasSecretas: false);
+        await Services.GetRequiredService<AvisosDoHub>().StartAsync(notasSecretas: false);
         var navegacao = Services.GetRequiredService<NavigationManager>();
         navegacao.NavigateTo("campanhas/campaign-1/jogador");
         var cut = Render<MinhaCampanha>(p => p.Add(x => x.CampaignId, "campaign-1"));
@@ -246,5 +246,22 @@ public class MinhaCampanhaTests : MudBunitContext
         await cut.InvokeAsync(() => NotificationConnection.RaiseCampanhasDoJogadorAlteradasAsync());
 
         cut.WaitForAssertion(() => navegacao.ToBaseRelativePath(navegacao.Uri).Should().Be("painel"));
+    }
+
+    [Fact]
+    public async Task Um_aviso_de_campanhas_do_jogador_pede_a_visao_da_campanha_uma_so_vez()
+    {
+        RegisterJogadorBackend();
+        await Services.GetRequiredService<AvisosDoHub>().StartAsync(notasSecretas: false);
+        var cut = Render<MinhaCampanha>(p => p.Add(x => x.CampaignId, "campaign-1"));
+        cut.WaitForAssertion(() => _requests.Should().Contain(r => r.RequestUri!.AbsolutePath.EndsWith("player-view")));
+        await Task.Delay(100);
+        _requests.Clear();
+
+        await cut.InvokeAsync(() => NotificationConnection.RaiseCampanhasDoJogadorAlteradasAsync());
+
+        cut.WaitForAssertion(() => _requests.Count(r => r.RequestUri!.AbsolutePath.EndsWith("player-view")).Should().BeGreaterThan(0));
+        await Task.Delay(100);
+        _requests.Count(r => r.RequestUri!.AbsolutePath.EndsWith("player-view")).Should().Be(1);
     }
 }

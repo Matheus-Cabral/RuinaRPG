@@ -9,7 +9,7 @@ public class SpellAbilityBankPassivaTests(ApiFixture fixture) : ApiTestBase(fixt
 {
     private static RequisitosDePassivaDto RequisitosCompletos() => new(
         Nivel: 3, Vocacao: "Feiticeiro", Classe: "Elementalista", Linhagem: "Humano", Variante: "Sinir",
-        Graduacao: 2, CoracaoDeMana: true, Afinidade: "Fogo", Estrela: "Liora",
+        Graduacao: 2, CoracaoDeMana: true, Afinidade: 2, Estrela: "Liora",
         Atributos: [new("Forca", 4)], SubAtributos: [new("Iniciativa", 2)], Pericias: [new("Atletismo", 5)]);
 
     private Task<HttpResponseMessage> PostAsync(string token, CreateSpellAbilityEntryRequest body) =>

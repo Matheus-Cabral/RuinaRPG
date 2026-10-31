@@ -197,7 +197,7 @@ public class CampaignPlayerViewControllerTests(ApiFixture fixture) : ApiTestBase
         var grantCreatureResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{setup.CampaignId}/grants", setup.GmToken,
             new GrantSheetRequest(setup.PlayerId, "Creature", null)));
         var creatureId = (await grantCreatureResponse.Content.ReadFromJsonAsync<GrantSheetResponse>())!.SheetId;
-        var creatureUpdate = new UpdateCreatureSheetRequest(creatureImageId, "Lobo Concedido", "Lobo", "Fisico", "Predador", "Terra",
+        var creatureUpdate = new UpdateCreatureSheetRequest(creatureImageId, "Lobo Concedido", "Lobo", "Fisico", "Predador", 0,
             "F", 3, 200, 5, 12, 8, 10, "Parcial");
         await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{creatureId}", setup.GmToken, creatureUpdate));
 

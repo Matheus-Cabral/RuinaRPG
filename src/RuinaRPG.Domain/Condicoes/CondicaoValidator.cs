@@ -12,8 +12,11 @@ public static class CondicaoValidator
         SubAtributoAlvo.Adrenalina
     ];
 
-    /// <summary>Null when valid; otherwise the Portuguese message for the first problem.</summary>
-    public static string? Validar(string nome, IReadOnlyList<ModificadorDeCondicao> modificadores, IReadOnlyList<CategoriaDesabilitavel> desabilitacoes, int? duracaoPadraoTurnos, Func<string, bool> periciaExiste)
+    /// <summary>
+    /// Null when valid; otherwise the Portuguese message for the first problem. <paramref name="elementoExiste"/> diz se o
+    /// alvo específico de Afinidade/Dano elemental é o id (em texto) de um elemento do catálogo que não é Caminho.
+    /// </summary>
+    public static string? Validar(string nome, IReadOnlyList<ModificadorDeCondicao> modificadores, IReadOnlyList<CategoriaDesabilitavel> desabilitacoes, int? duracaoPadraoTurnos, Func<string, bool> periciaExiste, Func<string, bool> elementoExiste)
     {
         if (string.IsNullOrWhiteSpace(nome))
             return "O nome da condição é obrigatório.";
@@ -31,7 +34,7 @@ public static class CondicaoValidator
             var erroValor = ValidarValor(m);
             if (erroValor is not null)
                 return erroValor;
-            var erroAlvo = ValidarAlvoEspecifico(m, periciaExiste);
+            var erroAlvo = ValidarAlvoEspecifico(m, periciaExiste, elementoExiste);
             if (erroAlvo is not null)
                 return erroAlvo;
         }
@@ -51,7 +54,7 @@ public static class CondicaoValidator
         return null;
     }
 
-    private static string? ValidarAlvoEspecifico(ModificadorDeCondicao m, Func<string, bool> periciaExiste)
+    private static string? ValidarAlvoEspecifico(ModificadorDeCondicao m, Func<string, bool> periciaExiste, Func<string, bool> elementoExiste)
     {
         var especifico = m.AlvoEspecifico;
         var vazio = string.IsNullOrWhiteSpace(especifico);
@@ -69,7 +72,7 @@ public static class CondicaoValidator
                 return !vazio && Nome<RecursoDeCondicao>(especifico!) ? null : "O recurso do modificador é inválido.";
             case AlvoDeCondicao.AfinidadeElemental:
             case AlvoDeCondicao.DanoElemental:
-                return vazio || Nome<Elemento>(especifico!) ? null : "O elemento do modificador é inválido.";
+                return vazio || elementoExiste(especifico!) ? null : "O elemento do modificador é inválido.";
             case AlvoDeCondicao.Dano:
                 return vazio || Nome<TipoDeDano>(especifico!) ? null : "O tipo de dano do modificador é inválido.";
             default:

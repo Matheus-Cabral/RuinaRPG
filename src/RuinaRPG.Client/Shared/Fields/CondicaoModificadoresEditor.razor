@@ -1,5 +1,6 @@
 @using MudBlazor
 @using RuinaRPG.Contracts.Rules
+@using RuinaRPG.Domain.Afinidades
 @using RuinaRPG.Domain.Condicoes
 
 @* A tabela editável de linhas de modificador de uma Condição: Alvo -> "específico" (depende do Alvo)
@@ -24,13 +25,17 @@
                 </td>
                 <td>
                     <MudSelect T="string" Label="Específico" Dense="true" Value="@linha.Especifico" ValueChanged="@(v => linha.Especifico = v)">
-                        @foreach (var o in CondicaoAlvos.Especificos(alvo, Pericias))
+                        @foreach (var o in CondicaoAlvos.Especificos(alvo, Pericias, Elementos))
                         {
                             <MudSelectItem T="string" Value="@o.Valor">@o.Rotulo</MudSelectItem>
                         }
                         @if (PericiaRemovida(alvo, linha))
                         {
                             <MudSelectItem T="string" Value="@linha.Especifico">(Perícia removida)</MudSelectItem>
+                        }
+                        @if (ElementoForaDoCatalogo(alvo, linha))
+                        {
+                            <MudSelectItem T="string" Value="@linha.Especifico">(Elemento fora do catálogo)</MudSelectItem>
                         }
                     </MudSelect>
                     @if (PericiaRemovida(alvo, linha))
@@ -72,6 +77,16 @@
 @code {
     [Parameter, EditorRequired] public List<CondicaoLinhaForm> Linhas { get; set; } = new();
     [Parameter] public IReadOnlyList<PericiaResponse> Pericias { get; set; } = Array.Empty<PericiaResponse>();
+    /// <summary>Os elementos do catálogo de Afinidades que podem ser alvo (os que não são Caminho).</summary>
+    [Parameter] public IReadOnlyList<ElementoDoCatalogo> Elementos { get; set; } = Array.Empty<ElementoDoCatalogo>();
+
+    // Uma linha antiga pode citar um elemento que não está no catálogo (removido, ou um nome antigo que a conversão
+    // não casou): ela continua visível e marcada, e o Auditor escolhe outro.
+    private bool ElementoForaDoCatalogo(AlvoDeCondicao alvo, CondicaoLinhaForm linha) =>
+        alvo is AlvoDeCondicao.AfinidadeElemental or AlvoDeCondicao.DanoElemental
+        && linha.Especifico != ""
+        && Elementos.Count > 0
+        && Elementos.All(e => e.Id.ToString(System.Globalization.CultureInfo.InvariantCulture) != linha.Especifico);
 
     // Uma linha antiga pode citar uma Perícia que saiu do catálogo: ela continua visível e marcada, sem trocar o dado do Auditor.
     private bool PericiaRemovida(AlvoDeCondicao alvo, CondicaoLinhaForm linha) =>
@@ -86,7 +101,7 @@
     {
         linha.Alvo = valor;
         var alvo = Enum.Parse<AlvoDeCondicao>(valor);
-        linha.Especifico = CondicaoAlvos.Especificos(alvo, Pericias)[0].Valor;
+        linha.Especifico = CondicaoAlvos.Especificos(alvo, Pericias, Elementos)[0].Valor;
         linha.Momento = alvo == AlvoDeCondicao.RecursoAtual ? nameof(MomentoDeCondicao.AoAplicar) : null;
     }
 }

@@ -134,12 +134,13 @@
         return falha;
     }
 
+    protected override (string? CampaignId, string? CampaignName, string? OwnerId) OrigemDa(CharacterSheetResponse sheet) =>
+        (sheet.CampaignId, sheet.CampaignName, sheet.OwnerId);
+
     protected override int PontosDeIgnicaoDa(CharacterSheetResponse sheet) => sheet.PontosDeIgnicaoAtual;
 
     protected override void PreencherFormulario(CharacterSheetResponse sheet)
     {
-        Estado.CampaignId = sheet.CampaignId;
-        Estado.CampaignName = sheet.CampaignName;
         Estado.DefinirCemiterio(sheet.NoCemiterio, sheet.MotivosDoCemiterio);
         _form.ImageUrl = sheet.ImageUrl;
         _form.ImageId = sheet.ImageId;
@@ -164,7 +165,6 @@
         _form.GraduacaoLabel = sheet.GraduacaoLabel;
         _form.PossuiCoracaoDeMana = sheet.PossuiCoracaoDeMana;
         _form.AfinidadeAdicional = sheet.AfinidadeAdicional;
-        _form.VocacaoArcanaMaxima = sheet.VocacaoArcanaMaxima;
         _form.ExperienciaAtual = sheet.ExperienciaAtual;
         _form.XpParaProximoNivel = sheet.XpParaProximoNivel;
         _form.EAPAtual = sheet.EAPAtual;

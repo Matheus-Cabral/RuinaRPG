@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using RuinaRPG.Domain.Afinidades;
+using RuinaRPG.Infrastructure.Afinidades;
 using RuinaRPG.Infrastructure.Campaigns;
 using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Infrastructure.Condicoes;
@@ -30,6 +32,10 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<Item> Items => Set<Item>();
     public DbSet<DurabilidadePorRank> DurabilidadesPorRank => Set<DurabilidadePorRank>();
     public DbSet<AfinidadeElementalLinha> TabelaDeAfinidades => Set<AfinidadeElementalLinha>();
+    public DbSet<ElementoDeAfinidade> ElementosDeAfinidade => Set<ElementoDeAfinidade>();
+    public DbSet<CruzamentoDeAfinidade> CruzamentosDeAfinidade => Set<CruzamentoDeAfinidade>();
+    public DbSet<TotalDeAfinidadePorCirculo> TotaisDeAfinidadePorCirculo => Set<TotalDeAfinidadePorCirculo>();
+    public DbSet<VisibilidadeDeElemento> VisibilidadesDeElemento => Set<VisibilidadeDeElemento>();
     public DbSet<NivelProgressao> NiveisProgressao => Set<NivelProgressao>();
     public DbSet<ColunaDeNivel> ColunasDeNivel => Set<ColunaDeNivel>();
     public DbSet<ValorDeNivel> ValoresDeNivel => Set<ValorDeNivel>();
@@ -44,7 +50,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<CharacterSheet> CharacterSheets => Set<CharacterSheet>();
     public DbSet<CharacterAttribute> CharacterAttributes => Set<CharacterAttribute>();
     public DbSet<CharacterSkill> CharacterSkills => Set<CharacterSkill>();
-    public DbSet<CharacterAffinity> CharacterAffinities => Set<CharacterAffinity>();
+    public DbSet<CharacterPontosDeAfinidade> CharacterPontosDeAfinidade => Set<CharacterPontosDeAfinidade>();
     public DbSet<CharacterRune> CharacterRunes => Set<CharacterRune>();
     public DbSet<CharacterMastery> CharacterMasteries => Set<CharacterMastery>();
     public DbSet<CharacterWeapon> CharacterWeapons => Set<CharacterWeapon>();
@@ -78,7 +84,7 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
     public DbSet<NpcSheet> NpcSheets => Set<NpcSheet>();
     public DbSet<NpcAttribute> NpcAttributes => Set<NpcAttribute>();
     public DbSet<NpcSkill> NpcSkills => Set<NpcSkill>();
-    public DbSet<NpcAffinity> NpcAffinities => Set<NpcAffinity>();
+    public DbSet<NpcPontosDeAfinidade> NpcPontosDeAfinidade => Set<NpcPontosDeAfinidade>();
     public DbSet<NpcRune> NpcRunes => Set<NpcRune>();
     public DbSet<NpcMastery> NpcMasteries => Set<NpcMastery>();
     public DbSet<NpcWeapon> NpcWeapons => Set<NpcWeapon>();
@@ -204,6 +210,38 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
 
         builder.Entity<AfinidadeElementalLinha>(e => { e.ToTable("TabelaDeAfinidades"); e.HasIndex(l => l.Afinidade).IsUnique(); });
 
+        builder.Entity<ElementoDeAfinidade>(e =>
+        {
+            e.ToTable("ElementosDeAfinidade", t => t.HasCheckConstraint("CK_ElementosDeAfinidade_Teto", "\"Teto\" IS NULL OR \"Teto\" >= 1"));
+            e.HasIndex(x => x.Nome).IsUnique();
+            e.Property(x => x.Tipo).HasConversion<string>();
+        });
+        builder.Entity<CruzamentoDeAfinidade>(e =>
+        {
+            e.ToTable("CruzamentosDeAfinidade", t =>
+            {
+                t.HasCheckConstraint("CK_CruzamentosDeAfinidade_ParOrdenado", "\"ElementoAId\" < \"ElementoBId\"");
+                t.HasCheckConstraint("CK_CruzamentosDeAfinidade_Minimos", "\"MinimoA\" >= 1 AND \"MinimoB\" >= 1");
+            });
+            e.HasIndex(x => new { x.ElementoAId, x.ElementoBId }).IsUnique();
+            e.HasOne<ElementoDeAfinidade>().WithMany().HasForeignKey(x => x.ElementoAId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<ElementoDeAfinidade>().WithMany().HasForeignKey(x => x.ElementoBId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<ElementoDeAfinidade>().WithMany().HasForeignKey(x => x.SubElementoId).OnDelete(DeleteBehavior.Restrict);
+        });
+        builder.Entity<TotalDeAfinidadePorCirculo>(e =>
+        {
+            e.ToTable("TotaisDeAfinidadePorCirculo", t => t.HasCheckConstraint("CK_TotaisDeAfinidadePorCirculo_Total", "\"Total\" >= 0"));
+            e.HasKey(x => x.Circulo);
+            e.Property(x => x.Circulo).ValueGeneratedNever();
+        });
+        builder.Entity<VisibilidadeDeElemento>(e =>
+        {
+            e.ToTable("VisibilidadesDeElemento");
+            e.HasKey(x => new { x.Origem, x.Chave, x.ElementoId });
+            e.Property(x => x.Origem).HasConversion<string>();
+            e.HasOne<ElementoDeAfinidade>().WithMany().HasForeignKey(x => x.ElementoId).OnDelete(DeleteBehavior.Cascade);
+        });
+
         builder.Entity<NivelProgressao>(e => { e.ToTable("NiveisProgressao"); e.HasKey(n => n.Nivel); e.Property(n => n.Nivel).ValueGeneratedNever(); });
         builder.Entity<ColunaDeNivel>(e => { e.ToTable("ColunasDeNivel"); e.HasIndex(c => c.ChaveDeSistema).IsUnique().HasFilter("\"ChaveDeSistema\" IS NOT NULL"); });
         builder.Entity<ValorDeNivel>(e =>
@@ -320,6 +358,8 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
 
         builder.Entity<CharacterSheet>(entity =>
         {
+            // Afinidade (1.a/2.b) referencia o catálogo de elementos: um elemento escolhido não pode ser removido.
+            entity.HasOne<ElementoDeAfinidade>().WithMany().HasForeignKey(s => s.Afinidade).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<Campaign>()
                 .WithMany()
                 .HasForeignKey(s => s.CampaignId)
@@ -385,13 +425,13 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        builder.Entity<CharacterAffinity>(entity =>
+        builder.Entity<CharacterPontosDeAfinidade>(entity =>
         {
+            entity.ToTable(t => t.HasCheckConstraint("CK_CharacterPontosDeAfinidade_Pontos", "\"Pontos\" >= 0"));
             entity.Property(e => e.SheetId).HasColumnName("CharacterSheetId");
-            entity.HasOne<CharacterSheet>()
-                .WithMany()
-                .HasForeignKey(a => a.SheetId)
-                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(p => new { p.SheetId, p.ElementoId }).IsUnique();
+            entity.HasOne<CharacterSheet>().WithMany().HasForeignKey(p => p.SheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<ElementoDeAfinidade>().WithMany().HasForeignKey(p => p.ElementoId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<CharacterRune>(entity =>
@@ -551,6 +591,8 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
 
         builder.Entity<NpcSheet>(entity =>
         {
+            // Afinidade (1.a/2.b) referencia o catálogo de elementos: um elemento escolhido não pode ser removido.
+            entity.HasOne<ElementoDeAfinidade>().WithMany().HasForeignKey(s => s.Afinidade).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(s => s.GmId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(s => s.OwnerId).OnDelete(DeleteBehavior.SetNull);
             entity.HasOne<Image>().WithMany().HasForeignKey(s => s.ImageId).OnDelete(DeleteBehavior.SetNull);
@@ -560,6 +602,8 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
 
         builder.Entity<CreatureSheet>(entity =>
         {
+            // Afinidade (1.a/2.b) referencia o catálogo de elementos: um elemento escolhido não pode ser removido.
+            entity.HasOne<ElementoDeAfinidade>().WithMany().HasForeignKey(s => s.Afinidade).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(s => s.GmId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(s => s.OwnerId).OnDelete(DeleteBehavior.SetNull);
             entity.HasOne<Image>().WithMany().HasForeignKey(s => s.ImageId).OnDelete(DeleteBehavior.SetNull);
@@ -592,10 +636,13 @@ public class RuinaRpgDbContext(DbContextOptions<RuinaRpgDbContext> options)
             entity.HasOne<NpcSheet>().WithMany().HasForeignKey(s => s.SheetId).OnDelete(DeleteBehavior.Cascade);
         });
 
-        builder.Entity<NpcAffinity>(entity =>
+        builder.Entity<NpcPontosDeAfinidade>(entity =>
         {
+            entity.ToTable(t => t.HasCheckConstraint("CK_NpcPontosDeAfinidade_Pontos", "\"Pontos\" >= 0"));
             entity.Property(e => e.SheetId).HasColumnName("NpcSheetId");
-            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(a => a.SheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(p => new { p.SheetId, p.ElementoId }).IsUnique();
+            entity.HasOne<NpcSheet>().WithMany().HasForeignKey(p => p.SheetId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<ElementoDeAfinidade>().WithMany().HasForeignKey(p => p.ElementoId).OnDelete(DeleteBehavior.Restrict);
         });
 
         builder.Entity<NpcRune>(entity =>

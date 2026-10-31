@@ -46,12 +46,7 @@ public class CemiterioEscritaTests(ApiFixture fixture) : TestesDeFicha(fixture)
                 .Select(p => $"{p.Name}={(p.ParameterType.IsEnum ? Enum.GetNames(p.ParameterType)[0] : p.ParameterType.Name)}"))))
             .OrderBy(e => e.Template, StringComparer.Ordinal).ThenBy(e => e.Verbo, StringComparer.Ordinal);
 
-    private static bool DaFichaDePersonagem(string template)
-    {
-        var segmentos = template.Split('/');
-        return segmentos.Length >= 3 && segmentos[0] == "api" && segmentos[1] == "character-sheets"
-            && segmentos[2].StartsWith('{') && segmentos[2].Trim('{', '}').Split(':')[0] is "id" or "sheetId";
-    }
+    private static bool DaFichaDePersonagem(string template) => FichaNoCemiterioFilter.ParametroDaFicha(template) is not null;
 
     [Theory]
     [MemberData(nameof(EscritasDaFicha), DisableDiscoveryEnumeration = true)]
@@ -149,7 +144,7 @@ public class CemiterioEscritaTests(ApiFixture fixture) : TestesDeFicha(fixture)
         return c;
     }
 
-    /// <summary>A URL da ação na ficha dada: Guids novos nos outros ids, o primeiro valor do enum, uma Perícia existente.</summary>
+    /// <summary>A URL da ação na ficha dada: Guids novos nos outros ids, 0 nos inteiros, o primeiro valor do enum, uma Perícia existente.</summary>
     private async Task<string> UrlAsync(string template, string parametros, string sheetId)
     {
         var url = "/" + template;
@@ -159,6 +154,7 @@ public class CemiterioEscritaTests(ApiFixture fixture) : TestesDeFicha(fixture)
             var valor = nome is "id" or "sheetId" && Segmento(template, 2) == nome ? sheetId
                 : tipo == nameof(Guid) ? Guid.NewGuid().ToString()
                 : tipo == nameof(String) && nome == "pericia" ? await PericiaExistenteAsync()
+                : tipo == nameof(Int32) ? "0"
                 : tipo;
             url = System.Text.RegularExpressions.Regex.Replace(url, $@"\{{{nome}(:[^}}]*)?\}}", valor);
         }

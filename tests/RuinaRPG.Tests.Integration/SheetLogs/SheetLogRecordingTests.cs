@@ -142,6 +142,19 @@ public partial class SheetLogRecordingTests(ApiFixture fixture) : ApiTestBase(fi
     }
 
     [Fact]
+    public async Task The_Afinidade_is_logged_by_the_current_catalog_name_of_the_element()
+    {
+        var c = await CenarioAsync("Afinidade");
+        await PutSheetAsync(c.GmToken, c.SheetId, ValidUpdate());
+
+        var novas = await NovasAsync(c.SheetId, () => PutSheetAsync(c.GmToken, c.SheetId, ValidUpdate() with { Afinidade = 1 }));
+
+        var linha = novas.Should().ContainSingle(l => l.Campo == Rotulo<CharacterSheet>("Afinidade")).Subject;
+        linha.ValorAntes.Should().Be("—");
+        linha.ValorDepois.Should().Be("Água");
+    }
+
+    [Fact]
     public async Task A_gm_edit_is_flagged_ActorIsGm()
     {
         var c = await CenarioAsync("GmEdita");
@@ -321,6 +334,24 @@ public partial class SheetLogRecordingTests(ApiFixture fixture) : ApiTestBase(fi
         linha.Campo.Should().Be(Rotulo<CharacterAttribute>("Gasto"));
         linha.ValorAntes.Should().Be("0");
         linha.ValorDepois.Should().Be("1");
+    }
+
+    [Fact]
+    public async Task Affinity_points_are_logged_under_the_catalog_name_of_the_element()
+    {
+        var c = await CenarioAsync("Pontos");
+        await PutSheetAsync(c.GmToken, c.SheetId, ValidUpdate() with { Vocacao = "Feiticeiro", SubVocacao = null, AfinidadeAdicional = 5 });
+
+        var aoAdicionar = await NovasAsync(c.SheetId, () =>
+            SendOkAsync(HttpMethod.Put, $"/api/character-sheets/{c.SheetId}/afinidades/1", c.PlayerToken, new AtualizarAfinidadeRequest(1, null)));
+        var aoAlterar = await NovasAsync(c.SheetId, () =>
+            SendOkAsync(HttpMethod.Put, $"/api/character-sheets/{c.SheetId}/afinidades/1", c.PlayerToken, new AtualizarAfinidadeRequest(2, null)));
+
+        var adicionou = aoAdicionar.Should().ContainSingle().Subject;
+        (adicionou.Acao, adicionou.Secao, adicionou.ItemNome).Should().Be((SheetLogAcao.Adicionou, "Afinidades", "Água"));
+        var alterou = aoAlterar.Should().ContainSingle().Subject;
+        (alterou.Acao, alterou.ItemNome, alterou.Campo, alterou.ValorAntes, alterou.ValorDepois)
+            .Should().Be((SheetLogAcao.Alterou, "Água", Rotulo<CharacterPontosDeAfinidade>("Pontos"), "1", "2"));
     }
 
     [Fact]

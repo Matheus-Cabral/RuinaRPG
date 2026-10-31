@@ -6,11 +6,12 @@ namespace RuinaRPG.Domain.SpellsAndAbilities;
 /// Compara os requisitos de uma Passiva com uma ficha. Devolve uma pendência legível por requisito não
 /// cumprido, na ordem dos campos; lista vazia = cumpre tudo. <paramref name="nomeDoHistoricoExigido"/> é o
 /// nome do Histórico do requisito (nulo se ele não existe mais no catálogo); <paramref name="nomeDaPericia"/>
-/// devolve o nome de exibição de uma Perícia a partir do Id (a tabela Pericias vive na Infrastructure).
+/// devolve o nome de exibição de uma Perícia a partir do Id (a tabela Pericias vive na Infrastructure);
+/// <c>nomeDoElemento</c>, o nome de um elemento do catálogo de Afinidades a partir do id.
 /// </summary>
 public static class PassivaRequisitosEvaluator
 {
-    public static IReadOnlyList<string> Pendencias(RequisitosDePassiva? requisitos, FichaParaRequisitos ficha, string? nomeDoHistoricoExigido, Func<int, string> nomeDaPericia)
+    public static IReadOnlyList<string> Pendencias(RequisitosDePassiva? requisitos, FichaParaRequisitos ficha, string? nomeDoHistoricoExigido, Func<int, string> nomeDaPericia, Func<int, string> nomeDoElemento)
     {
         var pendencias = new List<string>();
         if (requisitos is null)
@@ -37,7 +38,7 @@ public static class PassivaRequisitosEvaluator
         }
 
         if (requisitos.Afinidade is { } afinidade && ficha.Afinidade != afinidade)
-            pendencias.Add($"Afinidade: {RequisitoLabels.Afinidade(afinidade)}");
+            pendencias.Add($"Afinidade: {nomeDoElemento(afinidade)}");
 
         if (ficha.TemIdentidadeDePersonagem)
         {
@@ -66,7 +67,7 @@ public static class PassivaRequisitosEvaluator
     /// Os requisitos por extenso, na ordem dos campos e com os mesmos rótulos de <see cref="Pendencias"/> —
     /// para o Livro de Regras, que não tem ficha para comparar. Uma Perícia sem nome (removida) é omitida.
     /// </summary>
-    public static IReadOnlyList<string> Descrever(RequisitosDePassiva? requisitos, string? nomeDoHistoricoExigido, Func<int, string?> nomeDaPericia)
+    public static IReadOnlyList<string> Descrever(RequisitosDePassiva? requisitos, string? nomeDoHistoricoExigido, Func<int, string?> nomeDaPericia, Func<int, string> nomeDoElemento)
     {
         var itens = new List<string>();
         if (requisitos is null)
@@ -87,7 +88,7 @@ public static class PassivaRequisitosEvaluator
         if (requisitos.CoracaoDeMana == true)
             itens.Add("Coração de Mana");
         if (requisitos.Afinidade is { } afinidade)
-            itens.Add($"Afinidade: {RequisitoLabels.Afinidade(afinidade)}");
+            itens.Add($"Afinidade: {nomeDoElemento(afinidade)}");
         if (requisitos.Estrela is { } estrela)
             itens.Add($"Estrela: {estrela}");
         if (requisitos.HistoricoId is not null)

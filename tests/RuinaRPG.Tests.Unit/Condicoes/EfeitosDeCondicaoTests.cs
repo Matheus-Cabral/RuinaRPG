@@ -239,15 +239,16 @@ public class EfeitosDeCondicaoTests
             Atual("Vitalidade", -3, MomentoDeCondicao.ACadaVez),
             Atual("Foco", -5, MomentoDeCondicao.AoAplicar),
             Fixo(AlvoDeCondicao.SubAtributo, "Movimentação", -1),
-            Fixo(AlvoDeCondicao.AfinidadeElemental, "Agua", 1),
+            Fixo(AlvoDeCondicao.AfinidadeElemental, "1", 1),
             Fixo(AlvoDeCondicao.AfinidadeElemental, null, 1),
-            Fixo(AlvoDeCondicao.DanoElemental, "Fogo", 2),
+            Fixo(AlvoDeCondicao.DanoElemental, "2", 2),
+            Fixo(AlvoDeCondicao.DanoElemental, "agua", 1),
             Fixo(AlvoDeCondicao.Dano, "Cortante", -1),
             Fixo(AlvoDeCondicao.Dano, null, 4),
             Pct(AlvoDeCondicao.Maestria, null, 20),
             Fixo(AlvoDeCondicao.Maestria, "luta", 1));
 
-        var explicacao = Assert.Single(Efeitos(c).Explicar(k => "Luta de Sangue"));
+        var explicacao = Assert.Single(Efeitos(c).Explicar(k => "Luta de Sangue", nomeDoElemento: id => id switch { "1" => "Água", "2" => "Fogo", _ => id }));
 
         Assert.Equal("Enfraquecido", explicacao.Nome);
         Assert.Equal(
@@ -263,6 +264,7 @@ public class EfeitosDeCondicaoTests
             "Afinidade de Água +1",
             "Todas as Afinidades +1",
             "Dano de Fogo dos ataques +2",
+            "Dano de agua dos ataques +1",
             "Dano Cortante dos ataques −1",
             "Dano dos ataques +4",
             "Todas as Maestrias +20%",

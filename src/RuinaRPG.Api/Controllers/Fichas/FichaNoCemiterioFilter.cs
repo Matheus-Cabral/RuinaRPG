@@ -38,17 +38,18 @@ public sealed class FichaNoCemiterioFilter(RuinaRpgDbContext db, CemiterioDaFich
             || !Guid.TryParse(context.HttpContext.User.FindFirstValue(JwtRegisteredClaimNames.Sub), out var callerId))
             return false;
 
-        var sheet = await db.CharacterSheets.FindAsync(sheetId);
-        if (sheet is null)
+        // Uma projeção sem rastreamento: nem a ficha inteira entra no ChangeTracker, nem o GM é consultado à parte.
+        var ficha = await db.CharacterSheets.AsNoTracking()
+            .Where(s => s.Id == sheetId)
+            .Select(s => new { s.OwnerId, s.CampaignId, s.Morto, GmId = db.Campaigns.Where(c => c.Id == s.CampaignId).Select(c => c.GmId).First() })
+            .SingleOrDefaultAsync();
+        if (ficha is null || !CharacterSheetAuthorization.CanEdit(callerId, ficha.OwnerId, ficha.GmId))
             return false;
-        var gmId = await db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.GmId).SingleAsync();
-        if (!CharacterSheetAuthorization.CanEdit(callerId, sheet.OwnerId, gmId))
-            return false;
-        return (await cemiterio.MotivosAsync(sheet)).Count > 0;
+        return (await cemiterio.MotivosAsync(ficha.OwnerId, ficha.CampaignId, ficha.Morto)).Count > 0;
     }
 
     /// <summary>"id" ou "sheetId" quando o template é <c>api/character-sheets/{id|sheetId}…</c>; senão null.</summary>
-    private static string? ParametroDaFicha(string? template)
+    internal static string? ParametroDaFicha(string? template)
     {
         var segmentos = (template ?? "").TrimStart('~').TrimStart('/').Split('/');
         if (segmentos.Length < 3 || segmentos[0] != "api" || segmentos[1] != "character-sheets"

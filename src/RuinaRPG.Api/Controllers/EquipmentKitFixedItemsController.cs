@@ -1,3 +1,4 @@
+using RuinaRPG.Api.Services;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -22,7 +23,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Route("api/equipment-kit-fixed-items")]
 [Authorize]
-public class EquipmentKitFixedItemsController(RuinaRpgDbContext db, IPericiaCatalogo pericias) : ControllerBase
+public class EquipmentKitFixedItemsController(RuinaRpgDbContext db, IPericiaCatalogo pericias, CatalogoDeAfinidadesService afinidades) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<EquipmentKitFixedItemResponse>>> List([FromQuery] string? tipo, [FromQuery] string? q)
@@ -139,7 +140,8 @@ public class EquipmentKitFixedItemsController(RuinaRpgDbContext db, IPericiaCata
         if (ItemFactory.TemRank(tipo) && !ItemFactory.TryParseRank(request.Rank, out _))
             return ($"Rank inválido: \"{request.Rank}\".", null, null);
         var porId = await pericias.PorIdAsync();
-        return EquipamentoRequisitosMapper.TryParse(tipo, request.Requisitos, request.PenalidadeDeRequisitos, porId.Values.ToList(), out var requisitos, out var penalidade, out var erro)
+        var catalogoDeAfinidades = await afinidades.CarregarAsync();
+        return EquipamentoRequisitosMapper.TryParse(tipo, request.Requisitos, request.PenalidadeDeRequisitos, porId.Values.ToList(), catalogoDeAfinidades, out var requisitos, out var penalidade, out var erro)
             ? (null, requisitos, penalidade)
             : (erro, null, null);
     }

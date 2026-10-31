@@ -56,31 +56,39 @@ public class ChangelogDialogTests : MudBunitContext
     }
 
     [Fact]
-    public void Rendered_list_contains_the_section_labels_of_2_1_0()
+    public void Rendered_list_contains_the_section_labels_of_2_2_0()
     {
-        var cut = RenderDialog("2.1.0", EventCallback.Factory.Create(this, () => { }));
+        var cut = RenderDialog("2.2.0", EventCallback.Factory.Create(this, () => { }));
 
-        cut.Markup.Should().Contain("Cemitério de fichas:").And.Contain("Remover jogador da campanha:")
-            .And.Contain("Contas de jogador:").And.Contain("Maestrias").And.Contain("Peso da Criatura:")
-            .And.Contain("Correções:");
+        cut.Markup.Should().Contain("Afinidades por elemento:").And.Contain("Sub-Elementos e Caminhos:")
+            .And.Contain("Vocações marciais:").And.Contain("Fichas existentes:").And.Contain("Correções e melhorias:")
+            .And.Contain("Distribuídos X/Y");
     }
 
     [Fact]
-    public void The_2_0_0_and_1_5_0_texts_are_gone()
+    public void The_2_1_0_text_is_gone()
     {
-        var cut = RenderDialog("2.1.0", EventCallback.Factory.Create(this, () => { }), isRulesAuditor: true);
+        var cut = RenderDialog("2.2.0", EventCallback.Factory.Create(this, () => { }), isRulesAuditor: true);
 
-        cut.Markup.Should().NotContain("Mais rapidez:").And.NotContain("Melhorias e correções:")
-            .And.NotContain("Log de ficha:").And.NotContain("Goblin 2").And.NotContain("Auditoria de Condições:");
+        cut.Markup.Should().NotContain("Cemitério de fichas:").And.NotContain("Remover jogador da campanha:")
+            .And.NotContain("Contas de jogador:").And.NotContain("Peso da Criatura:");
+    }
+
+    // Um diálogo por teste: dois MudDialogProvider no mesmo contexto compartilham o IDialogService.
+    [Fact]
+    public void The_auditor_block_is_hidden_from_non_auditors()
+    {
+        var comum = RenderDialog("2.2.0", EventCallback.Factory.Create(this, () => { }));
+
+        comum.Markup.Should().NotContain("Para Auditores").And.NotContain("Auditoria → Afinidades");
     }
 
     [Fact]
-    public void The_2_1_0_text_has_no_auditor_block_because_no_Auditoria_page_changed()
+    public void The_auditor_block_shows_the_new_Auditoria_de_Afinidades()
     {
-        var comum = RenderDialog("2.1.0", EventCallback.Factory.Create(this, () => { }));
-        var auditor = RenderDialog("2.1.0", EventCallback.Factory.Create(this, () => { }), isRulesAuditor: true);
+        var auditor = RenderDialog("2.2.0", EventCallback.Factory.Create(this, () => { }), isRulesAuditor: true);
 
-        comum.Markup.Should().NotContain("Para Auditores");
-        auditor.Markup.Should().NotContain("Para Auditores");
+        auditor.Markup.Should().Contain("Para Auditores").And.Contain("Auditoria → Afinidades")
+            .And.Contain("Totais por Círculo").And.Contain("Elementos").And.Contain("Cruzamentos").And.Contain("Visibilidade");
     }
 }

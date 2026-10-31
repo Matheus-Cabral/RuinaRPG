@@ -14,7 +14,8 @@ public class CreatureSheet : IFicha, IFichaConcedivel
     public string? Raca { get; set; }
     public Arquetipo? Arquetipo { get; set; }
     public string? SubArquetipo { get; set; }
-    public AfinidadeElemental? Afinidade { get; set; }
+    /// <summary>Id do elemento no catálogo de Afinidades (FK → ElementosDeAfinidade); nunca um Caminho escolhido de novo.</summary>
+    public int? Afinidade { get; set; }
     public Rank? Rank { get; set; }
     public int Nivel { get; set; } = 1;
     public int ExperienciaAtual { get; set; }

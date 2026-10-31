@@ -1,0 +1,120 @@
+@inherits SecaoDaAuditoriaDeAfinidades
+@using MudBlazor
+@using RuinaRPG.Contracts.Rules
+@using RuinaRPG.Domain.Afinidades
+
+@* Auditoria de Regras R0018/R0019: o catálogo único de elementos — nome, tipo e teto. *@
+<Section Title="Elementos">
+    <TitleInfo>
+        <InfoPopup Title="Como funcionam os elementos">
+            Este é o catálogo único de elementos do app: a lista de Afinidades das fichas, a Afinidade da Criatura, os alvos das Condições e os requisitos das Passivas. Renomear um elemento muda o nome em todo lugar. O teto vazio é sem limite. Um elemento só pode ser removido quando nenhuma ficha, Condição ou Passiva o usa; os cruzamentos e as ligações dele saem junto.
+        </InfoPopup>
+    </TitleInfo>
+    <ChildContent>
+        <AvisosDaSecao @bind-Mensagem="MensagemDeErro" SemPermissao="SemPermissao" />
+        <MudText Typo="Typo.subtitle1">Novo elemento</MudText>
+        <MudTextField T="string" @bind-Value="_novoNome" Label="Nome" />
+        <MudSelect T="TipoDeElemento" ToStringFunc="@Rotulo" @bind-Value="_novoTipo" Label="Tipo">
+            @foreach (var tipo in Enum.GetValues<TipoDeElemento>())
+            {
+                <MudSelectItem Value="@tipo">@Rotulo(tipo)</MudSelectItem>
+            }
+        </MudSelect>
+        <MudNumericField T="int?" @bind-Value="_novoTeto" Label="Teto" Min="1" HelperText="Vazio = sem limite" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2 mb-4" StartIcon="@Icons.Material.Filled.Add" OnClick="AdicionarAsync">Adicionar elemento</MudButton>
+
+        <MudSimpleTable Dense="true" Hover="true">
+            <thead>
+                <tr><th>Nome</th><th>Tipo</th><th>Teto</th><th></th></tr>
+            </thead>
+            <tbody>
+                @foreach (var e in Catalogo)
+                {
+                    <tr>
+                        <td><MudTextField T="string" Value="@e.Nome" ValueChanged="@(v => SalvarAsync(e with { Nome = v ?? "" }))" aria-label="@($"Nome de {e.Nome}")" /></td>
+                        <td>
+                            <MudSelect T="TipoDeElemento" ToStringFunc="@Rotulo" Value="@e.Tipo" ValueChanged="@(v => SalvarAsync(e with { Tipo = v }))" aria-label="@($"Tipo de {e.Nome}")">
+                                @foreach (var tipo in Enum.GetValues<TipoDeElemento>())
+                                {
+                                    <MudSelectItem Value="@tipo">@Rotulo(tipo)</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </td>
+                        <td><MudNumericField T="int?" Value="@e.Teto" ValueChanged="@(v => SalvarAsync(e with { Teto = v }))" Min="1"
+                                             Placeholder="Sem limite" aria-label="@($"Teto de {e.Nome}")" /></td>
+                        <td>
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                                           aria-label="@($"Remover {e.Nome}")" OnClick="@(() => PedirRemocao(e))" />
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </ChildContent>
+</Section>
+
+<MudDialog @bind-Visible="_dialogoAberto">
+    <TitleContent>Remover elemento</TitleContent>
+    <DialogContent>
+        Remover @_aRemover?.Nome do catálogo? As ligações de Vocação/Classe dele saem junto.
+        @if (_aRemover is { } r && CruzamentosDe(r.Id) is { Count: > 0 } cruzamentos)
+        {
+            <MudText Typo="Typo.body2" Class="mt-2">Remove também os cruzamentos: @string.Join(", ", cruzamentos).</MudText>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _dialogoAberto = false)">Cancelar</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="ConfirmarRemocaoAsync">Remover</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private string? _novoNome;
+    private TipoDeElemento _novoTipo = TipoDeElemento.SubElemento;
+    private int? _novoTeto;
+    private bool _dialogoAberto;
+    private ElementoDoCatalogo? _aRemover;
+    private List<CruzamentoDeAfinidadeResponse> _cruzamentos = new();
+
+    // Os cruzamentos lidos para a confirmação de remoção dizer quais saem junto com o elemento.
+    protected override async Task CarregarAsync()
+    {
+        var response = await Http.GetAsync("afinidades/cruzamentos");
+        if (response.IsSuccessStatusCode)
+            _cruzamentos = await response.Content.ReadFromJsonAsync<List<CruzamentoDeAfinidadeResponse>>() ?? new();
+    }
+
+    private List<string> CruzamentosDe(int id) => _cruzamentos
+        .Where(c => c.ElementoAId == id || c.ElementoBId == id || c.SubElementoId == id)
+        .Select(c => $"{Elementos.Nome(c.SubElementoId)} ({Elementos.Nome(c.ElementoAId)} + {Elementos.Nome(c.ElementoBId)})")
+        .ToList();
+
+    private async Task AdicionarAsync()
+    {
+        var response = await Http.PostAsJsonAsync("afinidades/elementos", new SalvarElementoDeAfinidadeRequest(_novoNome ?? "", _novoTipo.ToString(), _novoTeto));
+        if (await ConcluirAsync(response, mudouOCatalogo: true))
+        {
+            _novoNome = null;
+            _novoTeto = null;
+        }
+    }
+
+    private async Task SalvarAsync(ElementoDoCatalogo e) =>
+        await ConcluirAsync(await Http.PutAsJsonAsync($"afinidades/elementos/{e.Id}", new SalvarElementoDeAfinidadeRequest(e.Nome, e.Tipo.ToString(), e.Teto)),
+            mudouOCatalogo: true);
+
+    private void PedirRemocao(ElementoDoCatalogo e)
+    {
+        _aRemover = e;
+        _dialogoAberto = true;
+    }
+
+    private async Task ConfirmarRemocaoAsync()
+    {
+        _dialogoAberto = false;
+        if (_aRemover is not { } e)
+            return;
+        _aRemover = null;
+        await ConcluirAsync(await Http.DeleteAsync($"afinidades/elementos/{e.Id}"), mudouOCatalogo: true);
+    }
+}

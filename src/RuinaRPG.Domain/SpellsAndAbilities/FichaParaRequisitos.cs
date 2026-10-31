@@ -8,7 +8,7 @@ namespace RuinaRPG.Domain.SpellsAndAbilities;
 /// Variante, Grau/Círculo, Coração de Mana, Estrela nem Histórico — requisitos nesses campos são ignorados.
 /// Nos dicionários, só entram as chaves que aquele tipo de ficha tem: uma chave ausente é ignorada; um
 /// valor presente mas nulo (Perícia sem atributo escolhido, sem Total) não cumpre. As Perícias são chaveadas pelo Id
-/// da tabela Pericias.</para>
+/// da tabela Pericias; a Afinidade é o id do elemento no catálogo de Afinidades.</para>
 /// </summary>
 public sealed record FichaParaRequisitos(
     bool TemIdentidadeDePersonagem,
@@ -19,7 +19,7 @@ public sealed record FichaParaRequisitos(
     Variante? Variante,
     int Graduacao,
     bool PossuiCoracaoDeMana,
-    AfinidadeElemental? Afinidade,
+    int? Afinidade,
     Estrela? Estrela,
     Guid? HistoricoId,
     IReadOnlyDictionary<Atributo, int> Atributos,

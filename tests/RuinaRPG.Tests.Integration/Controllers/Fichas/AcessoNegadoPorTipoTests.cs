@@ -51,10 +51,8 @@ public class AcessoNegadoPorTipoTests(ApiFixture fixture) : ApiTestBase(fixture)
         { "character", "GET", "runes", 404 }, { "npc", "GET", "runes", 404 },
         { "character", "POST", "runes", 403 }, { "npc", "POST", "runes", 404 },
         { "character", "DELETE", $"runes/{Guid.Empty}", 403 }, { "npc", "DELETE", $"runes/{Guid.Empty}", 404 },
-        { "character", "GET", "affinities", 404 }, { "npc", "GET", "affinities", 404 },
-        { "character", "POST", "affinities", 403 }, { "npc", "POST", "affinities", 404 },
-        { "character", "PUT", $"affinities/{Guid.Empty}", 403 }, { "npc", "PUT", $"affinities/{Guid.Empty}", 404 },
-        { "character", "DELETE", $"affinities/{Guid.Empty}", 403 }, { "npc", "DELETE", $"affinities/{Guid.Empty}", 404 },
+        { "character", "GET", "afinidades", 404 }, { "npc", "GET", "afinidades", 404 },
+        { "character", "PUT", "afinidades/2", 403 }, { "npc", "PUT", "afinidades/2", 404 },
         { "character", "GET", "equipagem/kits", 404 }, { "npc", "GET", "equipagem/kits", 404 },
         { "character", "POST", "equipagem/choose", 403 }, { "npc", "POST", "equipagem/choose", 404 },
         // Endpoints da própria ficha (rotas com {id}; sufixo vazio é a ficha em si).

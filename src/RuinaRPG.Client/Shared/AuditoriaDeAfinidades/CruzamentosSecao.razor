@@ -1,0 +1,136 @@
+@inherits SecaoDaAuditoriaDeAfinidades
+@using MudBlazor
+@using RuinaRPG.Contracts.Rules
+@using RuinaRPG.Domain.Afinidades
+
+@* Auditoria de Regras R0020: dois elementos geram um Sub-Elemento, com o mínimo de pontos em cada um. *@
+<Section Title="Cruzamentos">
+    <TitleInfo>
+        <InfoPopup Title="Como funcionam os cruzamentos">
+            Um cruzamento liga dois elementos a um Sub-Elemento e guarda o mínimo de pontos exigido em cada um: é o requisito do Sub-Elemento na ficha (sem ele cumprido, o Sub-Elemento aparece bloqueado com a dica do que falta). O par é simétrico e não se repete. Mudar um requisito não apaga pontos de nenhuma ficha.
+        </InfoPopup>
+    </TitleInfo>
+    <ChildContent>
+        <AvisosDaSecao @bind-Mensagem="MensagemDeErro" SemPermissao="SemPermissao" />
+        <MudText Typo="Typo.subtitle1">Novo cruzamento</MudText>
+        <MudSelect T="int?" ToStringFunc="@NomeOuVazio" @bind-Value="_novo.A" Label="Elemento" Placeholder="Escolha um elemento">@OpcoesNovas(Catalogo)</MudSelect>
+        <MudNumericField T="int" @bind-Value="_novo.MinimoA" Label="Mínimo" Min="1" />
+        <MudSelect T="int?" ToStringFunc="@NomeOuVazio" @bind-Value="_novo.B" Label="Outro elemento" Placeholder="Escolha um elemento">@OpcoesNovas(Catalogo)</MudSelect>
+        <MudNumericField T="int" @bind-Value="_novo.MinimoB" Label="Mínimo do outro" Min="1" />
+        <MudSelect T="int?" ToStringFunc="@NomeOuVazio" @bind-Value="_novo.Sub" Label="Sub-Elemento" Placeholder="Escolha um Sub-Elemento">@OpcoesNovas(SubElementos)</MudSelect>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-2 mb-4" StartIcon="@Icons.Material.Filled.Add" Disabled="@(!_novo.Completo)" OnClick="AdicionarAsync">Adicionar cruzamento</MudButton>
+
+        <MudSimpleTable Dense="true" Hover="true">
+            <thead>
+                <tr><th>Sub-Elemento</th><th>Elemento</th><th>Mínimo</th><th>Outro elemento</th><th>Mínimo</th><th></th></tr>
+            </thead>
+            <tbody>
+                @foreach (var c in _cruzamentos)
+                {
+                    <tr>
+                        <td><MudSelect T="int" ToStringFunc="@Nome" Value="@c.SubElementoId" ValueChanged="@(v => SalvarAsync(c with { SubElementoId = v }))" aria-label="Sub-Elemento do cruzamento">@OpcoesDeElemento(SubElementos)</MudSelect></td>
+                        <td><MudSelect T="int" ToStringFunc="@Nome" Value="@c.ElementoAId" ValueChanged="@(v => SalvarAsync(c with { ElementoAId = v }))" aria-label="Elemento do cruzamento">@OpcoesDeElemento(Catalogo)</MudSelect></td>
+                        <td><MudNumericField T="int" Value="@c.MinimoA" ValueChanged="@(v => SalvarAsync(c with { MinimoA = v }))" Min="1" aria-label="@($"Mínimo de {Nome(c.ElementoAId)}")" /></td>
+                        <td><MudSelect T="int" ToStringFunc="@Nome" Value="@c.ElementoBId" ValueChanged="@(v => SalvarAsync(c with { ElementoBId = v }))" aria-label="Outro elemento do cruzamento">@OpcoesDeElemento(Catalogo)</MudSelect></td>
+                        <td><MudNumericField T="int" Value="@c.MinimoB" ValueChanged="@(v => SalvarAsync(c with { MinimoB = v }))" Min="1" aria-label="@($"Mínimo de {Nome(c.ElementoBId)}")" /></td>
+                        <td>
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                                           aria-label="@($"Remover cruzamento de {Nome(c.ElementoAId)} e {Nome(c.ElementoBId)}")" OnClick="@(() => PedirRemocao(c))" />
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </ChildContent>
+</Section>
+
+<MudDialog @bind-Visible="_dialogoAberto">
+    <TitleContent>Remover cruzamento</TitleContent>
+    <DialogContent>
+        Remover o cruzamento de @(_aRemover is { } r ? $"{Nome(r.ElementoAId)} e {Nome(r.ElementoBId)}" : "")? O Sub-Elemento fica sem esse requisito.
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _dialogoAberto = false)">Cancelar</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="ConfirmarRemocaoAsync">Remover</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private sealed class NovoCruzamento
+    {
+        // Nada vem escolhido: o Auditor escolhe os dois elementos e o Sub-Elemento antes de poder adicionar.
+        public int? A { get; set; }
+        public int MinimoA { get; set; } = 1;
+        public int? B { get; set; }
+        public int MinimoB { get; set; } = 1;
+        public int? Sub { get; set; }
+        public bool Completo => A is not null && B is not null && Sub is not null;
+    }
+
+    private List<CruzamentoDeAfinidadeResponse> _cruzamentos = new();
+    private NovoCruzamento _novo = new();
+    private bool _dialogoAberto;
+    private CruzamentoDeAfinidadeResponse? _aRemover;
+
+    private IEnumerable<ElementoDoCatalogo> SubElementos => Catalogo.Where(e => e.Tipo == TipoDeElemento.SubElemento);
+
+    private string Nome(int id) => Elementos.Nome(id);
+
+    private string NomeOuVazio(int? id) => id is { } i ? Elementos.Nome(i) : "";
+
+    private static RenderFragment OpcoesNovas(IEnumerable<ElementoDoCatalogo> elementos) => __builder =>
+    {
+        foreach (var e in elementos)
+        {
+            <MudSelectItem T="int?" Value="@e.Id">@e.Nome</MudSelectItem>
+        }
+    };
+
+    private static RenderFragment OpcoesDeElemento(IEnumerable<ElementoDoCatalogo> elementos) => __builder =>
+    {
+        foreach (var e in elementos)
+        {
+            <MudSelectItem T="int" Value="@e.Id">@e.Nome</MudSelectItem>
+        }
+    };
+
+    protected override async Task CarregarAsync()
+    {
+        var response = await Http.GetAsync("afinidades/cruzamentos");
+        if (!response.IsSuccessStatusCode)
+        {
+            MensagemDeErro = "Não foi possível carregar os cruzamentos.";
+            return;
+        }
+        _cruzamentos = await response.Content.ReadFromJsonAsync<List<CruzamentoDeAfinidadeResponse>>() ?? new();
+    }
+
+    private async Task AdicionarAsync()
+    {
+        if (_novo is not { A: { } a, B: { } b, Sub: { } sub })
+            return;
+        var response = await Http.PostAsJsonAsync("afinidades/cruzamentos",
+            new SalvarCruzamentoDeAfinidadeRequest(a, _novo.MinimoA, b, _novo.MinimoB, sub));
+        if (await ConcluirAsync(response))
+            _novo = new();
+    }
+
+    private async Task SalvarAsync(CruzamentoDeAfinidadeResponse c) =>
+        await ConcluirAsync(await Http.PutAsJsonAsync($"afinidades/cruzamentos/{c.Id}",
+            new SalvarCruzamentoDeAfinidadeRequest(c.ElementoAId, c.MinimoA, c.ElementoBId, c.MinimoB, c.SubElementoId)));
+
+    private void PedirRemocao(CruzamentoDeAfinidadeResponse c)
+    {
+        _aRemover = c;
+        _dialogoAberto = true;
+    }
+
+    private async Task ConfirmarRemocaoAsync()
+    {
+        _dialogoAberto = false;
+        if (_aRemover is not { } c)
+            return;
+        _aRemover = null;
+        await ConcluirAsync(await Http.DeleteAsync($"afinidades/cruzamentos/{c.Id}"));
+    }
+}

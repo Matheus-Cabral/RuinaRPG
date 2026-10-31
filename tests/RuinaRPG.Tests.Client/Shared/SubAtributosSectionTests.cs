@@ -18,8 +18,8 @@ public class SubAtributosSectionTests : MudBunitContext
         Iniciativa: 4, Movimentacao: 6, EsquivaNatural: 12, DefesaNatural: 15, ReducaoFisica: 2, ReducaoMagica: 1,
         PesoAtual: null, PesoMaximo: null, EficienciaElemental: 3, DanoElemental: 2);
 
-    private IRenderedComponent<SubAtributosSection> RenderSecao(bool comAfinidade = true, string? afinidade = "Fogo",
-        Action<string?>? afinidadeChanged = null, Action<string>? coberturaChanged = null) =>
+    private IRenderedComponent<SubAtributosSection> RenderSecao(bool comAfinidade = true, int? afinidade = 2,
+        Action<int?>? afinidadeChanged = null, Action<string>? coberturaChanged = null) =>
         Render<SubAtributosSection>(p => p
             .Add(x => x.SubAtributos, Valores)
             .Add(x => x.Cobertura, "Parcial")
@@ -70,11 +70,11 @@ public class SubAtributosSectionTests : MudBunitContext
     [Fact]
     public void The_Afinidade_and_the_two_values_derived_from_it_share_a_block_that_says_how_they_are_derived()
     {
-        var cut = RenderSecao(afinidade: "Agua");
+        var cut = RenderSecao(afinidade: 1);
 
         var bloco = cut.Find(".subatributos-bloco-afinidade");
         bloco.QuerySelector(".subatributos-bloco-titulo")!.TextContent.Trim().Should().Be("Afinidade Elemental");
-        cut.FindComponent<AfinidadeSelect>().Instance.Value.Should().Be("Agua");
+        cut.FindComponent<AfinidadeSelect>().Instance.Value.Should().Be(1);
         bloco.QuerySelector(".subatributo-eficiencia .subatributo-valor")!.TextContent.Trim().Should().Be("3");
         bloco.QuerySelector(".subatributo-eficiencia .subatributo-regra")!.TextContent.Trim().Should().Be("conforme a Tabela de Afinidades");
         bloco.QuerySelector(".subatributo-dano .subatributo-valor")!.TextContent.Trim().Should().Be("2");
@@ -103,12 +103,12 @@ public class SubAtributosSectionTests : MudBunitContext
     [Fact]
     public async Task Choosing_an_Afinidade_notifies_the_sheet()
     {
-        string? escolhida = null;
+        int? escolhida = null;
         var cut = RenderSecao(afinidadeChanged: v => escolhida = v);
 
-        await cut.InvokeAsync(() => cut.FindComponent<AfinidadeSelect>().Instance.ValueChanged.InvokeAsync("Gelo"));
+        await cut.InvokeAsync(() => cut.FindComponent<AfinidadeSelect>().Instance.ValueChanged.InvokeAsync(4));
 
-        escolhida.Should().Be("Gelo");
+        escolhida.Should().Be(4);
     }
 
     [Fact]

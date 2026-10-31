@@ -10,7 +10,7 @@ public record CharacterSheetResponse(
     string? Variante,
     string? Vocacao,
     string? SubVocacao,
-    string? Afinidade,
+    int? Afinidade,
     string? Propriedade,
     int Nivel,
     int Circulo,

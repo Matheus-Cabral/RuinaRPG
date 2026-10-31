@@ -20,7 +20,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Route("api/npc-sheets")]
 [Authorize]
-public sealed class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<NpcSheetsController> logger, NpcSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, ITipoDeFicha<NpcSheet> tipo)
+public sealed class NpcSheetsController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<NpcSheetsController> logger, NpcSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, ITipoDeFicha<NpcSheet> tipo, CatalogoDeAfinidadesService afinidades, AfinidadesDaFicha afinidadesDaFicha, GraduacaoDaFicha graduacaoDaFicha)
     : FichaComLinhagemController<NpcSheet, NpcSheetStats, NpcSheetHistoriaImage>(db, tabelaDeNiveis, tipo, stats, penalidades, hub, logger)
 {
     // Creating a fresh (un-granted) NPC is GM roster curation, not something a player who's been
@@ -80,10 +80,9 @@ public sealed class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider
             return BadRequest("Essa Variante ainda não foi liberada pelo GM.");
         if (!TryParseEnum<Vocacao>(request.Vocacao, out var vocacao))
             return BadRequest("Vocação inválida.");
-        if (!TryParseEnum<AfinidadeElemental>(request.Afinidade, out var afinidade))
-            return BadRequest("Afinidade inválida.");
-        if (afinidade is not null && afinidade != sheet.Afinidade && CaminhoSubElementoRules.EhCaminho(afinidade.Value))
-            return BadRequest("Alma e Vida são Caminhos, não Afinidades.");
+        var afinidade = request.Afinidade;
+        if ((await afinidades.CarregarAsync()).MotivoParaRecusarAfinidade(afinidade, sheet.Afinidade) is { } afinidadeRecusada)
+            return BadRequest(afinidadeRecusada);
         if (!Enum.TryParse<Cobertura>(request.Cobertura, out var cobertura))
             return BadRequest("Cobertura inválida.");
         if (!TryParseEnum<Estrela>(request.Estrela, out var estrela))
@@ -124,7 +123,7 @@ public sealed class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider
         sheet.PossuiCoracaoDeMana = request.PossuiCoracaoDeMana;
         sheet.AfinidadeAdicional = request.AfinidadeAdicional;
         sheet.ExperienciaAtual = request.ExperienciaAtual;
-        // EAPAtual (VIS) é calculado por Nível + Âmbares (NpcSheetStats.EapAtualAsync), como na Ficha de
+        // EAPAtual (VIS) é calculado por Nível + Âmbares (GraduacaoDaFicha.EapAtualAsync), como na Ficha de
         // Personagem: request.EAPAtual é aceito mas ignorado e a coluna NpcSheet.EAPAtual não é mais usada.
         sheet.NucleosRankF = request.NucleosRankF;
         sheet.NucleosRankE = request.NucleosRankE;
@@ -232,15 +231,11 @@ public sealed class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider
         int? abate = ehGm ? XpAwardCalculator.Abate(s.ExperienciaAtual) : null;
         int? assistencia = ehGm ? XpAwardCalculator.Assistencia(s.ExperienciaAtual) : null;
 
-        var vocacao = s.Vocacao ?? Vocacao.Campeao; // no vocação chosen yet → Graduacao is meaningless but must not throw
-        var eapAtual = await Stats.EapAtualAsync(s);
-        var graduacao = s.Vocacao is null ? 0 : GraduacaoCalculator.Compute(vocacao, eapAtual, s.PossuiCoracaoDeMana, rules.CirculoGrauPorEap);
+        var vocacao = s.Vocacao ?? Vocacao.Campeao; // sem Vocação: o rótulo fica "Grau"
+        var (eapAtual, graduacao) = await graduacaoDaFicha.CalcularAsync(s);
         var graduacaoLabel = vocacao is Vocacao.Campeao or Vocacao.Cacador ? "Grau" : "Círculo";
 
-        var linhasDeAfinidade = await Db.NpcAffinities.Where(a => a.SheetId == s.Id)
-            .Select(a => new LinhaDeAfinidade(a.Elemento, a.ElementoValor, a.SubElemento, a.SubElementoValor, a.SegundaEssencia, a.SegundaEssenciaValor))
-            .ToListAsync();
-        var vocacaoArcanaGasta = VocacaoArcanaCalculator.Gasto(linhasDeAfinidade);
+        var (afinidadeGasta, afinidadeMaxima) = await afinidadesDaFicha.OrcamentoAsync<NpcPontosDeAfinidade>(s, graduacao);
 
         // Totais exibidos: Artefatos + penalidades de equipamento ativas e as Condições ativas (Nenhum numa ficha do GM, sem dono).
         var (vitalidadeMaximo, focoMaximo, adrenalinaMaximo, estresseMaximo) = await Stats.MaximosAsync(s, await Tipo.CondicoesAsync(s));
@@ -249,7 +244,7 @@ public sealed class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider
 
         return new NpcSheetResponse(
             s.Id.ToString(), s.OwnerId?.ToString(), imageUrl,
-            s.Nome, s.Linhagem?.ToString(), s.Variante?.ToString(), s.Vocacao?.ToString(), s.SubVocacao, s.Afinidade?.ToString(), s.Propriedade,
+            s.Nome, s.Linhagem?.ToString(), s.Variante?.ToString(), s.Vocacao?.ToString(), s.SubVocacao, s.Afinidade, s.Propriedade,
             s.Nivel, s.Circulo, s.Grau, s.PossuiCoracaoDeMana, s.ExperienciaAtual, eapAtual,
             s.NucleosRankF, s.NucleosRankE, s.NucleosRankD, s.NucleosRankC, s.NucleosRankB, s.NucleosRankA, s.NucleosRankS,
             s.PontosDeIgnicaoAtual, s.PontosDeIgnicaoTotal,
@@ -258,7 +253,7 @@ public sealed class NpcSheetsController(RuinaRpgDbContext db, IRulesDataProvider
             vitalidadeMaximo, focoMaximo, adrenalinaMaximo, estresseMaximo,
             campaignId?.ToString(), await NomeDaCampanhaAsync(Db, campaignId), s.ImageId?.ToString(), s.ArcaRolada,
             s.Estrela?.ToString(), s.SinaAtual, s.HistoricoId?.ToString(), s.EquipmentKitId?.ToString(), s.Historia,
-            s.AfinidadeAdicional, vocacaoArcanaGasta, VocacaoArcanaCalculator.Maxima(s.Vocacao, graduacao, s.AfinidadeAdicional, rules.CirculoGrauPorEap),
+            s.AfinidadeAdicional, afinidadeGasta, afinidadeMaxima,
             abate, assistencia);
     }
 }

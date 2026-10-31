@@ -18,7 +18,8 @@ public class RequisitosFormModel
     public string? Variante { get; set; }
     public int? Graduacao { get; set; }
     public bool CoracaoDeMana { get; set; }
-    public string? Afinidade { get; set; }
+    /// <summary>Id do elemento do catálogo de Afinidades.</summary>
+    public int? Afinidade { get; set; }
     public string? Estrela { get; set; }
     public string? HistoricoId { get; set; }
     public List<RequisitoMinimoLinha> Atributos { get; set; } = new();
@@ -35,7 +36,7 @@ public class RequisitosFormModel
 
     public RequisitosDePassivaDto ToDto() => new(
         Nivel, Blank(Vocacao), Blank(Classe), Blank(Linhagem), Blank(Variante), Graduacao, CoracaoDeMana ? true : null,
-        Blank(Afinidade), Blank(Estrela), Blank(HistoricoId), Dtos(Atributos), Dtos(SubAtributos), Dtos(Pericias));
+        Afinidade, Blank(Estrela), Blank(HistoricoId), Dtos(Atributos), Dtos(SubAtributos), Dtos(Pericias));
 
     private static string? Blank(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
     private static List<RequisitoMinimoLinha> Linhas(List<RequisitoMinimoDto>? items) =>

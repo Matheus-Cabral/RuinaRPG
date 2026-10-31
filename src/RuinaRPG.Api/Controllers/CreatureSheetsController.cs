@@ -18,7 +18,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Route("api/creature-sheets")]
 [Authorize]
-public sealed class CreatureSheetsController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<CreatureSheetsController> logger, CreatureSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, ITipoDeFicha<CreatureSheet> tipo)
+public sealed class CreatureSheetsController(RuinaRpgDbContext db, ITabelaDeNiveis tabelaDeNiveis, IHubContext<EncounterHub> hub, ILogger<CreatureSheetsController> logger, CreatureSheetStats stats, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, ITipoDeFicha<CreatureSheet> tipo, CatalogoDeAfinidadesService afinidades)
     : FichasController<CreatureSheet, CreatureSheetStats>(db, tabelaDeNiveis, tipo, stats, penalidades, hub, logger)
 {
     // Creating a fresh (un-granted) Creature is GM roster curation, not something a player who's
@@ -72,10 +72,9 @@ public sealed class CreatureSheetsController(RuinaRpgDbContext db, ITabelaDeNive
 
         if (!TryParseEnum<Arquetipo>(request.Arquetipo, out var arquetipo))
             return BadRequest("Arquetipo inválido.");
-        if (!TryParseEnum<AfinidadeElemental>(request.Afinidade, out var afinidade))
-            return BadRequest("Afinidade inválida.");
-        if (afinidade is not null && afinidade != sheet.Afinidade && CaminhoSubElementoRules.EhCaminho(afinidade.Value))
-            return BadRequest("Alma e Vida são Caminhos, não Afinidades.");
+        var afinidade = request.Afinidade;
+        if ((await afinidades.CarregarAsync()).MotivoParaRecusarAfinidade(afinidade, sheet.Afinidade) is { } afinidadeRecusada)
+            return BadRequest(afinidadeRecusada);
         if (!TryParseEnum<Rank>(request.Rank, out var rank))
             return BadRequest("Rank inválido.");
         if (!Enum.TryParse<Cobertura>(request.Cobertura, out var cobertura))
@@ -171,7 +170,7 @@ public sealed class CreatureSheetsController(RuinaRpgDbContext db, ITabelaDeNive
 
         return new CreatureSheetResponse(
             s.Id.ToString(), s.OwnerId?.ToString(), imageUrl,
-            s.Nome, s.Raca, s.Arquetipo?.ToString(), s.SubArquetipo, s.Afinidade?.ToString(),
+            s.Nome, s.Raca, s.Arquetipo?.ToString(), s.SubArquetipo, s.Afinidade,
             s.Rank?.ToString(), s.Nivel, s.ExperienciaAtual, abate, assistencia,
             s.PontosDeIgnicao, s.VitalidadeAtual, s.FocoAtual, s.AdrenalinaAtual, s.Cobertura.ToString(),
             vitalidadeMaximo, focoMaximo, adrenalinaMaximo,

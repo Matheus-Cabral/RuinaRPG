@@ -54,6 +54,8 @@ public class AuditoriaCondicoesTests : MudBunitContext
                 _calls.Add((request.Method, path, body));
             if (request.Method == HttpMethod.Get && path.EndsWith("/auth/me"))
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new MeResponse("u1", "Usuario", "GM", _auditor, null, false)) };
+            if (ElementosDeTeste.EhCatalogo(request))
+                return ElementosDeTeste.Resposta();
             if (request.Method == HttpMethod.Get && path.EndsWith("/pericias"))
                 return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(Pericias) };
             if (request.Method == HttpMethod.Get && path.EndsWith("/condicoes"))
@@ -172,7 +174,8 @@ public class AuditoriaCondicoesTests : MudBunitContext
         Opcoes(cut, "Específico").Should().Equal("Todas", "Atletismo", "Furtividade");
 
         await Escolher(cut, "Alvo", 0, "DanoElemental");
-        Opcoes(cut, "Específico").Should().Equal("Todos", "Ar", "Água", "Fogo", "Terra");
+        // Os elementos do catálogo que não são Caminho, na ordem do catálogo (os ids).
+        Opcoes(cut, "Específico").Should().Equal(["Todos", .. ElementosDeTeste.Semeados.Where(e => e.Tipo != "Caminho").Select(e => e.Nome)]);
     }
 
     [Fact]
@@ -335,6 +338,44 @@ public class AuditoriaCondicoesTests : MudBunitContext
         cut.FindAll("button").First(b => b.TextContent.Contains("Salvar")).Click();
         await Task.Delay(50);
         _calls.Single(c => c.Method == HttpMethod.Put).Body.Should().Contain("\"Apagada\"");
+    }
+
+    // Uma linha antiga que cita um elemento fora do catálogo (removido, ou um nome que a conversão não casou) continua
+    // visível, marcada, e guarda o valor dela até o Auditor escolher outro.
+    [Theory]
+    [InlineData("AfinidadeElemental")]
+    [InlineData("DanoElemental")]
+    public async Task A_line_whose_Elemento_is_not_in_the_catalog_shows_a_flagged_option_and_keeps_the_value(string alvo)
+    {
+        _catalogo = [new("c3", "Queimado", "", "Lentidao", null,
+            [new CondicaoModificadorDto(alvo, "99", "Fixo", -1, null)], [])];
+        var cut = RenderPage();
+        await Task.Delay(50);
+
+        cut.Find("button[aria-label='Editar Queimado']").Click();
+
+        Escolha(cut, "Específico").Should().Be("99");
+        var opcoes = Opcoes(cut, "Específico");
+        opcoes.Should().Contain("Fogo").And.NotContain("Alma");
+        opcoes.Last().Should().Be("(Elemento fora do catálogo)");
+
+        cut.FindAll("button").First(b => b.TextContent.Contains("Salvar")).Click();
+        await Task.Delay(50);
+        _calls.Single(c => c.Method == HttpMethod.Put).Body.Should().Contain("\"99\"");
+    }
+
+    [Fact]
+    public async Task A_line_with_an_Elemento_of_the_catalog_has_no_flagged_option()
+    {
+        _catalogo = [new("c3", "Queimado", "", "Lentidao", null,
+            [new CondicaoModificadorDto("AfinidadeElemental", "2", "Fixo", -1, null)], [])];
+        var cut = RenderPage();
+        await Task.Delay(50);
+
+        cut.Find("button[aria-label='Editar Queimado']").Click();
+
+        Escolha(cut, "Específico").Should().Be("2");
+        Opcoes(cut, "Específico").Should().NotContain("(Elemento fora do catálogo)");
     }
 
     [Fact]

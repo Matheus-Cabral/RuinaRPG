@@ -229,8 +229,8 @@ public class CampaignGrantsController(RuinaRpgDbContext db, IPericiaCatalogo per
             db.NpcAttributes.Add(new() { Id = Guid.NewGuid(), SheetId = copy.Id, Atributo = a.Atributo, Gasto = a.Gasto, Bonus = a.Bonus, TemMaestria = a.TemMaestria });
         foreach (var s in await db.NpcSkills.Where(x => x.SheetId == sourceId).ToListAsync())
             db.NpcSkills.Add(new() { Id = Guid.NewGuid(), SheetId = copy.Id, PericiaId = s.PericiaId, Gasto = s.Gasto });
-        foreach (var a in await db.NpcAffinities.Where(x => x.SheetId == sourceId).ToListAsync())
-            db.NpcAffinities.Add(new() { Id = Guid.NewGuid(), SheetId = copy.Id, Elemento = a.Elemento, ElementoValor = a.ElementoValor, SubElemento = a.SubElemento, SubElementoValor = a.SubElementoValor, SegundaEssencia = a.SegundaEssencia, SegundaEssenciaValor = a.SegundaEssenciaValor, Experiencia = a.Experiencia });
+        foreach (var a in await db.NpcPontosDeAfinidade.Where(x => x.SheetId == sourceId).ToListAsync())
+            db.NpcPontosDeAfinidade.Add(new() { Id = Guid.NewGuid(), SheetId = copy.Id, ElementoId = a.ElementoId, Pontos = a.Pontos, Experiencia = a.Experiencia });
         foreach (var r in await db.NpcRunes.Where(x => x.SheetId == sourceId).ToListAsync())
             db.NpcRunes.Add(new() { Id = Guid.NewGuid(), SheetId = copy.Id, Nome = r.Nome, Descricao = r.Descricao, Grau = r.Grau, Tipo = r.Tipo, Disciplina = r.Disciplina, ImageId = r.ImageId });
         foreach (var m in await db.NpcMasteries.Where(x => x.SheetId == sourceId).ToListAsync())

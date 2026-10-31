@@ -1,40 +1,36 @@
 @using MudBlazor
+@using RuinaRPG.Client.Services
+@inject CatalogoDeElementos Catalogo
 
-<MudSelect T="string" Label="Afinidade" Value="Value" ValueChanged="OnValueChangedAsync" Placeholder="Escolha uma Afinidade">
+@* O campo Afinidade (Ficha de Personagem 1.a/2.b, Criatura 1.a, requisito de Passiva): as opções são os elementos do
+   catálogo do Auditor que não são Caminho; o valor é o id do elemento. *@
+<MudSelect T="int?" Label="Afinidade" Value="Value" ValueChanged="OnValueChangedAsync" Placeholder="Escolha uma Afinidade">
     @foreach (var (valor, rotulo) in Opcoes)
     {
-        <MudSelectItem Value="@valor">@rotulo</MudSelectItem>
+        <MudSelectItem T="int?" Value="@valor">@rotulo</MudSelectItem>
     }
 </MudSelect>
 
 @code {
-    [Parameter] public string? Value { get; set; }
-    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
-    // null (padrão) mostra todos os 16 valores. Personagem e NPC passam a lista completa Afinidades
-    // explicitamente; Criatura usa o padrão (a mesma lista). Não há filtro por Vocação em nenhuma.
-    [Parameter] public (string Valor, string Rotulo)[]? OpcoesPermitidas { get; set; }
+    [Parameter] public int? Value { get; set; }
+    [Parameter] public EventCallback<int?> ValueChanged { get; set; }
 
-    // R0001 1.a — 4 Elementos + 12 Sub-Elementos da Matriz Elemental (Alma e Vida são Caminhos).
-    public static readonly (string Valor, string Rotulo)[] Afinidades =
-    [
-        ("Terra", "Terra"), ("Agua", "Água"), ("Fogo", "Fogo"), ("Ar", "Ar"), ("Gelo", "Gelo"),
-        ("Flora", "Flora"), ("Ferro", "Ferro"), ("Raio", "Raio"), ("Prever", "Prever"),
-        ("Purificar", "Purificar"), ("Ecomancia", "Ecomancia"), ("Hemomancia", "Hemomancia"), ("Curar", "Curar"),
-        ("Aprimorar", "Aprimorar"), ("Necromancia", "Necromancia"), ("Invocacao", "Invocação"),
-    ];
+    protected override async Task OnInitializedAsync() => await Catalogo.CarregarAsync();
 
-    // Alma e Vida são Caminhos, não Afinidades — só aparecem se a ficha já os tem salvos, pra o select
-    // não ficar em branco.
-    private (string Valor, string Rotulo)[] Opcoes
+    // Um Caminho (ou elemento fora da lista) já salvo continua aparecendo, para o select não ficar em branco,
+    // mas não é oferecido para uma escolha nova.
+    private IReadOnlyList<(int? Valor, string Rotulo)> Opcoes
     {
         get
         {
-            var lista = OpcoesPermitidas ?? Afinidades;
-            return Value is "Alma" or "Vida" && lista.All(o => o.Valor != Value) ? [.. lista, (Value, Value)] : lista;
+            var lista = Catalogo.Afinidades.Select(e => ((int?)e.Id, e.Nome)).ToList();
+            if (Value is { } atual && lista.All(o => o.Item1 != atual))
+                lista.Add((atual, Catalogo.Nome(atual)));
+            return lista;
         }
     }
 
-    private async Task OnValueChangedAsync(string? novoValor)
+    private async Task OnValueChangedAsync(int? novoValor)
     {
         Value = novoValor;
         await ValueChanged.InvokeAsync(Value);

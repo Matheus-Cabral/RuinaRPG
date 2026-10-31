@@ -3,7 +3,7 @@ using RuinaRPG.Domain.CharacterSheets;
 
 namespace RuinaRPG.Infrastructure.NpcSheets;
 
-public class NpcSheet : IFichaComLinhagem, IFichaComEquipagem, IFichaConcedivel
+public class NpcSheet : IFichaComLinhagem, IFichaComEquipagem, IFichaConcedivel, IFichaComAfinidades
 {
     // 1.a Identidade
     public Guid Id { get; set; }
@@ -15,7 +15,8 @@ public class NpcSheet : IFichaComLinhagem, IFichaComEquipagem, IFichaConcedivel
     public Variante? Variante { get; set; }
     public Vocacao? Vocacao { get; set; }
     public string? SubVocacao { get; set; }
-    public AfinidadeElemental? Afinidade { get; set; }
+    /// <summary>Id do elemento no catálogo de Afinidades (FK → ElementosDeAfinidade); nunca um Caminho escolhido de novo.</summary>
+    public int? Afinidade { get; set; }
     public string? Propriedade { get; set; }
     public Estrela? Estrela { get; set; }
     public Guid? HistoricoId { get; set; }

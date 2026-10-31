@@ -18,7 +18,7 @@ namespace RuinaRPG.Tests.Client;
 /// </summary>
 public abstract class MudBunitContext : BunitContext, IAsyncLifetime
 {
-    /// <summary>The fake behind every test's SecretNoteNotifier — raise hub events through it.</summary>
+    /// <summary>The fake behind every test's AvisosDoHub — raise hub events through it.</summary>
     protected FakeNotificationConnection NotificationConnection { get; } = new();
 
     /// <summary>The fake behind the encounter page's hub connection.</summary>
@@ -31,10 +31,15 @@ public abstract class MudBunitContext : BunitContext, IAsyncLifetime
         // HistoricoSelect and RequisitosDePassivaEditor inject it. It resolves the HttpClient each test
         // registers, so a test whose page needs Perícia names answers GET pericias in its fake handler.
         Services.AddScoped<PericiaCatalogo>();
+        // O catálogo de elementos de Afinidade (AfinidadeSelect, Condições, Modificador de Dano): idem, GET afinidades/catalogo.
+        Services.AddScoped<CatalogoDeElementos>();
+        // Um HttpClient padrão que só responde o catálogo de elementos, para os componentes com AfinidadeSelect renderizarem
+        // sem um handler próprio; o teste que registra o seu HttpClient substitui este (o último registro vale).
+        Services.AddSingleton(ElementosDeTeste.Cliente());
         // Same registrations as the app's Program.cs: MainLayout, NavMenu and the player's campaign
-        // pages inject SecretNoteNotifier. The connection is a fake — bUnit can't host SignalR.
+        // pages inject AvisosDoHub. The connection is a fake — bUnit can't host SignalR.
         Services.AddSingleton<INotificationConnection>(NotificationConnection);
-        Services.AddScoped<SecretNoteNotifier>();
+        Services.AddScoped<AvisosDoHub>();
         Services.AddSingleton<IEncounterConnection>(EncounterConnection);
         // MainLayout renders NewVersionNotice, which injects the watcher. "dev" makes it inert (no HTTP).
         Services.AddScoped(_ => new NewVersionWatcher(new HttpClient { BaseAddress = new Uri("https://localhost/") }, "dev"));

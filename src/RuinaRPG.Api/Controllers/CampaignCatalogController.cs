@@ -1,3 +1,4 @@
+using RuinaRPG.Api.Services;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -29,7 +30,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/campaigns/{campaignId}")]
-public class CampaignCatalogController(RuinaRpgDbContext db, DurabilidadePorRankProvider durabilidades, IPericiaCatalogo pericias) : ControllerBase
+public class CampaignCatalogController(RuinaRpgDbContext db, DurabilidadePorRankProvider durabilidades, IPericiaCatalogo pericias, CatalogoDeAfinidadesService afinidades) : ControllerBase
 {
     [HttpGet("available-items")]
     public async Task<ActionResult<List<ItemResponse>>> AvailableItems(Guid campaignId, [FromQuery] string? nome, [FromQuery] string? tipo)
@@ -168,7 +169,7 @@ public class CampaignCatalogController(RuinaRpgDbContext db, DurabilidadePorRank
         {
             Requisitos = RequisitosDePassivaMapper.ToDto(item.Requisitos, porId),
             PenalidadeDeRequisitos = EquipamentoRequisitosMapper.ToDto(item.PenalidadeDeRequisitos, porId),
-            RequisitosPorExtenso = PassivaRequisitosEvaluator.Descrever(item.Requisitos, null, NomeDaPericia).ToList(),
+            RequisitosPorExtenso = PassivaRequisitosEvaluator.Descrever(item.Requisitos, null, NomeDaPericia, (await afinidades.CarregarAsync()).NomeDe).ToList(),
             PenalidadePorExtenso = PenalidadesDeEquipamento.Descrever(item.PenalidadeDeRequisitos, NomeDaPericia).ToList(),
         };
     }

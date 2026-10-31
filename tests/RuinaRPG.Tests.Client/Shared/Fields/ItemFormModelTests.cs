@@ -10,7 +10,7 @@ public class ItemFormModelTests
 {
     private static RequisitosDePassivaDto Requisitos() => new(
         Nivel: 5, Vocacao: "Guerreiro", Classe: "Lutador", Linhagem: "Humano", Variante: "Sol", Graduacao: 2,
-        CoracaoDeMana: true, Afinidade: "Fogo", Estrela: "Alfa", HistoricoId: "hist-1",
+        CoracaoDeMana: true, Afinidade: 2, Estrela: "Alfa", HistoricoId: "hist-1",
         Atributos: [new RequisitoMinimoDto("Forca", 3)],
         SubAtributos: [new RequisitoMinimoDto("Iniciativa", 2)],
         Pericias: [new RequisitoMinimoDto("Atletismo", 4)]);

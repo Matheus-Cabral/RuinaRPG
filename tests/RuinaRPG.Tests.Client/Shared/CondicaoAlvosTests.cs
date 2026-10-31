@@ -1,6 +1,7 @@
 using FluentAssertions;
 using RuinaRPG.Client.Shared;
 using RuinaRPG.Contracts.Rules;
+using RuinaRPG.Domain.Afinidades;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Condicoes;
 using RuinaRPG.Domain.Items;
@@ -16,7 +17,15 @@ public class CondicaoAlvosTests
         new(2, "Furtividade", "Furtividade", null, null, true, false)
     ];
 
-    private static List<string> Valores(AlvoDeCondicao alvo) => CondicaoAlvos.Especificos(alvo, Pericias).Select(o => o.Valor).ToList();
+    // Um recorte do catálogo de elementos que não são Caminho (os ids do catálogo), mais um criado pelo Auditor.
+    private static readonly ElementoDoCatalogo[] Elementos =
+    [
+        new(1, "Água", TipoDeElemento.Base, null), new(2, "Fogo", TipoDeElemento.Base, null), new(19, "Luz", TipoDeElemento.SubElemento, null)
+    ];
+
+    private static IReadOnlyList<OpcaoDeCondicao> Especificos(AlvoDeCondicao alvo) => CondicaoAlvos.Especificos(alvo, Pericias, Elementos);
+
+    private static List<string> Valores(AlvoDeCondicao alvo) => Especificos(alvo).Select(o => o.Valor).ToList();
 
     [Fact]
     public void Every_Alvo_has_a_portuguese_label()
@@ -33,7 +42,7 @@ public class CondicaoAlvosTests
     [Fact]
     public void Atributo_offers_exactly_the_eight_attributes_with_accents_and_no_general_choice()
     {
-        var opcoes = CondicaoAlvos.Especificos(AlvoDeCondicao.Atributo, Pericias);
+        var opcoes = Especificos(AlvoDeCondicao.Atributo);
         opcoes.Select(o => o.Valor).Should().BeEquivalentTo(Enum.GetNames<Atributo>());
         opcoes.Single(o => o.Valor == "Forca").Rotulo.Should().Be("Força");
         CondicaoAlvos.ExigeEspecifico(AlvoDeCondicao.Atributo).Should().BeTrue();
@@ -44,7 +53,7 @@ public class CondicaoAlvosTests
     [InlineData(AlvoDeCondicao.Maestria)]
     public void Pericia_and_Maestria_offer_Todas_then_every_active_Pericia(AlvoDeCondicao alvo)
     {
-        var opcoes = CondicaoAlvos.Especificos(alvo, Pericias);
+        var opcoes = Especificos(alvo);
         opcoes.Select(o => o.Valor).Should().Equal("", "Atletismo", "Furtividade");
         opcoes[0].Rotulo.Should().Be("Todas");
         CondicaoAlvos.ExigeEspecifico(alvo).Should().BeFalse();
@@ -71,11 +80,13 @@ public class CondicaoAlvosTests
     [Theory]
     [InlineData(AlvoDeCondicao.AfinidadeElemental)]
     [InlineData(AlvoDeCondicao.DanoElemental)]
-    public void Elemental_targets_offer_Todos_then_the_four_elements(AlvoDeCondicao alvo)
+    public void Elemento_criado_aparece_nos_pickers(AlvoDeCondicao alvo)
     {
-        Valores(alvo).Should().Equal(new[] { "" }.Concat(Enum.GetNames<Elemento>()));
-        CondicaoAlvos.Especificos(alvo, Pericias).Single(o => o.Valor == "Agua").Rotulo.Should().Be("Água");
-        CondicaoAlvos.Especificos(alvo, Pericias)[0].Rotulo.Should().Be("Todos");
+        // Todos, depois os elementos do catálogo dados (sem Caminho), pelo id em texto e com o nome do catálogo.
+        Valores(alvo).Should().Equal("", "1", "2", "19");
+        Especificos(alvo).Single(o => o.Valor == "1").Rotulo.Should().Be("Água");
+        Especificos(alvo).Single(o => o.Valor == "19").Rotulo.Should().Be("Luz");
+        Especificos(alvo)[0].Rotulo.Should().Be("Todos");
     }
 
     [Fact]

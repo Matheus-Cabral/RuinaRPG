@@ -31,4 +31,12 @@ public class ContaDeJogadorTests
         foreach (var acao in Enum.GetValues<AcaoDeConta>())
             ContaDeJogador.Aplicar(EstadoDaConta.Excluida, acao).Should().BeNull();
     }
+
+    [Fact]
+    public void So_a_conta_Ativa_pode_entrar()
+    {
+        ContaDeJogador.PodeEntrar(EstadoDaConta.Ativa).Should().BeTrue();
+        ContaDeJogador.PodeEntrar(EstadoDaConta.Desativada).Should().BeFalse();
+        ContaDeJogador.PodeEntrar(EstadoDaConta.Excluida).Should().BeFalse();
+    }
 }

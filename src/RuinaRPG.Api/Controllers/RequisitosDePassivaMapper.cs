@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Contracts.SpellsAndAbilities;
+using RuinaRPG.Domain.Afinidades;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.SpellsAndAbilities;
 using RuinaRPG.Infrastructure.Persistence;
@@ -10,7 +11,7 @@ namespace RuinaRPG.Api.Controllers;
 /// <summary>Converte os requisitos de uma Passiva entre o contrato (texto) e o domínio, validando.</summary>
 public static class RequisitosDePassivaMapper
 {
-    public static bool TryParse(RequisitosDePassivaDto? dto, IReadOnlyList<PericiaDefinicao> pericias, out RequisitosDePassiva? requisitos, out string? erro)
+    public static bool TryParse(RequisitosDePassivaDto? dto, IReadOnlyList<PericiaDefinicao> pericias, CatalogoDeAfinidades afinidades, out RequisitosDePassiva? requisitos, out string? erro)
     {
         requisitos = null;
         erro = null;
@@ -20,9 +21,13 @@ public static class RequisitosDePassivaMapper
         if (!TryEnum<Vocacao>(dto.Vocacao, "Vocação", out var vocacao, ref erro)
             || !TryEnum<Linhagem>(dto.Linhagem, "Linhagem", out var linhagem, ref erro)
             || !TryEnum<Variante>(dto.Variante, "Variante", out var variante, ref erro)
-            || !TryEnum<AfinidadeElemental>(dto.Afinidade, "Afinidade", out var afinidade, ref erro)
             || !TryEnum<Estrela>(dto.Estrela, "Estrela", out var estrela, ref erro))
             return false;
+
+        // A Afinidade é o id de um elemento do catálogo do Auditor (Auditoria de Regras R0018).
+        var afinidade = dto.Afinidade;
+        if (afinidade is { } afinidadeId && afinidades.Elementos.All(e => e.Id != afinidadeId))
+            return Fail($"Elemento de afinidade inexistente: {afinidadeId}.", out erro);
 
         var classe = string.IsNullOrWhiteSpace(dto.Classe) ? null : dto.Classe.Trim();
         if (classe is not null && vocacao is null)
@@ -61,7 +66,7 @@ public static class RequisitosDePassivaMapper
 
     public static RequisitosDePassivaDto? ToDto(RequisitosDePassiva? r, IReadOnlyDictionary<int, PericiaDefinicao> porId) => r is null ? null : new(
         r.Nivel, r.Vocacao?.ToString(), r.Classe, r.Linhagem?.ToString(), r.Variante?.ToString(), r.Graduacao, r.CoracaoDeMana,
-        r.Afinidade?.ToString(), r.Estrela?.ToString(), r.HistoricoId?.ToString(),
+        r.Afinidade, r.Estrela?.ToString(), r.HistoricoId?.ToString(),
         r.Atributos.Select(a => new RequisitoMinimoDto(a.Atributo.ToString(), a.Minimo)).ToList(),
         r.SubAtributos.Select(s => new RequisitoMinimoDto(s.SubAtributo.ToString(), s.Minimo)).ToList(),
         r.Pericias.Where(p => porId.TryGetValue(p.Pericia, out var def) && !def.IsDeleted)

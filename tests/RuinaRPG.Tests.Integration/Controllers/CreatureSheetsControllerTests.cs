@@ -50,7 +50,7 @@ public class CreatureSheetsControllerTests(ApiFixture fixture) : FichaTestes<Tip
     }
 
     internal static UpdateCreatureSheetRequest ValidUpdate() => new(
-        null, "Lobo das Ruínas", "Lobo", "Fisico", "Predador", "Terra",
+        null, "Lobo das Ruínas", "Lobo", "Fisico", "Predador", 0,
         "F", 3, 200, 5, 12, 8, 10, "Parcial");
 
     [Fact]
@@ -355,11 +355,12 @@ public class CreatureSheetsControllerTests(ApiFixture fixture) : FichaTestes<Tip
         bodyAll[0].Rank.Should().Be("F");
     }
 
-    // Alma e Vida são Caminhos, não Afinidades — Requisitos - Ficha de Personagem 1.a.
+    // Os Caminhos (Alma, Vida, Mundano) não são Afinidades — Requisitos - Ficha de Personagem 1.a.
     [Theory]
-    [InlineData("Alma")]
-    [InlineData("Vida")]
-    public async Task Update_rejects_a_new_Afinidade_of_Alma_or_Vida(string afinidade)
+    [InlineData(9)]  // Alma
+    [InlineData(14)] // Vida
+    [InlineData(18)] // Mundano
+    public async Task Update_rejects_a_new_Afinidade_that_is_a_Caminho(int afinidade)
     {
         var gmToken = await RegisterGmAndGetTokenAsync($"CaminhoAfinGmACreatureSheets{afinidade}", $"caminhoafinACreatureSheets{afinidade}@teste.com");
         var sheetId = await CreateSheetAsync(gmToken);
@@ -380,12 +381,12 @@ public class CreatureSheetsControllerTests(ApiFixture fixture) : FichaTestes<Tip
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
             var entity = await db.CreatureSheets.SingleAsync(s => s.Id == Guid.Parse(sheetId));
-            entity.Afinidade = RuinaRPG.Domain.CharacterSheets.AfinidadeElemental.Vida;
+            entity.Afinidade = 14;
             await db.SaveChangesAsync();
         }
 
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{sheetId}", gmToken,
-            ValidUpdate() with { Afinidade = "Vida" }));
+            ValidUpdate() with { Afinidade = 14 }));
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }

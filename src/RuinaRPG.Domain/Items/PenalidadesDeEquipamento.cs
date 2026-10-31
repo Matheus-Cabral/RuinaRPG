@@ -15,14 +15,14 @@ public static class PenalidadesDeEquipamento
     /// Os equipamentos em uso com requisito pendente. <paramref name="fichaSemPenalidades"/> tem de ser o
     /// retrato da ficha SEM penalidades: assim uma penalidade nunca faz outro equipamento falhar.
     /// </summary>
-    public static List<PenalidadeAtiva> Ativas(IEnumerable<EquipamentoEmUso> emUso, FichaParaRequisitos fichaSemPenalidades, Func<int, string> nomeDaPericia)
+    public static List<PenalidadeAtiva> Ativas(IEnumerable<EquipamentoEmUso> emUso, FichaParaRequisitos fichaSemPenalidades, Func<int, string> nomeDaPericia, Func<int, string> nomeDoElemento)
     {
         var ativas = new List<PenalidadeAtiva>();
         foreach (var equipamento in emUso)
         {
             if (equipamento.Requisitos is null)
                 continue;
-            var pendencias = PassivaRequisitosEvaluator.Pendencias(equipamento.Requisitos, fichaSemPenalidades, nomeDoHistoricoExigido: null, nomeDaPericia);
+            var pendencias = PassivaRequisitosEvaluator.Pendencias(equipamento.Requisitos, fichaSemPenalidades, nomeDoHistoricoExigido: null, nomeDaPericia, nomeDoElemento);
             if (pendencias.Count > 0)
                 ativas.Add(new PenalidadeAtiva(equipamento.Nome, pendencias, equipamento.Penalidade));
         }

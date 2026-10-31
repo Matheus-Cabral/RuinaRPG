@@ -243,7 +243,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Variante | enum, nullable | 1.a |
 | Vocacao | enum, nullable | 1.a |
 | SubVocacao | string, nullable | 1.a |
-| Afinidade | enum AfinidadeElemental, nullable | 1.a |
+| Afinidade | FK → ElementosDeAfinidade (id estável), nullable | 1.a — o inteiro gravado é o mesmo do antigo enum `AfinidadeElemental` (Terra=0 … Invocacao=17); referência ao catálogo, sem conversão |
 | Propriedade | string, nullable | 1.a |
 | Estrela | enum, nullable | Antecedentes (R0006) — uma das Estrelas de "[[As estrelas alkerianas]]" |
 | HistoricoId | FK → Historicos, nullable (`SetNull`) | Antecedentes — referência ao vivo (ver legenda), nenhum campo é copiado para a ficha |
@@ -252,7 +252,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 | Nivel | int | 1.b |
 | Circulo, Grau | int | 1.b — **vestigiais**: nada as grava (ficam 0); a Graduação exibida é computada em tempo de leitura a partir de `EAPAtual`/`Vocacao` |
 | PossuiCoracaoDeMana | bool | 1.b |
-| AfinidadeAdicional | int, default 0 | 2.c / R0007 — soma-se ao máximo de Vocação Arcana; o gasto e o máximo são computados em tempo de leitura |
+| AfinidadeAdicional | int, default 0 | 2.c / R0007 — soma-se ao total do Círculo; o gasto (soma dos pontos) e o máximo são computados em tempo de leitura |
 | ExperienciaAtual | int | 1.b |
 | EAPAtual | int | 1.b — **vestigial**: nem lida nem gravada; o VIS Atual exibido é computado em tempo de leitura (base do Nível na tabela de EAP + Âmbares Absorvidos por Rank) |
 | NucleosRankF..NucleosRankS | int × 7 | 1.b (Âmbares Absorvidos) |
@@ -298,19 +298,34 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 
 *(Modificador e Total não são colunas — são calculados.)*
 
-**CharacterAffinities** — lista incremental (2.c). `SubElemento` é derivado pelo servidor a partir da Matriz Elemental (interseção de `Elemento` com `SegundaEssencia`) — ver Ficha de Personagem 2.c.
+**CharacterPontosDeAfinidade** — pontos por elemento (2.c), uma linha por (ficha, elemento) com pontos ou Experiência. Substitui a antiga `CharacterAffinities` (linhas Essência 1/Essência 2/Sub-Elemento), convertida pela migration `AfinidadesPorElemento` da 2.2.0 e removida, com `NpcAffinities`, pela `RemoverLinhasDeAfinidade`.
 
 | Coluna | Tipo |
 |---|---|
 | Id | PK |
 | CharacterSheetId | FK |
-| Elemento | enum, nullable |
-| ElementoValor | int, nullable |
-| SubElemento | enum, nullable |
-| SubElementoValor | int, nullable |
-| SegundaEssencia | enum EssenciaBasica (Ar, Água, Fogo, Terra, Alma, Vida, Mundano), nullable |
-| SegundaEssenciaValor | int, nullable |
+| ElementoId | FK → ElementosDeAfinidade |
+| Pontos | int, >= 0 |
 | Experiencia | int, nullable |
+
+Único por (CharacterSheetId, ElementoId); `ElementoId` com `Restrict` (um elemento com pontos não sai do catálogo). O gasto da ficha é a soma de `Pontos`. Uma linha que volta a 0 pontos sem Experiência é apagada: a tabela só guarda os elementos em que a ficha tem algo.
+
+**ElementosDeAfinidade** — o catálogo de elementos, mantido pelo Auditor ("[[Requisitos - Auditoria de Regras]]" R0018/R0019). Um só catálogo para a ficha, a Criatura, as Condições e as Passivas.
+
+| Coluna | Tipo |
+|---|---|
+| Id | PK (identidade; os criados pelo Auditor continuam a partir de 19), estável: os 18 ids de hoje são os inteiros do antigo `AfinidadeElemental` (Terra=0, Agua=1, Fogo=2, Ar=3, Gelo=4, Flora=5, Ferro=6, Raio=7, Prever=8, Alma=9, Purificar=10, Ecomancia=11, Hemomancia=12, Curar=13, Vida=14, Aprimorar=15, Necromancia=16, Invocacao=17); **Mundano = 18** |
+| Nome | string, único |
+| Tipo | enum `TipoDeElemento` (texto): Base \| Caminho \| SubElemento |
+| Teto | int, nullable — >= 1 quando preenchido (NULL = sem limite) |
+
+**CruzamentosDeAfinidade** — R0020: `Id` (PK), `ElementoAId`, `ElementoBId` (FKs ao catálogo, `Restrict`; par único e simétrico: gravado com `ElementoAId < ElementoBId`), `SubElementoId` (FK ao catálogo, `Restrict`, tipo Sub-Elemento), `MinimoA` e `MinimoB` (int >= 1, padrão 1; cada um vale para o elemento do seu lado). Iniciais: os 12 cruzamentos de "[[Requisitos - Auditoria de Regras]]" R0020.
+
+**TotaisDeAfinidadePorCirculo** — R0018: `Circulo` (int, PK) e `Total` (int >= 0). Semeado da coluna *Afinidade (Valores Absolutos)* da "[[Tabela de Circulo e Grau por EAP]]" **só enquanto está vazio**; depois, só o Auditor.
+
+**VisibilidadesDeElemento** — R0021: `Origem` (enum `OrigemDaVisibilidade` (texto): Vocacao \| Classe), `Chave` (identificador estável, texto: o nome do membro do enum `Vocacao` — `Feiticeiro`, `Adepto`, `Bruxo` — ou o nome da Classe como gravado na ficha) e `ElementoId` (FK ao catálogo, `Cascade`, Caminho ou Sub-Elemento); PK (Origem, Chave, ElementoId). Iniciais: Feiticeiro, Adepto e Bruxo ligados a todos os Caminhos e Sub-Elementos.
+
+**Referências ao catálogo** — as colunas que guardavam o enum `AfinidadeElemental` passam a referenciá-lo; as que já guardavam o inteiro do enum não precisam de conversão de valor: `Afinidade` das fichas de Personagem, NPC e Criatura, o elemento alvo das linhas de Condição (`AlvoDeCondicao.AfinidadeElemental` e dano elemental) e o requisito *Afinidade Elemental* das Passivas. Colunas que guardavam o elemento por **nome** (`AlvoEspecifico` das linhas de Condição, inclusive as já aplicadas a participantes, e qualquer requisito de Passiva guardado por nome) passam a guardar o **id do catálogo**, convertido pela migration. A migration cria o catálogo, os cruzamentos, o total por Círculo e a visibilidade iniciais e converte as linhas antigas de afinidade em pontos por elemento (Ficha de Personagem 2.c, *Conversão*); muda dados, então o release usa a janela de deploy.
 
 **CharacterWeapons** — arsenal (3.a). Referência ao vivo ao Catálogo, exceto Durabilidade.
 
@@ -519,7 +534,7 @@ Cada tipo de ficha (Personagem, NPC, Criatura) é sua própria família de tabel
 
 *(ver "[[Requisitos - Ficha de NPCs]]")*
 
-Mesma família completa de tabelas filhas (`NpcAttributes`, `NpcSkills`, `NpcAffinities`, `NpcWeapons`, `NpcArmorSlots`, `NpcShields`, `NpcSpellAbilities`/`NpcSpellAbilityEffects`, `NpcRunes`, `NpcMasteries`, `NpcInventoryItems`, `NpcArtifacts`, `NpcAffections`, `NpcTraits`, `NpcSheetHistoriaImages`) — um espelho 1:1 das tabelas de 6.1, prefixadas `Npc` em vez de `Character`, com a FK `NpcSheetId`. Diferenças na tabela raiz:
+Mesma família completa de tabelas filhas (`NpcAttributes`, `NpcSkills`, `NpcPontosDeAfinidade`, `NpcWeapons`, `NpcArmorSlots`, `NpcShields`, `NpcSpellAbilities`/`NpcSpellAbilityEffects`, `NpcRunes`, `NpcMasteries`, `NpcInventoryItems`, `NpcArtifacts`, `NpcAffections`, `NpcTraits`, `NpcSheetHistoriaImages`) — um espelho 1:1 das tabelas de 6.1, prefixadas `Npc` em vez de `Character`, com a FK `NpcSheetId`. Diferenças na tabela raiz:
 
 - `GmId`: FK → Users — o GM dono do bestiário.
 - `OwnerId`: **nullable** (`SetNull`) — só setado se concedida a um jogador (Campanha R0010).
@@ -543,7 +558,7 @@ Mesma lógica de 6.2: família de tabelas filhas espelhando 6.1 (prefixadas `Cre
 - A raiz guarda só `Id`, `GmId`, `OwnerId`, `ImageId`, `Nome`, `Raca`, `Arquetipo`, `SubArquetipo`, `Afinidade`, `Rank`, `Nivel`, `ExperienciaAtual`, `PontosDeIgnicao`, `VitalidadeAtual`, `FocoAtual`, `AdrenalinaAtual`, `Cobertura` e `LastDismissedLevelUpLevel`. Portanto **não tem** `Propriedade`, `Estrela`, `HistoricoId`, `Historia`, `EquipmentKitId`, `PossuiCoracaoDeMana`, `AfinidadeAdicional`, `EstresseAtual`, `SinaAtual`, `Ciclos` nem `ArcaRolada`.
 - `CreatureAttributes.Atributo` usa um enum próprio de 6 valores (Força, Vigor, Agilidade, Destreza, Astúcia, **Ego**), não o de 8 valores do Personagem.
 - `CreatureSkills.PericiaId` só permite as Perícias com `DisponivelParaCriaturas` (R0005 e Auditoria de Regras R0012) — restrição de aplicação, não de schema.
-- Sem equivalente de `CharacterAffinities` (não existe aba de Afinidades pra Criatura), de `CharacterRunes` nem de `CharacterSheetHistoriaImages`.
+- Sem equivalente de `CharacterPontosDeAfinidade` (não existe aba de Afinidades pra Criatura; `Afinidade` referencia o catálogo de elementos), de `CharacterRunes` nem de `CharacterSheetHistoriaImages`.
 - `CreatureWeapons`: `ItemId` **nullable** — quando nulo, usa `ManualNome` (string), `ManualTipoDeDano` (enum), `ManualDados` (string) e `ManualDano` (int), todas nullable (ataque natural, sem Alcance/Crítico/Rank/Durabilidade); `DurabilidadeAtual` também é nullable e fica nula nesse caso.
 - `CreatureInventoryItems` → `CreatureSpoils` (Espólios): `ItemId` (FK → Items, `Restrict`), `Qtd` (int) e `DT` (int).
 - `ExperienciaAtual` é usada para computar **Abate** = `piso(ExperienciaAtual × 0,15)` e **Assistência** = `piso(ExperienciaAtual × 0,12)` — calculados, não persistidos.
@@ -880,7 +895,7 @@ Catálogo global mantido pelo Auditor de Regras (Auditoria → Condições): uma
 | CondicaoId | FK → Condicoes (cascade) |
 | Ordem | int |
 | Alvo | enum `AlvoDeCondicao` (texto): Atributo \| Pericia \| SubAtributo \| RecursoTotal \| RecursoAtual \| AfinidadeElemental \| DanoElemental \| Dano \| Maestria |
-| AlvoEspecifico | string, nullable — nome do `Atributo`; chave da Perícia (vazio = todas); constante de `SubAtributoAlvo`; `Vitalidade` \| `Foco` \| `Adrenalina` \| `Estresse`; nome do `Elemento` (vazio = geral); nome do `TipoDeDano` (vazio = todos); chave da Perícia da Maestria (vazio = todas). Obrigatório para Atributo, SubAtributo, RecursoTotal e RecursoAtual |
+| AlvoEspecifico | string, nullable — nome do `Atributo`; chave da Perícia (vazio = todas); constante de `SubAtributoAlvo`; `Vitalidade` \| `Foco` \| `Adrenalina` \| `Estresse`; **id do elemento do catálogo** (vazio = geral; antes da 2.2.0 guardava o nome do `Elemento`, e a migration converte nome → id); nome do `TipoDeDano` (vazio = todos); chave da Perícia da Maestria (vazio = todas). Obrigatório para Atributo, SubAtributo, RecursoTotal e RecursoAtual |
 | TipoDeValor | enum `TipoDeValorDeCondicao` (texto): Fixo \| Percentual; percentual entre −100 e 1000 |
 | Valor | int, com sinal, diferente de zero |
 | Momento | enum `MomentoDeCondicao` (texto): AoAplicar \| ACadaVez, nullable — preenchido se e somente se `Alvo = RecursoAtual` |

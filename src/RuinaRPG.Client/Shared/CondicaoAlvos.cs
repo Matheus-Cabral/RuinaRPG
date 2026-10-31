@@ -1,4 +1,6 @@
+using System.Globalization;
 using RuinaRPG.Contracts.Rules;
+using RuinaRPG.Domain.Afinidades;
 using RuinaRPG.Domain.CharacterSheets;
 using RuinaRPG.Domain.Condicoes;
 
@@ -61,12 +63,6 @@ public static class CondicaoAlvos
     private static readonly OpcaoDeCondicao[] Recursos =
         Enum.GetNames<RecursoDeCondicao>().Select(r => new OpcaoDeCondicao(r, r)).ToArray();
 
-    private static readonly OpcaoDeCondicao[] Elementos =
-    [
-        new(nameof(Elemento.Ar), "Ar"), new(nameof(Elemento.Agua), "Água"),
-        new(nameof(Elemento.Fogo), "Fogo"), new(nameof(Elemento.Terra), "Terra")
-    ];
-
     private static readonly OpcaoDeCondicao[] TiposDeDano =
         Enum.GetNames<RuinaRPG.Domain.Items.TipoDeDano>().Select(t => new OpcaoDeCondicao(t, t)).ToArray();
 
@@ -74,15 +70,19 @@ public static class CondicaoAlvos
     public static bool ExigeEspecifico(AlvoDeCondicao alvo) =>
         alvo is AlvoDeCondicao.Atributo or AlvoDeCondicao.SubAtributo or AlvoDeCondicao.RecursoTotal or AlvoDeCondicao.RecursoAtual;
 
-    /// <summary>As escolhas do select "específico" para o Alvo; a escolha geral, quando existe, é a primeira, com valor vazio.</summary>
-    public static IReadOnlyList<OpcaoDeCondicao> Especificos(AlvoDeCondicao alvo, IEnumerable<PericiaResponse> pericias) => alvo switch
+    /// <summary>
+    /// As escolhas do select "específico" para o Alvo; a escolha geral, quando existe, é a primeira, com valor vazio.
+    /// Os elementos (Afinidade e Dano elemental) são os do catálogo que não são Caminho, com o id em texto como valor.
+    /// </summary>
+    public static IReadOnlyList<OpcaoDeCondicao> Especificos(AlvoDeCondicao alvo, IEnumerable<PericiaResponse> pericias, IEnumerable<ElementoDoCatalogo> elementos) => alvo switch
     {
         AlvoDeCondicao.Atributo => Enum.GetNames<Atributo>().Select(a => new OpcaoDeCondicao(a, AtributoDisplay.Label(a))).ToList(),
         AlvoDeCondicao.Pericia or AlvoDeCondicao.Maestria =>
             [new OpcaoDeCondicao("", "Todas"), .. pericias.Select(p => new OpcaoDeCondicao(p.Chave, p.Nome))],
         AlvoDeCondicao.SubAtributo => SubAtributos,
         AlvoDeCondicao.RecursoTotal or AlvoDeCondicao.RecursoAtual => Recursos,
-        AlvoDeCondicao.AfinidadeElemental or AlvoDeCondicao.DanoElemental => [new OpcaoDeCondicao("", "Todos"), .. Elementos],
+        AlvoDeCondicao.AfinidadeElemental or AlvoDeCondicao.DanoElemental =>
+            [new OpcaoDeCondicao("", "Todos"), .. elementos.Select(e => new OpcaoDeCondicao(e.Id.ToString(CultureInfo.InvariantCulture), e.Nome))],
         AlvoDeCondicao.Dano => [new OpcaoDeCondicao("", "Todos"), .. TiposDeDano],
         _ => []
     };

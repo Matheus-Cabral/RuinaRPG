@@ -39,7 +39,7 @@ public class FichaCondicoesTests : MudBunitContext
 
     private static readonly string[] SingleObjectSuffixes =
     {
-        "/attributes/budget", "/skills/budget", "/sub-attributes", "/modificador-de-dano", "/racial-ability", "/racial-traits/pending", "/traits",
+        "/attributes/budget", "/skills/budget", "/afinidades", "/sub-attributes", "/modificador-de-dano", "/racial-ability", "/racial-traits/pending", "/traits",
     };
 
     private int Contagem(string sufixo) => _requests.Count(r => r.StartsWith("GET ") && r.EndsWith(sufixo));
@@ -77,7 +77,7 @@ public class FichaCondicoesTests : MudBunitContext
     private async Task<IRenderedComponent<FichaDePersonagem>> RenderPersonagemAsync()
     {
         // MainLayout is what opens the notification connection in the app; here the test plays that part.
-        await Services.GetRequiredService<SecretNoteNotifier>().StartAsync();
+        await Services.GetRequiredService<AvisosDoHub>().StartAsync();
         var cut = Render<FichaDePersonagem>(p => p.Add(x => x.SheetId, "sheet-1"));
         await Task.Delay(100);
         return cut;
@@ -155,7 +155,7 @@ public class FichaCondicoesTests : MudBunitContext
                 new { Id = "w2", ItemId = "i2", Nome = "Adaga", Dados = "1d4" },
             })
             : null);
-        await Services.GetRequiredService<SecretNoteNotifier>().StartAsync();
+        await Services.GetRequiredService<AvisosDoHub>().StartAsync();
         var cut = await RenderPaginaAsync(pagina);
         await GoToTabAsync(cut, "Combate");
 
@@ -220,26 +220,30 @@ public class FichaCondicoesTests : MudBunitContext
 
     // ---- afinidade e dano elemental ----
 
-    [Fact]
-    public async Task The_affinity_shows_the_adjusted_value_but_the_input_keeps_the_stored_one()
+    private static HttpResponseMessage AfinidadesComFogo(int pontosComCondicoes) => Json(new
     {
-        Prepare(r => r.RequestUri!.AbsolutePath.EndsWith("/affinities")
-            ? Json(new object[] { new { Id = "af1", Elemento = "Fogo", ElementoValor = 2, ElementoValorComCondicoes = 5 } })
-            : null);
+        Gasto = 2, Maximo = 6, SecaoVisivel = true,
+        Elementos = new[] { new { Id = 2, Nome = "Fogo", Tipo = "Base", Teto = (int?)null, Pontos = 2, Experiencia = (int?)null, Bloqueado = false, Motivo = (string?)null, PontosComCondicoes = pontosComCondicoes } },
+    });
+
+    // Ficha de Personagem R0009: o valor exibido do elemento muda com as Condições; o que o − e o + mexem (e a barra
+    // mostra) continua sendo os pontos guardados.
+    [Fact]
+    public async Task The_affinity_shows_the_adjusted_value_but_the_points_stay_the_stored_ones()
+    {
+        Prepare(r => r.RequestUri!.AbsolutePath.EndsWith("/afinidades") ? AfinidadesComFogo(5) : null);
         var cut = await RenderPersonagemAsync();
         await GoToTabAsync(cut, "Atributos & Perícias");
 
-        cut.Markup.Should().Contain("com Condições: 5");
-        cut.FindAll("tr").Single(t => t.TextContent.Contains("com Condições: 5")).QuerySelectorAll("input[type=number], input.mud-input-slot")
-            .Select(i => i.GetAttribute("value")).Should().Contain("2");
+        var linha = cut.Find("button[aria-label='Pôr 1 ponto em Fogo']").Closest("tr")!;
+        linha.TextContent.Should().Contain("com Condições: 5");
+        linha.QuerySelector("div[role=img]")!.GetAttribute("aria-label").Should().Be("2 de 6 pontos");
     }
 
     [Fact]
     public async Task The_affinity_shows_no_adjusted_value_when_nothing_changed_it()
     {
-        Prepare(r => r.RequestUri!.AbsolutePath.EndsWith("/affinities")
-            ? Json(new object[] { new { Id = "af1", Elemento = "Fogo", ElementoValor = 2, ElementoValorComCondicoes = 2 } })
-            : null);
+        Prepare(r => r.RequestUri!.AbsolutePath.EndsWith("/afinidades") ? AfinidadesComFogo(2) : null);
         var cut = await RenderPersonagemAsync();
         await GoToTabAsync(cut, "Atributos & Perícias");
 
@@ -249,8 +253,10 @@ public class FichaCondicoesTests : MudBunitContext
     [Fact]
     public async Task Elemental_damage_from_conditions_shows_only_for_the_non_zero_elements()
     {
-        Prepare(r => r.RequestUri!.AbsolutePath.EndsWith("/modificador-de-dano")
-            ? Json(new { Cortante = 1, Perfurante = 0, Contundente = 0, Arcano = 0, DanoElemental = new Dictionary<string, int> { ["Fogo"] = 3, ["Agua"] = 0, ["Ar"] = -2 } })
+        // A chave é o id do elemento no catálogo (Fogo = 2, Água = 1, Ar = 3); o nome vem do catálogo.
+        Prepare(r => ElementosDeTeste.EhCatalogo(r) ? ElementosDeTeste.Resposta()
+            : r.RequestUri!.AbsolutePath.EndsWith("/modificador-de-dano")
+            ? Json(new { Cortante = 1, Perfurante = 0, Contundente = 0, Arcano = 0, DanoElemental = new Dictionary<int, int> { [2] = 3, [1] = 0, [3] = -2 } })
             : null);
         var cut = await RenderPersonagemAsync();
         await GoToTabAsync(cut, "Combate");

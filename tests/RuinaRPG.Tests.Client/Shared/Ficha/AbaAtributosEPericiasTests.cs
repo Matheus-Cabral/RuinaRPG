@@ -51,8 +51,18 @@ public class AbaAtributosEPericiasTests : RedeDeSegurancaBase
 
     private static IElement LinhaDoAtletismo(IRenderedComponent<IComponent> cut) => Linha(Tabela(AbaAberta(cut), "Perícia"), "Atletismo");
 
-    private static List<IElement> LinhasDasAfinidades(IRenderedComponent<IComponent> cut) =>
-        Tabela(AbaAberta(cut), "Essência Básica 1").QuerySelectorAll("tbody tr").ToList();
+    private static IElement? BotaoDoElemento(IRenderedComponent<IComponent> cut, string rotulo) =>
+        AbaAberta(cut).QuerySelector($"button[aria-label='{rotulo}']");
+
+    private static IElement LinhaDoElemento(IRenderedComponent<IComponent> cut, string nome) =>
+        BotaoDoElemento(cut, $"Pôr 1 ponto em {nome}")!.Closest("tr")!;
+
+    /// <summary>A barra de segmentos de um elemento: o rótulo ("2 de 6 pontos") e quantos segmentos estão cheios.</summary>
+    private static (string? Rotulo, int Segmentos, int Cheios) Barra(IRenderedComponent<IComponent> cut, string nome)
+    {
+        var barra = LinhaDoElemento(cut, nome).QuerySelector("div[role=img]")!;
+        return (barra.GetAttribute("aria-label"), barra.Children.Length, barra.Children.Count(c => c.ClassList.Contains("mud-theme-primary")));
+    }
 
     private static string UltimaCelula(IElement linha) => TextoNormalizado(linha.QuerySelectorAll("td").Last());
 
@@ -66,11 +76,16 @@ public class AbaAtributosEPericiasTests : RedeDeSegurancaBase
         await EsperarRequisicoesAsync(cut, todas => todas.Should().Equal(esperado));
     }
 
-    private static object Afinidade(string id, string elemento, int valor, int experiencia) => new
+    private static object Elemento(int id, string nome, int pontos, int? experiencia = null, bool bloqueado = false, string? motivo = null,
+        int? teto = null, int? comCondicoes = null) => new
     {
-        id, elemento, elementoValor = valor, segundaEssencia = (string?)null, segundaEssenciaValor = (int?)null,
-        subElemento = (string?)null, subElementoValor = (int?)null, experiencia, elementoValorComCondicoes = valor,
+        id, nome, tipo = "Base", teto, pontos, experiencia, bloqueado, motivo, pontosComCondicoes = comCondicoes ?? pontos,
     };
+
+    private static object Afinidades(int gasto, int maximo, params object[] elementos) => Afinidades(gasto, maximo, true, elementos);
+
+    private static object Afinidades(int gasto, int maximo, bool secaoVisivel, params object[] elementos) =>
+        new { gasto, maximo, secaoVisivel, elementos };
 
     private static object Pericia(int gasto, string? atributo, int total) => new
     {
@@ -109,7 +124,7 @@ public class AbaAtributosEPericiasTests : RedeDeSegurancaBase
 
         cut.FindComponents<ProgressaoDoNivelSection>().Should().HaveCount(progressao);
         cut.FindComponents<OrcamentoDePericiasSection>().Should().HaveCount(orcamento);
-        cut.FindComponents<AfinidadesSection>().Should().HaveCount(afinidades);
+        cut.FindComponents<AfinidadesPorElementoSection>().Should().HaveCount(afinidades);
     }
 
     // A margem de cima da tabela de Perícias vem com o bloco do Acerto Crítico logo acima dela (só onde há orçamento).
@@ -186,84 +201,125 @@ public class AbaAtributosEPericiasTests : RedeDeSegurancaBase
         }, TimeSpan.FromSeconds(5));
     }
 
+    // ---------------- Afinidades: pontos por elemento (2.c) ----------------
+
     [Theory]
     [MemberData(nameof(TiposComAfinidades))]
-    public async Task Adding_an_afinidade_shows_the_reloaded_list_and_clears_the_new_row(string tipo)
+    public async Task The_elements_show_name_points_bar_and_experience(string tipo)
     {
+        Responder("/afinidades", Afinidades(5, 8, Elemento(2, "Fogo", 2, experiencia: 1), Elemento(4, "Gelo", 3, teto: 4)));
         var cut = await AbrirAsync(tipo);
-        await cut.InvokeAsync(() => LinhasDasAfinidades(cut).Last().QuerySelectorAll("td")[3].QuerySelector("input")!.Change("2"));
-        Responder("/affinities", new[] { Afinidade("afi1", "Fogo", 2, 1), Afinidade("afi2", "Terra", 3, 2) });
-        LimparRequisicoes();
 
-        await cut.InvokeAsync(() => Botao(LinhasDasAfinidades(cut).Last(), "Adicionar").Click());
+        var leitura = Leitura(AbaAberta(cut));
+        leitura.Should().ContainInOrder("Distribuídos 5/8", "Fogo", "2", "«1»", "Gelo", "3", "«»");
+        // Sem teto, os segmentos vão até o máximo da ficha; com teto, até ele.
+        Barra(cut, "Fogo").Should().Be(("2 de 8 pontos", 8, 2));
+        Barra(cut, "Gelo").Should().Be(("3 de 4 pontos", 4, 3));
+    }
 
-        await EsperarRequisicoesAsync(cut, todas => todas.Should().Contain(r => r.StartsWith("GET ") && r.EndsWith("/affinities")));
+    [Theory]
+    [MemberData(nameof(TiposComAfinidades))]
+    public async Task A_plus_puts_one_more_point_and_shows_the_reloaded_list(string tipo)
+    {
+        Responder("/afinidades", Afinidades(2, 6, Elemento(2, "Fogo", 2, experiencia: 1)));
+        var cut = await AbrirAsync(tipo);
+        Responder("/afinidades", Afinidades(3, 6, Elemento(2, "Fogo", 3, experiencia: 1)));
+
+        await cut.InvokeAsync(() => BotaoDoElemento(cut, "Pôr 1 ponto em Fogo")!.Click());
+
+        await EsperarGravacaoAsync(cut, tipo, $"PUT /{Prefixo(tipo)}/s1/afinidades/2 {{\"experiencia\":1,\"pontos\":3}}", recarregaPenalidades: false);
         cut.WaitForAssertion(() =>
         {
-            LinhasDasAfinidades(cut).Should().HaveCount(3);
-            LinhasDasAfinidades(cut)[1].QuerySelector("input")!.GetAttribute("value").Should().Be("Terra");
-            LinhasDasAfinidades(cut).Last().QuerySelectorAll("td")[3].QuerySelector("input")!.GetAttribute("value").Should().BeNullOrEmpty();
+            Leitura(AbaAberta(cut)).Should().Contain("Distribuídos 3/6");
+            Barra(cut, "Fogo").Should().Be(("3 de 6 pontos", 6, 3));
         }, TimeSpan.FromSeconds(5));
     }
 
     [Theory]
     [MemberData(nameof(TiposComAfinidades))]
-    public async Task Removing_an_afinidade_shows_the_reloaded_list(string tipo)
+    public async Task A_minus_takes_one_point_and_shows_the_reloaded_list(string tipo)
     {
+        Responder("/afinidades", Afinidades(2, 6, Elemento(2, "Fogo", 2)));
         var cut = await AbrirAsync(tipo);
-        Responder("/affinities", Array.Empty<object>());
+        Responder("/afinidades", Afinidades(1, 6, Elemento(2, "Fogo", 1)));
 
-        await cut.InvokeAsync(() => Botao(LinhasDasAfinidades(cut)[0], "Remover").Click());
+        await cut.InvokeAsync(() => BotaoDoElemento(cut, "Tirar 1 ponto de Fogo")!.Click());
 
-        await EsperarGravacaoAsync(cut, tipo, $"DELETE /{Prefixo(tipo)}/s1/affinities/afi1", recarregaPenalidades: false);
-        cut.WaitForAssertion(() => LinhasDasAfinidades(cut).Should().ContainSingle(), TimeSpan.FromSeconds(5));
+        await EsperarGravacaoAsync(cut, tipo, $"PUT /{Prefixo(tipo)}/s1/afinidades/2 {{\"experiencia\":null,\"pontos\":1}}", recarregaPenalidades: false);
+        cut.WaitForAssertion(() => Leitura(AbaAberta(cut)).Should().Contain("Distribuídos 1/6"), TimeSpan.FromSeconds(5));
     }
 
     [Theory]
     [MemberData(nameof(TiposComAfinidades))]
-    public async Task Editing_an_afinidade_shows_the_reloaded_row(string tipo)
+    public async Task A_refused_point_shows_the_server_message_in_the_page_alert(string tipo)
     {
+        Responder("/afinidades", Afinidades(3, 6, Elemento(3, "Ar", 1), Elemento(4, "Gelo", 2)));
+        ResponderErro("/afinidades/3", HttpStatusCode.BadRequest, "Gelo depende de Ar: zere Gelo antes.");
         var cut = await AbrirAsync(tipo);
-        Responder("/affinities", new[] { Afinidade("afi1", "Fogo", 5, 4) });
 
-        await cut.InvokeAsync(() => LinhasDasAfinidades(cut)[0].QuerySelectorAll("td")[3].QuerySelector("input")!.Change("4"));
+        await cut.InvokeAsync(() => BotaoDoElemento(cut, "Tirar 1 ponto de Ar")!.Click());
 
-        await EsperarGravacaoAsync(cut, tipo,
-            $"PUT /{Prefixo(tipo)}/s1/affinities/afi1 {{\"elemento\":\"Fogo\",\"elementoValor\":2,\"experiencia\":4,\"segundaEssencia\":null,\"segundaEssenciaValor\":null,\"subElementoValor\":null}}",
-            recarregaPenalidades: false);
-        cut.WaitForAssertion(() =>
-        {
-            var celulas = LinhasDasAfinidades(cut)[0].QuerySelectorAll("input").Select(i => i.GetAttribute("value")).ToList();
-            celulas.Should().Contain("5").And.Contain("4");
-        }, TimeSpan.FromSeconds(5));
-    }
-
-    // ---------------- erros de dentro da aba no alerta da página ----------------
-
-    [Theory]
-    [MemberData(nameof(TiposComAfinidades))]
-    public async Task A_refused_afinidade_shows_in_the_page_alert_and_reloads_nothing(string tipo)
-    {
-        var cut = await AbrirAsync(tipo);
-        ResponderErro("/affinities", HttpStatusCode.BadRequest, "Essência inválida.");
-
-        await cut.InvokeAsync(() => Botao(LinhasDasAfinidades(cut).Last(), "Adicionar").Click());
-
-        await EsperarRequisicoesAsync(cut, todas => todas.Should().ContainSingle().Which.Should().StartWith($"POST /{Prefixo(tipo)}/s1/affinities "));
-        cut.WaitForAssertion(() => cut.FindAll(".mud-alert").Select(TextoNormalizado).Should().Equal("Essência inválida."), TimeSpan.FromSeconds(5));
-    }
-
-    [Theory]
-    [MemberData(nameof(TiposComAfinidades))]
-    public async Task A_refused_afinidade_edit_shows_in_the_page_alert(string tipo)
-    {
-        var cut = await AbrirAsync(tipo);
-        ResponderErro("/affinities/afi1", HttpStatusCode.BadRequest, "Valor acima do máximo.");
-
-        await cut.InvokeAsync(() => LinhasDasAfinidades(cut)[0].QuerySelectorAll("td")[3].QuerySelector("input")!.Change("40"));
-
-        cut.WaitForAssertion(() => cut.FindAll(".mud-alert").Select(TextoNormalizado).Should().Equal("Valor acima do máximo."), TimeSpan.FromSeconds(5));
+        cut.WaitForAssertion(() => cut.FindAll(".mud-alert").Select(TextoNormalizado).Should().Equal("Gelo depende de Ar: zere Gelo antes."), TimeSpan.FromSeconds(5));
         await EsperarCalmariaAsync();
+    }
+
+    // Bloqueado: a dica do servidor aparece e o + some para quem as regras recusam; o GM do NPC vê a dica mas pode subir.
+    [Theory]
+    [InlineData("Personagem", "GM", false)]
+    [InlineData("Personagem", "Jogador", false)]
+    [InlineData("NPC", "Jogador", false)]
+    [InlineData("NPC", "GM", true)]
+    public async Task A_blocked_element_shows_the_hint_and_no_plus(string tipo, string papel, bool podeSubir)
+    {
+        Responder("/afinidades", Afinidades(0, 6, Elemento(4, "Gelo", 0, bloqueado: true, motivo: "Precisa de 1 em Água e 1 em Ar")));
+        var cut = await AbrirAsync(tipo, papel);
+
+        TextoNormalizado(LinhaDoElemento(cut, "Gelo")).Should().Contain("Precisa de 1 em Água e 1 em Ar");
+        BotaoDoElemento(cut, "Pôr 1 ponto em Gelo")!.HasAttribute("disabled").Should().Be(!podeSubir);
+    }
+
+    // No máximo (ou no teto), o + não sobe mais; acima do máximo o contador fica vermelho e a mensagem diz que só dá para tirar.
+    [Theory]
+    [InlineData("Personagem", "GM", 6, 6, null, false, "Todos os pontos distribuídos.")]
+    [InlineData("NPC", "Jogador", 7, 6, null, false, "Acima do máximo em 1: só é possível tirar pontos.")]
+    [InlineData("Personagem", "Jogador", 2, 6, 2, false, "Restam 4 ponto(s) para distribuir.")]
+    [InlineData("NPC", "GM", 7, 6, null, true, "Acima do máximo em 1: só é possível tirar pontos.")]
+    public async Task The_plus_stops_at_the_maximum_and_at_the_ceiling(string tipo, string papel, int gasto, int maximo, int? teto, bool podeSubir, string mensagem)
+    {
+        Responder("/afinidades", Afinidades(gasto, maximo, Elemento(2, "Fogo", 2, teto: teto)));
+        var cut = await AbrirAsync(tipo, papel);
+
+        BotaoDoElemento(cut, "Pôr 1 ponto em Fogo")!.HasAttribute("disabled").Should().Be(!podeSubir);
+        Leitura(AbaAberta(cut)).Should().Contain(mensagem);
+        var contador = AbaAberta(cut).QuerySelectorAll(".mud-typography").Single(t => TextoNormalizado(t) == $"Distribuídos {gasto}/{maximo}");
+        contador.ClassList.Contains("mud-error-text").Should().Be(gasto > maximo);
+    }
+
+    [Theory]
+    [MemberData(nameof(TiposComAfinidades))]
+    public async Task Editing_the_experience_puts_it_with_the_points(string tipo)
+    {
+        Responder("/afinidades", Afinidades(2, 6, Elemento(2, "Fogo", 2, experiencia: 1)));
+        var cut = await AbrirAsync(tipo);
+
+        await cut.InvokeAsync(() => LinhaDoElemento(cut, "Fogo").QuerySelector("input")!.Change(""));
+
+        await EsperarGravacaoAsync(cut, tipo, $"PUT /{Prefixo(tipo)}/s1/afinidades/2 {{\"experiencia\":null,\"pontos\":2}}", recarregaPenalidades: false);
+    }
+
+    // Review Focus 5: vocação marcial sem Afinidade Adicional nem coração de mana — a lista e o contador não aparecem;
+    // só fica a Afinidade Adicional, que é como a seção volta.
+    [Theory]
+    [MemberData(nameof(TiposComAfinidades))]
+    public async Task A_hidden_section_shows_only_the_afinidade_adicional(string tipo)
+    {
+        Responder("/afinidades", Afinidades(0, 0, false, Elemento(2, "Fogo", 0)));
+        var cut = await AbrirAsync(tipo);
+
+        var leitura = Leitura(AbaAberta(cut));
+        leitura.Should().Contain("Afinidade Adicional");
+        leitura.Should().NotContain(t => t.StartsWith("Distribuídos", StringComparison.Ordinal)).And.NotContain("Fogo");
+        BotaoDoElemento(cut, "Pôr 1 ponto em Fogo").Should().BeNull();
     }
 
     // ---------------- a recarga que a página faz chega à aba ----------------
@@ -274,7 +330,7 @@ public class AbaAtributosEPericiasTests : RedeDeSegurancaBase
     public async Task A_page_reload_shows_fresh_attributes_in_the_tab(string tipo)
     {
         var cut = await AbrirAsync(tipo, "Jogador");
-        await Services.GetRequiredService<SecretNoteNotifier>().StartAsync(notasSecretas: false);
+        await Services.GetRequiredService<AvisosDoHub>().StartAsync(notasSecretas: false);
         Responder("/attributes", new[] { new { atributo = "Vigor", gasto = 2, bonus = 1, temMaestria = false, total = 1 } });
         Responder("/attributes/budget", new { gastoTotal = 2, pontosDisponiveis = 12 });
         var k = tipo switch { "Personagem" => "character", "NPC" => "npc", _ => "creature" };
@@ -344,18 +400,15 @@ public class AbaAtributosEPericiasTests : RedeDeSegurancaBase
         Requisicoes.Should().NotContain(r => !r.StartsWith("GET ", StringComparison.Ordinal));
     }
 
-    // Personagem e NPC: a Afinidade Adicional é do formulário auto-salvo; o salvamento relê a ficha (a Vocação Arcana máxima).
+    // Personagem e NPC: a Afinidade Adicional é do formulário auto-salvo; o salvamento relê as abas (o máximo das Afinidades).
     [Theory]
     [MemberData(nameof(TiposComAfinidades))]
-    public async Task Changing_afinidade_adicional_autosaves_and_shows_the_reloaded_vocacao_arcana(string tipo)
+    public async Task Changing_afinidade_adicional_autosaves_and_shows_the_reloaded_maximum(string tipo)
     {
         var cut = await AbrirAsync(tipo);
-        var ficha = await FichaMudadaAsync(tipo, f =>
-        {
-            f["afinidadeAdicional"] = 2;
-            f["vocacaoArcanaMaxima"] = 9;
-        });
+        var ficha = await FichaMudadaAsync(tipo, f => f["afinidadeAdicional"] = 2);
         Responder($"^/{Prefixo(tipo)}/s1$", ficha);
+        Responder("/afinidades", Afinidades(2, 9, Elemento(2, "Fogo", 2)));
 
         await cut.InvokeAsync(() => Campo(AbaAberta(cut), "Afinidade Adicional").Change("2"));
 
@@ -367,6 +420,6 @@ public class AbaAtributosEPericiasTests : RedeDeSegurancaBase
             todas.Skip(1).Should().BeEquivalentTo(RedeCabecalhoEInformacoesBasicasTests.RecargaDepoisDeSalvar(tipo)
                 .Append($"GET /{Prefixo(tipo)}/s1/equipment-penalties"));
         });
-        cut.WaitForAssertion(() => Leitura(AbaAberta(cut)).Should().Contain("Vocação Arcana: 2 / 9"), TimeSpan.FromSeconds(5));
+        cut.WaitForAssertion(() => Leitura(AbaAberta(cut)).Should().Contain("Distribuídos 2/9"), TimeSpan.FromSeconds(5));
     }
 }

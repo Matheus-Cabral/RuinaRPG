@@ -123,10 +123,9 @@ public static class SheetLogMap
             [typeof(CreatureWeapon)], nome: "ManualNome", itemRef: "ItemId");
 
         // Afinidades, Runas e Inventário só existem em Personagem e NPC (a Criatura tem Espólios no lugar do Inventário).
-        Filhas(mapa, "Afinidades", Campos(("Elemento", "Essência Básica 1"), ("ElementoValor", "Essência Básica 1 — valor"),
-                ("SegundaEssencia", "Essência Básica 2"), ("SegundaEssenciaValor", "Essência Básica 2 — valor"),
-                ("SubElemento", "Sub-Elemento"), ("SubElementoValor", "Sub-Elemento — valor"), ("Experiencia", "Experiência")),
-            [typeof(CharacterAffinity), typeof(NpcAffinity)], nome: "Elemento");
+        // Uma linha por elemento do catálogo, nomeada pelo elemento (2.c).
+        Filhas(mapa, "Afinidades", Campos(("ElementoId", "Elemento"), ("Pontos", "Pontos"), ("Experiencia", "Experiência")),
+            [typeof(CharacterPontosDeAfinidade), typeof(NpcPontosDeAfinidade)], itemRef: "ElementoId");
         Filhas(mapa, "Runas", Campos(("Nome", "Nome"), ("Grau", "Grau"), ("Tipo", "Tipo"), ("Disciplina", "Disciplina"), ("ImageId", "Imagem")),
             [typeof(CharacterRune), typeof(NpcRune)], nome: "Nome", longos: ["Descricao"], ignorados: ["SourceBankEntryId"]);
         Filhas(mapa, "Inventário", Campos(("ItemId", "Item"), ("Qtd", "Quantidade")),

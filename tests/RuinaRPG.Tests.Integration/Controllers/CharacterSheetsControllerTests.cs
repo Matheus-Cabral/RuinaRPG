@@ -482,7 +482,7 @@ public class CharacterSheetsControllerTests(ApiFixture fixture) : FichaDePersona
         await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
         var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
 
-        var invalid = ValidUpdate() with { Afinidade = "Xyz" };
+        var invalid = ValidUpdate() with { Afinidade = 99 };
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, invalid));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -559,7 +559,7 @@ public class CharacterSheetsControllerTests(ApiFixture fixture) : FichaDePersona
         var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
 
         // Feiticeiro libera Dobra+Transmutação — Gelo é de Transmutação.
-        var update = ValidUpdate() with { Vocacao = "Feiticeiro", Afinidade = "Gelo" };
+        var update = ValidUpdate() with { Vocacao = "Feiticeiro", Afinidade = 4 };
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken, update));
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -576,16 +576,16 @@ public class CharacterSheetsControllerTests(ApiFixture fixture) : FichaDePersona
 
         // Feiticeiro libera Gelo (Transmutação).
         await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken,
-            ValidUpdate() with { Vocacao = "Feiticeiro", Afinidade = "Gelo" }));
+            ValidUpdate() with { Vocacao = "Feiticeiro", Afinidade = 4 }));
 
         // Troca pra Adepto (não libera Transmutação) reenviando a MESMA Afinidade — não deve ser bloqueado.
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken,
-            ValidUpdate() with { Vocacao = "Adepto", Afinidade = "Gelo" }));
+            ValidUpdate() with { Vocacao = "Adepto", Afinidade = 4 }));
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
         var getResponse = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}", playerToken));
         var body = await getResponse.Content.ReadFromJsonAsync<CharacterSheetResponse>();
-        body!.Afinidade.Should().Be("Gelo");
+        body!.Afinidade.Should().Be(4);
     }
 
     [Fact]
@@ -777,7 +777,7 @@ public class CharacterSheetsControllerTests(ApiFixture fixture) : FichaDePersona
     }
 
     [Fact]
-    public async Task SubAttributes_computes_EficienciaElemental_and_DanoElemental_from_the_matching_Afinidade_row()
+    public async Task SubAttributes_computes_EficienciaElemental_and_DanoElemental_from_the_points_in_the_Afinidade()
     {
         var gmToken = await RegisterGmAndGetTokenAsync("SheetGmSub7", "sheetsub7@teste.com");
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, "SheetPlayerSub7", "sheetplayersub7@teste.com");
@@ -787,9 +787,9 @@ public class CharacterSheetsControllerTests(ApiFixture fixture) : FichaDePersona
 
         // Adepto libera Dobra (Fogo) — Afinidade principal = Fogo.
         await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken,
-            ValidUpdate() with { Vocacao = "Adepto", Afinidade = "Fogo", AfinidadeAdicional = 10 }));
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddAffinityRequest("Fogo", 7, null, null, null, null)));
+            ValidUpdate() with { Vocacao = "Adepto", Afinidade = 2, AfinidadeAdicional = 10 }));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/afinidades/2", playerToken,
+            new AtualizarAfinidadeRequest(7, null)));
 
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Get, $"/api/character-sheets/{sheetId}/sub-attributes", playerToken));
 
@@ -815,9 +815,9 @@ public class CharacterSheetsControllerTests(ApiFixture fixture) : FichaDePersona
         await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", gmToken, new AddCampaignMemberRequest(playerId)));
         var sheetId = await CreateSheetForMemberAsync(gmToken, campaignId, playerId);
         await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken,
-            ValidUpdate() with { Vocacao = "Adepto", Afinidade = "Fogo", AfinidadeAdicional = 10 }));
-        await Client.SendAsync(AuthedRequest(HttpMethod.Post, $"/api/character-sheets/{sheetId}/affinities", playerToken,
-            new AddAffinityRequest("Fogo", 7, null, null, null, null)));
+            ValidUpdate() with { Vocacao = "Adepto", Afinidade = 2, AfinidadeAdicional = 10 }));
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}/afinidades/2", playerToken,
+            new AtualizarAfinidadeRequest(7, null)));
         var linhas = (await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, "/api/tabela-de-afinidades", gmToken)))
             .Content.ReadFromJsonAsync<List<LinhaDaTabelaDeAfinidadesResponse>>())!;
         var linha7 = linhas.Single(l => l.Afinidade == 7);
@@ -1068,11 +1068,12 @@ public class CharacterSheetsControllerTests(ApiFixture fixture) : FichaDePersona
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
-    // Alma e Vida são Caminhos, não Afinidades — Requisitos - Ficha de Personagem 1.a.
+    // Os Caminhos (Alma, Vida, Mundano) não são Afinidades — Requisitos - Ficha de Personagem 1.a.
     [Theory]
-    [InlineData("Alma")]
-    [InlineData("Vida")]
-    public async Task Update_rejects_a_new_Afinidade_of_Alma_or_Vida(string afinidade)
+    [InlineData(9)]  // Alma
+    [InlineData(14)] // Vida
+    [InlineData(18)] // Mundano
+    public async Task Update_rejects_a_new_Afinidade_that_is_a_Caminho(int afinidade)
     {
         var gmToken = await RegisterGmAndGetTokenAsync($"CaminhoAfinGmACharacterSheets{afinidade}", $"caminhoafinACharacterSheets{afinidade}@teste.com");
         var (playerId, playerToken) = await RegisterJogadorLinkedToAsync(gmToken, $"CaminhoAfinPACharacterSheets{afinidade}", $"caminhoafinpACharacterSheets{afinidade}@teste.com");
@@ -1099,12 +1100,12 @@ public class CharacterSheetsControllerTests(ApiFixture fixture) : FichaDePersona
         {
             var db = scope.ServiceProvider.GetRequiredService<RuinaRPG.Infrastructure.Persistence.RuinaRpgDbContext>();
             var entity = await db.CharacterSheets.SingleAsync(s => s.Id == Guid.Parse(sheetId));
-            entity.Afinidade = RuinaRPG.Domain.CharacterSheets.AfinidadeElemental.Vida;
+            entity.Afinidade = 14;
             await db.SaveChangesAsync();
         }
 
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/character-sheets/{sheetId}", playerToken,
-            ValidUpdate() with { Vocacao = "Adepto", Afinidade = "Vida" }));
+            ValidUpdate() with { Vocacao = "Adepto", Afinidade = 14 }));
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }

@@ -28,7 +28,7 @@ public sealed class FichaNoCemiterioTests : RedeDeSegurancaBase
     private static object Aria(bool noCemiterio, params string[] motivos) => new
     {
         id = SheetId, campaignId = "c1", campaignName = "Crônicas de Alker", ownerId = "u2", imageUrl = "/img/um.png", imageId = "img1",
-        nome = "Aria", linhagem = "Humano", variante = "Sinir", vocacao = "Feiticeiro", subVocacao = "Piromante", afinidade = "Fogo", propriedade = "Uma casa",
+        nome = "Aria", linhagem = "Humano", variante = "Sinir", vocacao = "Feiticeiro", subVocacao = "Piromante", afinidade = 2, propriedade = "Uma casa",
         nivel = 3, circulo = 1, grau = 2, possuiCoracaoDeMana = true, experienciaAtual = 120, eapAtual = 7,
         nucleosRankF = 1, nucleosRankE = 2, nucleosRankD = 0, nucleosRankC = 0, nucleosRankB = 0, nucleosRankA = 0, nucleosRankS = 0,
         pontosDeIgnicaoAtual = 12, pontosDeIgnicaoTotal = 40, vitalidadeAtual = 20, focoAtual = 10, adrenalinaAtual = 3, estresseAtual = 1,
@@ -69,7 +69,7 @@ public sealed class FichaNoCemiterioTests : RedeDeSegurancaBase
     {
         var cut = await RenderFichaAsync("Personagem", papel);
         // O MainLayout abre a conexão no app; aqui o teste faz esse papel (sem as Notas Secretas: nada de HTTP a mais).
-        await Services.GetRequiredService<SecretNoteNotifier>().StartAsync(notasSecretas: false);
+        await Services.GetRequiredService<AvisosDoHub>().StartAsync(notasSecretas: false);
         return cut;
     }
 
@@ -271,16 +271,15 @@ public sealed class FichaNoCemiterioTests : RedeDeSegurancaBase
         var cut = await AbrirAsync("Jogador");
         ResponderErro("/character-sheets/s1/pontos-de-ignicao", HttpStatusCode.Conflict, Recusa);
 
+        // Os dois commits seguidos, sem espera entre eles: o Nome salva (400 ms depois) com o PI ainda pendente, então a
+        // releitura dele fica adiada. Depois só se espera pelo que o teste observa (as requisições), nunca por um tempo fixo.
         await cut.InvokeAsync(() => Campo(AbaAberta(cut), "Nome").Change("Novo"));
-        await Task.Delay(100);
         await cut.InvokeAsync(() => Campo(AbaAberta(cut), "Pontos de Ignição Atual").Change("20"));
-        await Task.Delay(1500);
+        await EsperarRequisicoesAsync(cut, todas => todas.Should().Contain(r => r.Contains("pontos-de-ignicao") && r.StartsWith("PUT")));
+        cut.WaitForAssertion(() => Campo(AbaAberta(cut), "Pontos de Ignição Atual").GetAttribute("value").Should().Be("12"), LimiteDeEspera);
+        await EsperarCalmariaAsync();
 
-        cut.WaitForAssertion(() =>
-        {
-            Raiz(cut).QuerySelectorAll(".mud-alert").Select(TextoNormalizado).Should().Contain(a => a.Contains(Recusa));
-            Campo(AbaAberta(cut), "Pontos de Ignição Atual").GetAttribute("value").Should().Be("12");
-        }, TimeSpan.FromSeconds(3));
+        Raiz(cut).QuerySelectorAll(".mud-alert").Select(TextoNormalizado).Should().Contain(a => a.Contains(Recusa));
     }
 
     [Fact]

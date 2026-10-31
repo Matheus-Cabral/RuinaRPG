@@ -89,7 +89,7 @@ public class PlayersController(RuinaRpgDbContext db, UserManager<ApplicationUser
         if (acao == AcaoDeConta.Excluir && confirmacao != player.Nickname)
             return BadRequest("O apelido não confere.");
 
-        var saiu = novo != EstadoDaConta.Ativa;
+        var saiu = !ContaDeJogador.PodeEntrar(novo);
         await using (var transacao = await db.Database.BeginTransactionAsync())
         {
             if (saiu)

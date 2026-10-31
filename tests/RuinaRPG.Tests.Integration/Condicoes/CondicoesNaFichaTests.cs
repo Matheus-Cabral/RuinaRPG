@@ -27,7 +27,7 @@ namespace RuinaRPG.Tests.Integration.Condicoes;
 /// As Condições ativas mudam os números CALCULADOS da ficha enquanto estão ativas, e só então. Toda ficha destes
 /// testes parte do mesmo retrato: Força 10, Agilidade 6, Vigor 8, Astúcia 7; uma Perícia sobre Força (total 10);
 /// a Maestria "Espadas" (3 + 0 + Força = 13); Artefatos de Dano Cortante +10 e Redução Física +4; e, onde a ficha
-/// tem Afinidades, a Afinidade Fogo com uma linha de Fogo valendo 6 (Eficiência 3 e Dano 3 na Tabela de Afinidades).
+/// tem Afinidades, a Afinidade Fogo com 6 pontos em Fogo (Eficiência 3 e Dano 3 na Tabela de Afinidades).
 /// </summary>
 public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
 {
@@ -155,13 +155,13 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
         }
         if (rota == Personagem)
         {
-            (await db.CharacterSheets.FindAsync(sheetId))!.Afinidade = AfinidadeElemental.Fogo;
-            db.CharacterAffinities.Add(new CharacterAffinity { Id = Guid.NewGuid(), SheetId = sheetId, Elemento = Elemento.Fogo, ElementoValor = 6 });
+            (await db.CharacterSheets.FindAsync(sheetId))!.Afinidade = 2;
+            db.CharacterPontosDeAfinidade.Add(new CharacterPontosDeAfinidade { Id = Guid.NewGuid(), SheetId = sheetId, ElementoId = 2, Pontos = 6 });
         }
         else if (rota == Npc)
         {
-            (await db.NpcSheets.FindAsync(sheetId))!.Afinidade = AfinidadeElemental.Fogo;
-            db.NpcAffinities.Add(new NpcAffinity { Id = Guid.NewGuid(), SheetId = sheetId, Elemento = Elemento.Fogo, ElementoValor = 6 });
+            (await db.NpcSheets.FindAsync(sheetId))!.Afinidade = 2;
+            db.NpcPontosDeAfinidade.Add(new NpcPontosDeAfinidade { Id = Guid.NewGuid(), SheetId = sheetId, ElementoId = 2, Pontos = 6 });
         }
         await db.SaveChangesAsync();
 
@@ -203,19 +203,22 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
         var dano = await JsonAsync(token, $"{raiz}/modificador-de-dano");
         foreach (var tipo in new[] { "cortante", "perfurante", "contundente", "arcano" })
             n[$"Dano:{tipo}"] = dano.GetProperty(tipo).GetInt32();
+        // A chave é o id do elemento no catálogo; aqui vira o nome, para os casos lerem melhor.
         foreach (var elemento in dano.GetProperty("danoElemental").EnumerateObject())
-            n[$"DanoElemental:{elemento.Name}"] = elemento.Value.GetInt32();
+            n[$"DanoElemental:{ElementosQueSaoAfinidade[int.Parse(elemento.Name)]}"] = elemento.Value.GetInt32();
 
         foreach (var m in (await JsonAsync(token, $"{raiz}/masteries")).EnumerateArray())
             n[$"Maestria:{m.GetProperty("nome").GetString()}"] = m.GetProperty("total").GetInt32();
 
         if (f.TemAfinidades)
         {
-            foreach (var a in (await JsonAsync(token, $"{raiz}/affinities")).EnumerateArray())
+            // Só os elementos em que a ficha tem pontos (a lista mostra também os zerados que a ficha vê).
+            foreach (var a in (await JsonAsync(token, $"{raiz}/afinidades")).GetProperty("elementos").EnumerateArray()
+                         .Where(a => a.GetProperty("pontos").GetInt32() > 0))
             {
-                var elemento = a.GetProperty("elemento").GetString();
-                n[$"Afinidade:{elemento}"] = a.GetProperty("elementoValorComCondicoes").GetInt32();
-                n[$"Afinidade:{elemento}.guardada"] = a.GetProperty("elementoValor").GetInt32();
+                var elemento = a.GetProperty("nome").GetString();
+                n[$"Afinidade:{elemento}"] = a.GetProperty("pontosComCondicoes").GetInt32();
+                n[$"Afinidade:{elemento}.guardada"] = a.GetProperty("pontos").GetInt32();
             }
         }
         return n;
@@ -228,7 +231,7 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
         if (f.Rota == Personagem)
             caminhos.Add("/skills/budget");
         if (f.TemAfinidades)
-            caminhos.Add("/affinities");
+            caminhos.Add("/afinidades");
 
         var retrato = new Dictionary<string, string>();
         foreach (var caminho in caminhos)
@@ -308,6 +311,17 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
         }
     }
 
+    // Os 16 elementos semeados que não são Caminho (id → nome sem acento), um DanoElemental de cada.
+    private static readonly Dictionary<int, string> ElementosQueSaoAfinidade = new()
+    {
+        [0] = "Terra", [1] = "Agua", [2] = "Fogo", [3] = "Ar", [4] = "Gelo", [5] = "Flora", [6] = "Ferro", [7] = "Raio",
+        [8] = "Prever", [10] = "Purificar", [11] = "Ecomancia", [12] = "Hemomancia", [13] = "Curar", [15] = "Aprimorar",
+        [16] = "Necromancia", [17] = "Invocacao",
+    };
+
+    private static (string Chave, int Antes, int Durante)[] TodoDanoElemental(int antes, int durante) =>
+        ElementosQueSaoAfinidade.Values.Select(nome => ($"DanoElemental:{nome}", antes, durante)).ToArray();
+
     private static (Linha, (string, int, int)[]) Caso(Linha linha, params (string Chave, int Antes, int Durante)[] mudancas) => (linha, mudancas);
 
     // ---------- o retrato de partida ----------
@@ -326,6 +340,9 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
             ["Atual:adrenalina"] = 0, ["Atual:estresse"] = 0, ["Atual:foco"] = 0, ["Atual:vitalidade"] = 0,
             ["Dano:arcano"] = 0, ["Dano:contundente"] = 0, ["Dano:cortante"] = 10, ["Dano:perfurante"] = 0,
             ["DanoElemental:Agua"] = 0, ["DanoElemental:Ar"] = 0, ["DanoElemental:Fogo"] = 0, ["DanoElemental:Terra"] = 0,
+            ["DanoElemental:Gelo"] = 0, ["DanoElemental:Flora"] = 0, ["DanoElemental:Ferro"] = 0, ["DanoElemental:Raio"] = 0,
+            ["DanoElemental:Prever"] = 0, ["DanoElemental:Purificar"] = 0, ["DanoElemental:Ecomancia"] = 0, ["DanoElemental:Hemomancia"] = 0,
+            ["DanoElemental:Curar"] = 0, ["DanoElemental:Aprimorar"] = 0, ["DanoElemental:Necromancia"] = 0, ["DanoElemental:Invocacao"] = 0,
             ["Maestria:Espadas"] = 13,
             ["Maximo:adrenalina"] = 10, ["Maximo:estresse"] = 10, ["Maximo:foco"] = 14, ["Maximo:vitalidade"] = 16,
             ["Pericia"] = 10,
@@ -439,11 +456,11 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
 
         await ConferirLinhasAsync(mesa, ficha,
             // 6 → 8 na Tabela de Afinidades: Eficiência 3 → 4, Dano 3 → 4.
-            Caso(Fixo("AfinidadeElemental", "Fogo", 2), ("Afinidade:Fogo", 6, 8), ("Sub:eficienciaElemental", 3, 4), ("Sub:danoElemental", 3, 4)),
+            Caso(Fixo("AfinidadeElemental", "2", 2), ("Afinidade:Fogo", 6, 8), ("Sub:eficienciaElemental", 3, 4), ("Sub:danoElemental", 3, 4)),
             // 6 → 3: Eficiência 2, Dano 1.
             Caso(Pct("AfinidadeElemental", null, -50), ("Afinidade:Fogo", 6, 3), ("Sub:eficienciaElemental", 3, 2), ("Sub:danoElemental", 3, 1)),
             Caso(Fixo("AfinidadeElemental", null, -9), ("Afinidade:Fogo", 6, 0), ("Sub:eficienciaElemental", 3, 0), ("Sub:danoElemental", 3, 0)), // nunca negativa
-            Caso(Fixo("AfinidadeElemental", "Agua", 5))); // outro Elemento: nada muda
+            Caso(Fixo("AfinidadeElemental", "1", 5))); // outro Elemento: nada muda
 
         // O contador de Vocação Arcana usa sempre os valores guardados.
         var (encounterId, participantId) = await EncontroEmAndamentoAsync(mesa, ficha);
@@ -460,14 +477,14 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
         var ficha = await NovoPersonagemAsync(mesa);
 
         await ConferirLinhasAsync(mesa, ficha,
-            Caso(Fixo("DanoElemental", "Fogo", 4), ("DanoElemental:Fogo", 0, 4)),
-            Caso(Fixo("DanoElemental", null, -2), ("DanoElemental:Ar", 0, -2), ("DanoElemental:Agua", 0, -2), ("DanoElemental:Fogo", 0, -2), ("DanoElemental:Terra", 0, -2)),
+            Caso(Fixo("DanoElemental", "2", 4), ("DanoElemental:Fogo", 0, 4)),
+            Caso(Fixo("DanoElemental", null, -2), TodoDanoElemental(0, -2)),
             // O modificador parte de 0, então um percentual sozinho não muda nada (percentual de 0).
-            Caso(Pct("DanoElemental", "Fogo", 50)));
+            Caso(Pct("DanoElemental", "2", 50)));
 
         // Com um fixo junto, o percentual incide sobre ele: (0 + 4) × 1,5 = 6.
         var (encounterId, participantId) = await EncontroEmAndamentoAsync(mesa, ficha);
-        await AplicarAsync(mesa, encounterId, participantId, await CriarCondicaoAsync(mesa, "Em chamas", null, Fixo("DanoElemental", "Fogo", 4), Pct("DanoElemental", null, 50)));
+        await AplicarAsync(mesa, encounterId, participantId, await CriarCondicaoAsync(mesa, "Em chamas", null, Fixo("DanoElemental", "2", 4), Pct("DanoElemental", null, 50)));
         (await NumerosAsync(ficha, mesa.Gm))["DanoElemental:Fogo"].Should().Be(6);
     }
 
@@ -590,7 +607,7 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
     [
         Fixo("Atributo", "Forca", -4), Pct("Atributo", "Agilidade", -50), Fixo("Pericia", null, 1), Pct("SubAtributo", "Defesa Natural", 50),
         Fixo("Dano", "Cortante", -3), Fixo("RecursoTotal", "Vitalidade", 4), Pct("RecursoTotal", "Estresse", -50),
-        Fixo("AfinidadeElemental", "Fogo", 2), Fixo("DanoElemental", "Fogo", 3), Fixo("Maestria", null, 2),
+        Fixo("AfinidadeElemental", "2", 2), Fixo("DanoElemental", "2", 3), Fixo("Maestria", null, 2),
     ];
 
     private static (string, int)[] MudancasDeTodosOsAlvos =>
@@ -744,9 +761,9 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
             Caso(Pct("Dano", null, -50), ("Dano:cortante", 10, 5)),
             Caso(Fixo("RecursoTotal", "Foco", -20), ("Maximo:foco", 14, 0)),
             Caso(Pct("RecursoTotal", "Adrenalina", -30), ("Maximo:adrenalina", 10, 7)),
-            Caso(Fixo("AfinidadeElemental", "Fogo", 2), ("Afinidade:Fogo", 6, 8), ("Sub:eficienciaElemental", 3, 4), ("Sub:danoElemental", 3, 4)),
+            Caso(Fixo("AfinidadeElemental", "2", 2), ("Afinidade:Fogo", 6, 8), ("Sub:eficienciaElemental", 3, 4), ("Sub:danoElemental", 3, 4)),
             Caso(Pct("AfinidadeElemental", null, -50), ("Afinidade:Fogo", 6, 3), ("Sub:eficienciaElemental", 3, 2), ("Sub:danoElemental", 3, 1)),
-            Caso(Fixo("DanoElemental", "Fogo", 4), ("DanoElemental:Fogo", 0, 4)),
+            Caso(Fixo("DanoElemental", "2", 4), ("DanoElemental:Fogo", 0, 4)),
             Caso(Fixo("Maestria", ficha.Pericia, 2), ("Maestria:Espadas", 13, 15)),
             Caso(Pct("Maestria", null, -50), ("Maestria:Espadas", 13, 6)));
     }
@@ -769,7 +786,7 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
             Caso(Pct("Dano", null, -50), ("Dano:cortante", 10, 5)),
             Caso(Fixo("RecursoTotal", "Foco", -20), ("Maximo:foco", 14, 0)),
             Caso(Pct("RecursoTotal", "Adrenalina", -30), ("Maximo:adrenalina", 10, 7)),
-            Caso(Fixo("DanoElemental", "Fogo", 4), ("DanoElemental:Fogo", 0, 4)),
+            Caso(Fixo("DanoElemental", "2", 4), ("DanoElemental:Fogo", 0, 4)),
             Caso(Fixo("Maestria", ficha.Pericia, 2), ("Maestria:Espadas", 13, 15)),
             Caso(Pct("Maestria", null, -50), ("Maestria:Espadas", 13, 6)),
             // A Criatura não tem Estresse nem lista de Afinidades: estas linhas não têm onde agir.
@@ -901,9 +918,8 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
             await EnviarAsync(HttpMethod.Put, $"{raiz}/skills/{p.Pericia}", mesa.Jogador, new UpdateSkillRequest(p.Gasto, p.AtributoEscolhido));
         foreach (var m in await LerAsync<List<MasteryResponse>>(mesa.Jogador, $"{raiz}/masteries"))
             await EnviarAsync(HttpMethod.Put, $"{raiz}/masteries/{m.Id}", mesa.Jogador, new UpdateMasteryRequest(m.Nome, m.Pericia, m.Atributo, m.GastoMaestria));
-        foreach (var a in await LerAsync<List<AffinityResponse>>(mesa.Jogador, $"{raiz}/affinities"))
-            await EnviarAsync(HttpMethod.Put, $"{raiz}/affinities/{a.Id}", mesa.Jogador,
-                new UpdateAffinityRequest(a.Elemento, a.ElementoValor, a.SegundaEssencia, a.SegundaEssenciaValor, a.SubElementoValor, a.Experiencia));
+        foreach (var a in (await LerAsync<AfinidadesDaFichaResponse>(mesa.Jogador, $"{raiz}/afinidades")).Elementos)
+            await EnviarAsync(HttpMethod.Put, $"{raiz}/afinidades/{a.Id}", mesa.Jogador, new AtualizarAfinidadeRequest(a.Pontos, a.Experiencia));
 
         await RemoverAsync(mesa, encounterId, participantId, aplicadaId);
 
@@ -921,7 +937,7 @@ public class CondicoesNaFichaTests(ApiFixture fixture) : ApiTestBase(fixture)
         var atributos = await db.CharacterAttributes.AsNoTracking().Where(a => a.SheetId == id).OrderBy(a => a.Atributo).ToListAsync();
         var pericias = await db.CharacterSkills.AsNoTracking().Where(s => s.SheetId == id).OrderBy(s => s.PericiaId).ToListAsync();
         var maestrias = await db.CharacterMasteries.AsNoTracking().Where(m => m.SheetId == id).OrderBy(m => m.Id).ToListAsync();
-        var afinidades = await db.CharacterAffinities.AsNoTracking().Where(a => a.SheetId == id).OrderBy(a => a.Id).ToListAsync();
+        var afinidades = await db.CharacterPontosDeAfinidade.AsNoTracking().Where(a => a.SheetId == id).OrderBy(a => a.ElementoId).ToListAsync();
         return JsonSerializer.Serialize(new { sheet, atributos, pericias, maestrias, afinidades });
     }
 

@@ -20,8 +20,8 @@ namespace RuinaRPG.Api.Services;
 /// formula defined yet, so they're not implemented here. A Criatura não tem Histórico, Afinidades (2.c),
 /// Inventário nem identidade de personagem; suas Perícias são só as DisponivelParaCriaturas.
 /// </summary>
-public class CreatureSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades)
-    : FichaStats<CreatureSheet, AtributoCriatura, CreatureAttribute, CreatureSkill, CreatureShield, CreatureArmorSlot, CreatureArtifact>(db, rules, pericias, penalidades)
+public class CreatureSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, CatalogoDeAfinidadesService afinidades)
+    : FichaStats<CreatureSheet, AtributoCriatura, CreatureAttribute, CreatureSkill, CreatureShield, CreatureArmorSlot, CreatureArtifact>(db, rules, pericias, penalidades, afinidades)
 {
     protected override Guid? HistoricoId(CreatureSheet sheet) => null;
 

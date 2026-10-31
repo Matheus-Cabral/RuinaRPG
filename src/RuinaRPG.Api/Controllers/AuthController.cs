@@ -153,7 +153,7 @@ public class AuthController(
             return Unauthorized("Credenciais inválidas.");
 
         // Conferido só depois da senha, para que uma senha errada não revele o estado (R0002).
-        if (user.Estado != EstadoDaConta.Ativa)
+        if (!ContaDeJogador.PodeEntrar(user.Estado))
             return Unauthorized(TextosDaConta.ContaDesativada);
 
         return Ok(await IssueTokensAsync(user));
@@ -170,7 +170,7 @@ public class AuthController(
             return Unauthorized();
 
         var user = await userManager.FindByIdAsync(stored.UserId.ToString());
-        if (user is null || user.Estado != EstadoDaConta.Ativa)
+        if (user is null || !ContaDeJogador.PodeEntrar(user.Estado))
             return Unauthorized();
 
         stored.RevokedAt = DateTime.UtcNow;

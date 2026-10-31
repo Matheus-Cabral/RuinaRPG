@@ -1,3 +1,4 @@
+using RuinaRPG.Api.Services;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -14,7 +15,7 @@ namespace RuinaRPG.Api.Controllers;
 [ApiController]
 [Route("api/spell-ability-bank")]
 [Authorize(Roles = "GM")]
-public class SpellAbilityBankController(RuinaRpgDbContext db, IPericiaCatalogo pericias) : ControllerBase
+public class SpellAbilityBankController(RuinaRpgDbContext db, IPericiaCatalogo pericias, CatalogoDeAfinidadesService afinidades) : ControllerBase
 {
     // The whole Banco is GM-only — curating and browsing. A Jogador never reads the GM's private bank:
     // to pick a Magia/Habilidade for their sheet they use CampaignCatalogController's
@@ -174,7 +175,7 @@ public class SpellAbilityBankController(RuinaRpgDbContext db, IPericiaCatalogo p
             return "Uma Passiva não tem Grau nem Efeitos.";
         if (!Enum.TryParse<CategoriaDePassiva>(categoriaRaw, out var categoria) || !Enum.IsDefined(categoria))
             return "Categoria desconhecida. Use Livre, Vocacional ou DeClasse.";
-        if (!RequisitosDePassivaMapper.TryParse(requisitosDto, await pericias.TodasAsync(), out var requisitos, out var erro))
+        if (!RequisitosDePassivaMapper.TryParse(requisitosDto, await pericias.TodasAsync(), await afinidades.CarregarAsync(), out var requisitos, out var erro))
             return erro;
         if (requisitos?.HistoricoId is { } historicoId && !await db.Historicos.AnyAsync(h => h.Id == historicoId))
             return "Histórico não encontrado.";

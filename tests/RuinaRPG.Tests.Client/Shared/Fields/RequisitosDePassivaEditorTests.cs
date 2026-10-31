@@ -139,7 +139,7 @@ public class RequisitosDePassivaEditorTests : MudBunitContext
     public async Task Limpar_Afinidade_clears_the_field_and_notifies_OnChanged()
     {
         RegisterCatalogStubs();
-        var model = new RequisitosFormModel { Afinidade = "Fogo" };
+        var model = new RequisitosFormModel { Afinidade = 2 };
         var changed = false;
 
         var cut = RenderEditor(model, EventCallback.Factory.Create(this, () => changed = true));
@@ -224,7 +224,7 @@ public class RequisitosDePassivaEditorTests : MudBunitContext
         RegisterCatalogStubs();
         var model = new RequisitosFormModel
         {
-            Vocacao = "Bruxo", Classe = "Ecomante", Linhagem = "Humano", Afinidade = "Fogo", Estrela = "Nox",
+            Vocacao = "Bruxo", Classe = "Ecomante", Linhagem = "Humano", Afinidade = 2, Estrela = "Nox",
             Atributos = [new RequisitoMinimoLinha { Alvo = "Forca", Minimo = 3 }],
         };
 
@@ -235,7 +235,7 @@ public class RequisitosDePassivaEditorTests : MudBunitContext
         voc.Vocacao.Should().Be("Bruxo");
         voc.SubVocacao.Should().Be("Ecomante");
         cut.FindComponent<LinhagemVarianteFields>().Instance.Linhagem.Should().Be("Humano");
-        cut.FindComponent<AfinidadeSelect>().Instance.Value.Should().Be("Fogo");
+        cut.FindComponent<AfinidadeSelect>().Instance.Value.Should().Be(2);
         cut.FindComponent<EstrelaSelect>().Instance.Value.Should().Be("Nox");
         cut.Markup.Should().NotContain("Model.").And.NotContain("linha.Alvo");
         // O texto exibido pelo select da linha é o rótulo da opção escolhida.

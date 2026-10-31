@@ -16,6 +16,7 @@ Fourteen files of `Docs/Sistema RPG/` are embedded as build resources in `RuinaR
 
 Exceptions — Markdown that only seeds once:
 - `Tabela de Níveis.md` (with the XP/EAP table in `Tabelas de XP, Atributos, Características e EAP.md`) seeds `NiveisProgressao`/`ColunasDeNivel`/`ValoresDeNivel` only while they are empty, and feeds the Compêndio. After that, level budgets and caps come from the Auditoria table (Auditoria de Regras R0013); editing the Markdown no longer changes them.
+- `Tabela de Circulo e Grau por EAP.md`: only its *Afinidade (Valores Absolutos)* column is a seed. It fills the affinity total per Círculo only while that table is empty; afterwards the Auditoria governs it (Auditoria de Regras R0018), like `Tabela de Níveis.md`. The other columns keep being read at runtime.
 - `Tabela de Afinidades.md` seeds `TabelaDeAfinidades` only while it is empty; afterwards the Auditoria table governs (Auditoria de Regras R0016).
 
 ## Migrations

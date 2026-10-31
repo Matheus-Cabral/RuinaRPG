@@ -35,7 +35,7 @@ public class FichaMaestriasNaAbaCombateTests : MudBunitContext
 
     private static readonly string[] SingleObjectSuffixes =
     {
-        "/attributes/budget", "/skills/budget", "/sub-attributes", "/modificador-de-dano",
+        "/attributes/budget", "/skills/budget", "/afinidades", "/sub-attributes", "/modificador-de-dano",
         "/racial-ability", "/racial-traits/pending", "/traits",
     };
 

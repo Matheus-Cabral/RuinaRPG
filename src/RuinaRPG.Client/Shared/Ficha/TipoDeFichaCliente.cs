@@ -47,6 +47,12 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
     /// <summary>A seção Afinidades e a Afinidade dentro dos Sub-Atributos.</summary>
     public required bool TemAfinidades { get; init; }
 
+    /// <summary>
+    /// O GM não é recusado pelas regras das Afinidades (máximo, teto, bloqueio): a ficha mostra, não recusa (Ficha de
+    /// NPCs R0010). O jogador de uma ficha concedida segue as regras.
+    /// </summary>
+    public required bool AfinidadesLivresParaOGm { get; init; }
+
     /// <summary>Os Pontos de Sina e o Estresse no Combate.</summary>
     public required bool TemSinaEEstresse { get; init; }
 
@@ -140,6 +146,7 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
         EditaNivelAManual = false,
         TemOrcamentoDePericias = true,
         TemAfinidades = true,
+        AfinidadesLivresParaOGm = false,
         TemSinaEEstresse = true,
         RotuloDoFoco = "Foco (PF)",
         RotuloDosPontosDeIgnicao = "Pontos de Ignição Atual",
@@ -172,6 +179,7 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
         EditaNivelAManual = true,
         TemOrcamentoDePericias = false,
         TemAfinidades = true,
+        AfinidadesLivresParaOGm = true,
         TemSinaEEstresse = true,
         RotuloDoFoco = "Foco (PF)",
         RotuloDosPontosDeIgnicao = "Pontos de Ignição Atual",
@@ -205,6 +213,7 @@ public sealed record TipoDeFichaCliente(string Nome, string Rota)
         EditaNivelAManual = true,
         TemOrcamentoDePericias = false,
         TemAfinidades = false,
+        AfinidadesLivresParaOGm = false,
         TemSinaEEstresse = false,
         RotuloDoFoco = "Arcana (PF)",
         RotuloDosPontosDeIgnicao = "Pontos de Ignição",

@@ -67,11 +67,9 @@ Quando a Imagem está liberada, ela também pode ser **referenciada** por um jog
 
   
 
-# **R0010** - O limite de Vocação Arcana das Afinidades é exibido, mas não bloqueia o GM.
+# **R0010** - O limite e as regras das Afinidades são exibidos, mas não bloqueiam o GM.
 
-**Descrição**: O contador **Vocação Arcana: gasto / máximo** e o campo *Afinidade Adicional* seguem "[[Requisitos - Ficha de Personagem]]" R0007 sem alteração no cálculo. Diferente do Personagem, o máximo **não é um limite**: o GM pode salvar Afinidades acima dele, e o contador apenas fica destacado em vermelho como aviso — mesmo tratamento de R0007 deste documento para os Pontos de Atributo.
-
-  
+**Descrição**: O contador **Distribuídos {gasto}/{máximo}** e o campo *Afinidade Adicional* seguem "[[Requisitos - Ficha de Personagem]]" R0007 sem alteração no cálculo. Diferente do Personagem, o máximo **não é um limite**: o GM pode salvar Afinidades acima dele, e o contador apenas fica destacado em vermelho como aviso — mesmo tratamento de R0007 deste documento para os Pontos de Atributo. O mesmo vale para as regras de 2.c: o **GM não é bloqueado** pelo teto por elemento, pelo requisito de Sub-Elemento, pela visibilidade por Vocação/Classe nem pela recusa de baixar um requisito — a ficha **mostra** (elemento marcado, dica, contador vermelho) em vez de recusar. O **jogador** de um NPC concedido segue as regras do Personagem.
 
 # **R0011** - O NPC também recebe Habilidades Passivas.
 

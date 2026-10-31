@@ -89,7 +89,7 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
 
     /// <summary>As três primeiras requisições da carga, em sequência: Perícias, a ficha (diz a campanha) e a galeria de imagens.</summary>
     protected static string[] InicioDaCarga(string tipo, string papel) =>
-        new[] { "GET /pericias", $"GET /{Prefixo(tipo)}/s1", papel == "GM" ? "GET /images/mine" : "GET /campaigns/c1/available-images" };
+        new[] { "GET /pericias", "GET /afinidades/catalogo", $"GET /{Prefixo(tipo)}/s1", papel == "GM" ? "GET /images/mine" : "GET /campaigns/c1/available-images" };
 
     /// <summary>O resto da carga, pedido em paralelo (<c>Task.WhenAll</c>): vale o conjunto, não a ordem.</summary>
     protected static string[] CargaInicial(string tipo, string papel)
@@ -103,7 +103,7 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
         if (tipo == "Personagem")
             lista.Add($"GET {k}/skills/budget");
         if (tipo != "Criatura")
-            lista.Add($"GET {k}/affinities");
+            lista.Add($"GET {k}/afinidades");
         lista.AddRange(new[] { $"GET {k}/weapons", $"GET {k}/armor-slots", $"GET {k}/shields", $"GET {k}/sub-attributes", $"GET {k}/modificador-de-dano" });
         if (tipo != "Criatura")
             lista.AddRange(new[] { $"GET {k}/racial-ability", $"GET {k}/variantes-liberadas" });
@@ -136,7 +136,7 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
         if (tipo == "Personagem")
             lista.Add($"GET {k}/skills/budget");
         if (tipo != "Criatura")
-            lista.Add($"GET {k}/affinities");
+            lista.Add($"GET {k}/afinidades");
         lista.AddRange(new[] { $"GET {k}/weapons", $"GET {k}/armor-slots", $"GET {k}/shields", $"GET {k}/sub-attributes", $"GET {k}/modificador-de-dano" });
         return lista.ToArray();
     }
@@ -428,7 +428,15 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
             "attributes/budget" => new { gastoTotal = 2, pontosDisponiveis = 10 },
             "skills" => new[] { new { pericia = "Atletismo", gasto = 2, modificador = 1, atributoEscolhido = "Vigor", total = 3, contaHistorico = true, nome = "Atletismo", descricao = "Correr e saltar." } },
             "skills/budget" => new { gastoTotal = 2, pontosDisponiveis = 8 },
-            "affinities" => new[] { new { id = "afi1", elemento = "Fogo", elementoValor = 2, segundaEssencia = (string?)null, segundaEssenciaValor = (int?)null, subElemento = (string?)null, subElementoValor = (int?)null, experiencia = 1, elementoValorComCondicoes = 2 } },
+            "afinidades" => new
+            {
+                gasto = 2, maximo = 6, secaoVisivel = true,
+                elementos = new[]
+                {
+                    new { id = 2, nome = "Fogo", tipo = "Base", teto = (int?)null, pontos = 2, experiencia = (int?)1, bloqueado = false, motivo = (string?)null, pontosComCondicoes = 2 },
+                    new { id = 4, nome = "Gelo", tipo = "SubElemento", teto = (int?)null, pontos = 0, experiencia = (int?)null, bloqueado = true, motivo = (string?)"Precisa de 1 em Água e 1 em Ar", pontosComCondicoes = 0 },
+                },
+            },
             "weapons" => new[]
             {
                 new
@@ -495,6 +503,7 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
 
     private object? Global(string caminho) => caminho switch
     {
+        "/afinidades/catalogo" => ElementosDeTeste.Semeados,
         "/pericias" => new[] { new { id = 1, chave = "Atletismo", nome = "Atletismo", descricao = "Correr e saltar.", atributoSugerido = "Vigor", disponivelParaCriaturas = true, protegida = false } },
         "/auth/me" => new { id = "u1", nickname = "Mestre", role = _papel, isRulesAuditor = !EhJogador, pendingChangelogVersion = (string?)null, mustChangePassword = false },
         // Uma coluna acumulativa (2 por nível) para a "Progressão do nível" mostrar um valor que depende do Nível da ficha.
@@ -543,7 +552,7 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
         "Personagem" => new
         {
             id = SheetId, campaignId = "c1", campaignName = "Crônicas de Alker", ownerId = "u2", imageUrl = "/img/um.png", imageId = "img1",
-            nome = "Aria", linhagem = "Humano", variante = "Sinir", vocacao = "Feiticeiro", subVocacao = "Piromante", afinidade = "Fogo", propriedade = "Uma casa",
+            nome = "Aria", linhagem = "Humano", variante = "Sinir", vocacao = "Feiticeiro", subVocacao = "Piromante", afinidade = 2, propriedade = "Uma casa",
             nivel = 3, circulo = 1, grau = 2, possuiCoracaoDeMana = true, experienciaAtual = 120, eapAtual = 7,
             nucleosRankF = 1, nucleosRankE = 2, nucleosRankD = 0, nucleosRankC = 0, nucleosRankB = 0, nucleosRankA = 0, nucleosRankS = 0,
             pontosDeIgnicaoAtual = 12, pontosDeIgnicaoTotal = 40, vitalidadeAtual = 20, focoAtual = 10, adrenalinaAtual = 3, estresseAtual = 1,
@@ -556,7 +565,7 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
         "NPC" => new
         {
             id = SheetId, ownerId = EhJogador ? "u2" : null, campaignId = EhJogador ? "c1" : null, campaignName = EhJogador ? "Crônicas de Alker" : null, imageUrl = "/img/um.png", imageId = "img1",
-            nome = "Borin", linhagem = "Nephrytes", variante = "Koroanos", vocacao = "Campeao", subVocacao = "Duelista", afinidade = "Terra", propriedade = "Uma forja",
+            nome = "Borin", linhagem = "Nephrytes", variante = "Koroanos", vocacao = "Campeao", subVocacao = "Duelista", afinidade = 0, propriedade = "Uma forja",
             nivel = 4, circulo = 0, grau = 2, possuiCoracaoDeMana = false, experienciaAtual = 200, eapAtual = 8,
             nucleosRankF = 0, nucleosRankE = 1, nucleosRankD = 1, nucleosRankC = 0, nucleosRankB = 0, nucleosRankA = 0, nucleosRankS = 0,
             pontosDeIgnicaoAtual = 9, pontosDeIgnicaoTotal = 30, vitalidadeAtual = 30, focoAtual = 6, adrenalinaAtual = 4, estresseAtual = 2,
@@ -570,7 +579,7 @@ public abstract class RedeDeSegurancaBase : MudBunitContext
         _ => new
         {
             id = SheetId, ownerId = EhJogador ? "u2" : null, campaignId = EhJogador ? "c1" : null, campaignName = EhJogador ? "Crônicas de Alker" : null, imageUrl = "/img/um.png", imageId = "img1",
-            nome = "Lobo Cinzento", raca = "Lobo", arquetipo = "Fisico", subArquetipo = "Caçador", afinidade = "Ar", rank = "D",
+            nome = "Lobo Cinzento", raca = "Lobo", arquetipo = "Fisico", subArquetipo = "Caçador", afinidade = 3, rank = "D",
             nivel = 2, experienciaAtual = 60, abate = 40, assistencia = 20, pontosDeIgnicao = 5,
             vitalidadeAtual = 18, focoAtual = 4, adrenalinaAtual = 2, cobertura = "Nenhuma",
             vitalidadeMaximo = 18, focoMaximo = 4, adrenalinaMaximo = 3,

@@ -216,4 +216,19 @@ public class AuditoriaTabelaDeAfinidadesTests : MudBunitContext
 
         cut.Markup.Should().Contain("Nenhuma linha cadastrada — Eficiência e Dano Elemental valem 0 em todas as fichas.");
     }
+
+    [Fact]
+    public async Task A_pagina_de_Afinidades_tem_uma_aba_por_secao_e_abre_na_Tabela_de_Afinidades()
+    {
+        var http = CreateHttp(SeedRows(), new());
+        Services.AddScoped(_ => http);
+
+        var cut = Render<AuditoriaTabelaDeAfinidades>();
+        await Task.Delay(50);
+
+        cut.Find("h3").TextContent.Should().Be("Auditoria: Afinidades");
+        cut.FindAll(".mud-tab").Select(t => t.TextContent.Trim())
+            .Should().Equal("Tabela de Afinidades", "Total por Círculo", "Elementos", "Cruzamentos", "Vocações e Classes");
+        Afinidades(cut).Should().Equal("3", "8");
+    }
 }

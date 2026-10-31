@@ -14,6 +14,7 @@ builder.Services.AddBlazoredLocalStorage();
 builder.Services.AddMudServices();
 builder.Services.AddScoped<AuthStateService>();
 builder.Services.AddScoped<PericiaCatalogo>();
+builder.Services.AddScoped<CatalogoDeElementos>();
 builder.Services.AddAuthorizationCore();
 builder.Services.AddScoped<TokenAuthenticationStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<TokenAuthenticationStateProvider>());
@@ -30,7 +31,7 @@ builder.Services
 builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("Api"));
 builder.Services.AddScoped<INotificationConnection, SignalRNotificationConnection>();
 builder.Services.AddTransient<IEncounterConnection, SignalREncounterConnection>();
-builder.Services.AddScoped<SecretNoteNotifier>();
+builder.Services.AddScoped<AvisosDoHub>();
 builder.Services.AddScoped(sp => new NewVersionWatcher(sp.GetRequiredService<HttpClient>(), RuinaRPG.Domain.BuildInfo.ShaOf(typeof(App).Assembly)));
 
 await builder.Build().RunAsync();

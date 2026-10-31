@@ -20,7 +20,8 @@ public sealed record RequisitosDePassiva
     public Variante? Variante { get; init; }
     public int? Graduacao { get; init; }
     public bool? CoracaoDeMana { get; init; }
-    public AfinidadeElemental? Afinidade { get; init; }
+    /// <summary>Id do elemento no catálogo de Afinidades (Auditoria de Regras R0018).</summary>
+    public int? Afinidade { get; init; }
     public Estrela? Estrela { get; init; }
     public Guid? HistoricoId { get; init; }
     public List<RequisitoDeAtributo> Atributos { get; init; } = [];

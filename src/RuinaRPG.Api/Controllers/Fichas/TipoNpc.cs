@@ -47,4 +47,6 @@ public sealed class TipoNpc(RuinaRpgDbContext db, CondicoesAtivasDaFicha condico
     public bool SoPericiasDeCriatura => false;
 
     public bool RecusaAtributosAcimaDoOrcamento => false;
+
+    public bool AfinidadesRecusamForaDasRegras(NpcSheet sheet, Guid userId) => userId != sheet.GmId;
 }

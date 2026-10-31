@@ -14,8 +14,8 @@ namespace RuinaRPG.Api.Services;
 /// Estatísticas da Ficha de Personagem sobre o núcleo comum (FichaStats): /sub-attributes, as listas de Atributos e
 /// Perícias, os máximos de recurso e o retrato dos requisitos de Passiva compartilham uma só conta ao vivo.
 /// </summary>
-public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, ITabelaDeNiveis tabelaDeNiveis, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, TabelaDeAfinidadesProvider tabelaDeAfinidades)
-    : FichaStats<CharacterSheet, Atributo, CharacterAttribute, CharacterSkill, CharacterShield, CharacterArmorSlot, CharacterArtifact>(db, rules, pericias, penalidades)
+public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, GraduacaoDaFicha graduacaoDaFicha, IPericiaCatalogo pericias, EquipmentPenaltyService penalidades, TabelaDeAfinidadesProvider tabelaDeAfinidades, CatalogoDeAfinidadesService afinidades)
+    : FichaStats<CharacterSheet, Atributo, CharacterAttribute, CharacterSkill, CharacterShield, CharacterArmorSlot, CharacterArtifact>(db, rules, pericias, penalidades, afinidades)
 {
     protected override Guid? HistoricoId(CharacterSheet sheet) => sheet.HistoricoId;
 
@@ -25,16 +25,14 @@ public class CharacterSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules,
         await Db.Campaigns.Where(c => c.Id == sheet.CampaignId).Select(c => c.BonusDeCarga).FirstOrDefaultAsync();
 
     protected override Task<(int? Eficiencia, int? Dano)> ElementalAsync(CharacterSheet sheet, EfeitosDeCondicao efeitos) =>
-        ElementalDasAfinidadesAsync<CharacterAffinity>(sheet.Id, sheet.Afinidade, efeitos, tabelaDeAfinidades);
+        ElementalDasAfinidadesAsync<CharacterPontosDeAfinidade>(sheet.Id, sheet.Afinidade, efeitos, tabelaDeAfinidades);
 
     protected override Task<List<(Guid Id, Guid ItemId, bool IsEquipped)>> ArmasDoCatalogoAsync(Guid sheetId) => ArmasDoCatalogoAsync<CharacterWeapon>(sheetId);
 
     /// <summary>Mesmo Grau/Círculo que CharacterSheetsController.ToResponseAsync mostra em 1.b.</summary>
     protected override async Task<FichaParaRequisitos> RetratoAsync(CharacterSheet sheet, Dictionary<Atributo, int> atributos, Dictionary<SubAtributo, int> subAtributos, Dictionary<int, int?> pericias)
     {
-        var tabela = await tabelaDeNiveis.ObterAsync();
-        var eapAtual = EapCalculator.Compute(sheet.Nivel, sheet.NucleosRankF, sheet.NucleosRankE, sheet.NucleosRankD, sheet.NucleosRankC, sheet.NucleosRankB, sheet.NucleosRankA, sheet.NucleosRankS, tabela.ComoEapPorNivel());
-        var graduacao = sheet.Vocacao is null ? 0 : GraduacaoCalculator.Compute(sheet.Vocacao.Value, eapAtual, sheet.PossuiCoracaoDeMana, Rules.CirculoGrauPorEap);
+        var (_, graduacao) = await graduacaoDaFicha.CalcularAsync(sheet);
 
         return new FichaParaRequisitos(
             TemIdentidadeDePersonagem: true, sheet.Nivel, sheet.Vocacao, sheet.SubVocacao, sheet.Linhagem, sheet.Variante,

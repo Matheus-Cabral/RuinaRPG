@@ -14,32 +14,22 @@ namespace RuinaRPG.Api.Services;
 /// Estatísticas da Ficha de NPC sobre o núcleo comum (FichaStats) — as mesmas contas do Personagem, sem bônus de
 /// carga de campanha (o NPC não pertence a uma).
 /// </summary>
-public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPericiaCatalogo pericias, ITabelaDeNiveis tabelaDeNiveis, EquipmentPenaltyService penalidades, TabelaDeAfinidadesProvider tabelaDeAfinidades)
-    : FichaStats<NpcSheet, Atributo, NpcAttribute, NpcSkill, NpcShield, NpcArmorSlot, NpcArtifact>(db, rules, pericias, penalidades)
+public class NpcSheetStats(RuinaRpgDbContext db, IRulesDataProvider rules, IPericiaCatalogo pericias, GraduacaoDaFicha graduacaoDaFicha, EquipmentPenaltyService penalidades, TabelaDeAfinidadesProvider tabelaDeAfinidades, CatalogoDeAfinidadesService afinidades)
+    : FichaStats<NpcSheet, Atributo, NpcAttribute, NpcSkill, NpcShield, NpcArmorSlot, NpcArtifact>(db, rules, pericias, penalidades, afinidades)
 {
-    /// <summary>
-    /// VIS/EAP Atual do NPC: base do Nível + Âmbares Absorvidos, exatamente como na Ficha de Personagem.
-    /// Único ponto de cálculo (resposta, Graduação, requisitos de Passiva); NpcSheet.EAPAtual é vestigial.
-    /// </summary>
-    public async Task<int> EapAtualAsync(NpcSheet sheet)
-    {
-        var tabela = await tabelaDeNiveis.ObterAsync();
-        return EapCalculator.Compute(sheet.Nivel, sheet.NucleosRankF, sheet.NucleosRankE, sheet.NucleosRankD, sheet.NucleosRankC, sheet.NucleosRankB, sheet.NucleosRankA, sheet.NucleosRankS, tabela.ComoEapPorNivel());
-    }
-
     protected override Guid? HistoricoId(NpcSheet sheet) => sheet.HistoricoId;
 
     protected override Task<List<(int Qtd, decimal Peso, decimal? CapacidadeExtra)>> InventarioAsync(Guid sheetId) => InventarioAsync<NpcInventoryItem>(sheetId);
 
     protected override Task<(int? Eficiencia, int? Dano)> ElementalAsync(NpcSheet sheet, EfeitosDeCondicao efeitos) =>
-        ElementalDasAfinidadesAsync<NpcAffinity>(sheet.Id, sheet.Afinidade, efeitos, tabelaDeAfinidades);
+        ElementalDasAfinidadesAsync<NpcPontosDeAfinidade>(sheet.Id, sheet.Afinidade, efeitos, tabelaDeAfinidades);
 
     protected override Task<List<(Guid Id, Guid ItemId, bool IsEquipped)>> ArmasDoCatalogoAsync(Guid sheetId) => ArmasDoCatalogoAsync<NpcWeapon>(sheetId);
 
-    /// <summary>Graduação usa o VIS calculado (EapAtualAsync) — o mesmo de NpcSheetsController.ToResponseAsync e da Ficha de Personagem.</summary>
+    /// <summary>Graduação de GraduacaoDaFicha — a mesma de NpcSheetsController.ToResponseAsync e da Ficha de Personagem.</summary>
     protected override async Task<FichaParaRequisitos> RetratoAsync(NpcSheet sheet, Dictionary<Atributo, int> atributos, Dictionary<SubAtributo, int> subAtributos, Dictionary<int, int?> pericias)
     {
-        var graduacao = sheet.Vocacao is null ? 0 : GraduacaoCalculator.Compute(sheet.Vocacao.Value, await EapAtualAsync(sheet), sheet.PossuiCoracaoDeMana, Rules.CirculoGrauPorEap);
+        var (_, graduacao) = await graduacaoDaFicha.CalcularAsync(sheet);
 
         return new FichaParaRequisitos(
             TemIdentidadeDePersonagem: true, sheet.Nivel, sheet.Vocacao, sheet.SubVocacao, sheet.Linhagem, sheet.Variante,

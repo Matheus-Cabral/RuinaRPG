@@ -2,185 +2,115 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RuinaRPG.Api.Services;
 using RuinaRPG.Contracts.Fichas;
-using RuinaRPG.Domain.CharacterSheets;
-using RuinaRPG.Domain.Condicoes;
+using RuinaRPG.Domain.Afinidades;
 using RuinaRPG.Infrastructure.Fichas;
 using RuinaRPG.Infrastructure.Persistence;
 
 namespace RuinaRPG.Api.Controllers.Fichas;
 
 /// <summary>
-/// Linhas de Afinidade da ficha (Personagem e NPC). A rota (<c>api/&lt;tipo&gt;-sheets/{sheetId}/affinities</c>)
-/// fica na subclasse de cada tipo.
+/// Afinidades da ficha por pontos (Ficha de Personagem 2.c e R0007; Personagem e NPC): a lista de elementos com
+/// gasto e máximo, e o PUT dos pontos e da Experiência de um elemento. A rota
+/// (<c>api/&lt;tipo&gt;-sheets/{sheetId}/afinidades</c>) fica na subclasse de cada tipo; quem é recusado pelas regras
+/// é um fato do tipo (<see cref="ITipoDeFicha{TSheet}.AfinidadesRecusamForaDasRegras"/>).
 /// </summary>
-public abstract class AfinidadesDaFichaController<TSheet, TLinha>(RuinaRpgDbContext db, ITipoDeFicha<TSheet> tipo)
+public abstract class AfinidadesDaFichaController<TSheet, TPontos>(
+    RuinaRpgDbContext db, ITipoDeFicha<TSheet> tipo, AfinidadesDaFicha afinidades, CatalogoDeAfinidadesService catalogo)
     : FichaControllerBase<TSheet>(tipo)
-    where TSheet : class, IFicha
-    where TLinha : class, IAfinidadeDaFicha, new()
+    where TSheet : class, IFichaComAfinidades
+    where TPontos : class, IPontosDeAfinidadeDaFicha, new()
 {
-    protected RuinaRpgDbContext Db { get; } = db;
+    [HttpGet]
+    public async Task<ActionResult<AfinidadesDaFichaResponse>> Listar(Guid sheetId)
+    {
+        if ((await FichaParaLeituraAsync(sheetId)).Negado(out var erro, out var ficha))
+            return erro;
 
-    private DbSet<TLinha> Linhas => Db.Set<TLinha>();
-
-    protected abstract PedidoDeAfinidade LerNova(AddAffinityRequest request);
-
-    protected abstract PedidoDeAfinidade LerAlteracao(UpdateAffinityRequest request);
-
-    protected abstract AffinityResponse Resposta(TLinha linha, int? elementoValorComCondicoes);
+        return await RespostaAsync(ficha, await catalogo.CarregarAsync());
+    }
 
     /// <summary>
-    /// A recusa por Vocação Arcana (Ficha de Personagem R0007), ou null. Por padrão nenhuma: no NPC o máximo só
-    /// informa (Ficha de NPCs R0010).
+    /// Grava os pontos e a Experiência de um elemento. Um valor inválido (elemento fora do catálogo, negativo) é
+    /// recusado para todos; as regras de 2.c só para quem o tipo diz (o GM de um NPC não). Mudar só a Experiência
+    /// nunca é recusado pelas regras (os pontos não mudam).
     /// </summary>
-    protected virtual Task<string?> ExcedeVocacaoArcanaAsync(TSheet ficha, LinhaDeAfinidade novaLinha, Guid? substituindoId) =>
-        Task.FromResult<string?>(null);
-
-    /// <summary>Os campos comuns aos pedidos de criar e de alterar uma linha.</summary>
-    protected sealed record PedidoDeAfinidade(string? Elemento, int? ElementoValor, string? SegundaEssencia, int? SegundaEssenciaValor, int? SubElementoValor, int? Experiencia);
-
-    [HttpPost]
-    public async Task<ActionResult<AffinityResponse>> Add(Guid sheetId, AddAffinityRequest request)
+    [HttpPut("{elementoId:int}")]
+    public async Task<ActionResult<AfinidadesDaFichaResponse>> Atualizar(Guid sheetId, int elementoId, AtualizarAfinidadeRequest request)
     {
-        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var sheet))
+        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var ficha))
             return erro;
 
-        var pedido = LerNova(request);
-        if (!TryParseEssencias(pedido.Elemento, pedido.SegundaEssencia, out var elemento, out var segunda, out var error))
-            return BadRequest(error);
+        var c = await catalogo.CarregarAsync();
+        if (RegrasDeAfinidade.MotivoDeValorInvalido(c, elementoId, request.Pontos, request.Experiencia) is { } invalido)
+            return BadRequest(invalido);
 
-        var subElemento = Derivar(elemento, segunda);
-        if (await HasDuplicateSubElementoAsync(sheetId, subElemento, excludingId: null))
-            return BadRequest("Já existe uma linha de Afinidade com esse Sub-Elemento.");
-
-        var novaLinha = new LinhaDeAfinidade(elemento, pedido.ElementoValor, subElemento, pedido.SubElementoValor, segunda, pedido.SegundaEssenciaValor);
-        if (await ExcedeVocacaoArcanaAsync(sheet, novaLinha, substituindoId: null) is { } excesso)
-            return BadRequest(excesso);
-
-        var affinity = new TLinha
+        var aplicaRegras = Tipo.AfinidadesRecusamForaDasRegras(ficha, CurrentUserId());
+        // Dois PUTs simultâneos no mesmo elemento novo criam a mesma linha: o segundo bate no índice único
+        // (SheetId, ElementoId) e repete uma vez, relendo as linhas — aí a do outro já existe e vira atualização.
+        for (var tentativa = 1; ; tentativa++)
         {
-            Id = Guid.NewGuid(), SheetId = sheetId, Elemento = elemento, ElementoValor = pedido.ElementoValor,
-            SegundaEssencia = segunda, SegundaEssenciaValor = pedido.SegundaEssenciaValor,
-            SubElemento = subElemento, SubElementoValor = pedido.SubElementoValor, Experiencia = pedido.Experiencia
-        };
-        Linhas.Add(affinity);
-        await Db.SaveChangesAsync();
+            var linhas = await afinidades.LinhasAsync<TPontos>(sheetId);
+            var linha = linhas.GetValueOrDefault(elementoId);
+            if (await MotivoParaRecusarAsync(c, ficha, aplicaRegras, Pontos(linhas), elementoId, request.Pontos) is { } recusa)
+                return BadRequest(recusa);
 
-        return Created(string.Empty, Resposta(affinity, await Tipo.CondicoesAsync(sheet)));
-    }
-
-    [HttpGet]
-    public async Task<ActionResult<List<AffinityResponse>>> List(Guid sheetId)
-    {
-        if ((await FichaParaLeituraAsync(sheetId)).Negado(out var erro, out var sheet))
-            return erro;
-
-        var affinities = await Linhas.Where(a => a.SheetId == sheetId).ToListAsync();
-        var efeitos = await Tipo.CondicoesAsync(sheet);
-        return affinities.Select(a => Resposta(a, efeitos)).ToList();
-    }
-
-    [HttpPut("{id}")]
-    public async Task<ActionResult<AffinityResponse>> Update(Guid sheetId, Guid id, UpdateAffinityRequest request)
-    {
-        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var sheet))
-            return erro;
-
-        var affinity = await Linhas.FirstOrDefaultAsync(a => a.Id == id && a.SheetId == sheetId);
-        if (affinity is null)
-            return NotFound();
-
-        var pedido = LerAlteracao(request);
-        if (!TryParseEssencias(pedido.Elemento, pedido.SegundaEssencia, out var elemento, out var segunda, out var error))
-            return BadRequest(error);
-
-        var essenciaMudou = elemento != affinity.Elemento || segunda != affinity.SegundaEssencia;
-        var subElemento = essenciaMudou ? Derivar(elemento, segunda) : affinity.SubElemento;
-        if (subElemento != affinity.SubElemento && await HasDuplicateSubElementoAsync(sheetId, subElemento, id))
-            return BadRequest("Já existe uma linha de Afinidade com esse Sub-Elemento.");
-
-        var novaLinha = new LinhaDeAfinidade(elemento, pedido.ElementoValor, subElemento, pedido.SubElementoValor, segunda, pedido.SegundaEssenciaValor);
-        if (await ExcedeVocacaoArcanaAsync(sheet, novaLinha, substituindoId: id) is { } excesso)
-            return BadRequest(excesso);
-
-        affinity.Elemento = elemento;
-        affinity.ElementoValor = pedido.ElementoValor;
-        affinity.SegundaEssencia = segunda;
-        affinity.SegundaEssenciaValor = pedido.SegundaEssenciaValor;
-        affinity.SubElemento = subElemento;
-        affinity.SubElementoValor = pedido.SubElementoValor;
-        affinity.Experiencia = pedido.Experiencia;
-        await Db.SaveChangesAsync();
-
-        return Ok(Resposta(affinity, await Tipo.CondicoesAsync(sheet)));
-    }
-
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(Guid sheetId, Guid id)
-    {
-        if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out _))
-            return erro;
-
-        var affinity = await Linhas.FirstOrDefaultAsync(a => a.Id == id && a.SheetId == sheetId);
-        if (affinity is null)
-            return NotFound();
-
-        Linhas.Remove(affinity);
-        await Db.SaveChangesAsync();
-        return NoContent();
-    }
-
-    // Essência 1 e 2 são opcionais (linha em branco continua valendo). O Sub-Elemento nunca vem do
-    // cliente: é a interseção na Matriz Elemental (Requisitos - Ficha de Personagem 2.c).
-    private static bool TryParseEssencias(string? elementoRaw, string? segundaRaw,
-        out Elemento? elemento, out EssenciaBasica? segunda, out string? error)
-    {
-        elemento = null;
-        segunda = null;
-        error = null;
-
-        if (!string.IsNullOrEmpty(elementoRaw))
-        {
-            if (!Enum.TryParse<Elemento>(elementoRaw, out var parsed) || !Enum.IsDefined(parsed))
+            Gravar(linha, sheetId, elementoId, request);
+            try
             {
-                error = "Elemento desconhecido.";
-                return false;
+                await db.SaveChangesAsync();
+                break;
             }
-            elemento = parsed;
-        }
-
-        if (!string.IsNullOrEmpty(segundaRaw))
-        {
-            if (!Enum.TryParse<EssenciaBasica>(segundaRaw, out var parsed) || !Enum.IsDefined(parsed))
+            catch (DbUpdateException) when (linha is null && tentativa == 1)
             {
-                error = "Essência Básica desconhecida.";
-                return false;
+                db.ChangeTracker.Clear();
             }
-            segunda = parsed;
         }
 
-        if (segunda is not null && elemento is null)
-        {
-            error = "Escolha a Essência Básica 1 antes da 2.";
-            return false;
-        }
-
-        if (elemento is { } e1 && segunda is { } e2 && MatrizElemental.Intersecao(e1, e2) is null)
-        {
-            error = "Essas duas Essências não se cruzam na Matriz Elemental.";
-            return false;
-        }
-
-        return true;
+        return await RespostaAsync(ficha, c);
     }
 
-    private static SubElemento? Derivar(Elemento? elemento, EssenciaBasica? segunda) =>
-        elemento is { } e1 && segunda is { } e2 ? MatrizElemental.Intersecao(e1, e2) : null;
+    /// <summary>
+    /// As regras de 2.c — inclusive não gravar num elemento que a lista esconde — só para quem o tipo diz. O GM de um
+    /// NPC grava mesmo num elemento escondido, e a linha passa a aparecer na lista, marcada: nenhuma linha fica oculta.
+    /// </summary>
+    private async Task<string?> MotivoParaRecusarAsync(CatalogoDeAfinidades c, TSheet ficha, bool aplicaRegras, Dictionary<int, int> pontos, int elementoId, int novoValor) =>
+        aplicaRegras
+            ? RegrasDeAfinidade.MotivoParaRecusarMudanca(c, ficha.Vocacao, ficha.SubVocacao, pontos, elementoId, novoValor, await afinidades.MaximoAsync(ficha))
+            : null;
 
-    private async Task<bool> HasDuplicateSubElementoAsync(Guid sheetId, SubElemento? subElemento, Guid? excludingId) =>
-        subElemento is not null && await Linhas.AnyAsync(a =>
-            a.SheetId == sheetId && a.SubElemento == subElemento && (excludingId == null || a.Id != excludingId));
+    /// <summary>Uma linha zerada e sem Experiência sai da tabela: só ficam os elementos em que a ficha tem algo.</summary>
+    private void Gravar(TPontos? linha, Guid sheetId, int elementoId, AtualizarAfinidadeRequest request)
+    {
+        var vazia = request.Pontos == 0 && request.Experiencia is null;
+        if (linha is null)
+        {
+            if (!vazia)
+                db.Set<TPontos>().Add(new TPontos { Id = Guid.NewGuid(), SheetId = sheetId, ElementoId = elementoId, Pontos = request.Pontos, Experiencia = request.Experiencia });
+            return;
+        }
+        if (vazia)
+        {
+            db.Set<TPontos>().Remove(linha);
+            return;
+        }
+        linha.Pontos = request.Pontos;
+        linha.Experiencia = request.Experiencia;
+    }
 
-    // O valor guardado segue intacto em ElementoValor (é o que a tela edita e o contador de Vocação Arcana soma);
-    // o que as Condições mudam vai à parte, só para exibir.
-    private AffinityResponse Resposta(TLinha a, EfeitosDeCondicao efeitos) => Resposta(a, efeitos.NaAfinidade(a.Elemento, a.ElementoValor));
+    private async Task<AfinidadesDaFichaResponse> RespostaAsync(TSheet ficha, CatalogoDeAfinidades c)
+    {
+        var linhas = await afinidades.LinhasAsync<TPontos>(ficha.Id);
+        var pontos = Pontos(linhas);
+        var efeitos = await Tipo.CondicoesAsync(ficha);
+
+        var elementos = RegrasDeAfinidade.Elementos(c, ficha.Vocacao, ficha.SubVocacao, pontos)
+            .Select(e => new ElementoDaFichaResponse(e.Elemento.Id, e.Elemento.Nome, e.Elemento.Tipo.ToString(), e.Elemento.Teto, e.Pontos,
+                linhas.GetValueOrDefault(e.Elemento.Id)?.Experiencia, e.Bloqueado, e.Motivo, efeitos.NaAfinidade(e.Elemento.Id, e.Pontos) ?? e.Pontos))
+            .ToList();
+
+        return new AfinidadesDaFichaResponse(RegrasDeAfinidade.Gasto(pontos), await afinidades.MaximoAsync(ficha),
+            RegrasDeAfinidade.SecaoVisivel(ficha.Vocacao, ficha.AfinidadeAdicional, ficha.PossuiCoracaoDeMana), elementos);
+    }
+
+    private static Dictionary<int, int> Pontos(Dictionary<int, TPontos> linhas) => linhas.ToDictionary(l => l.Key, l => l.Value.Pontos);
 }

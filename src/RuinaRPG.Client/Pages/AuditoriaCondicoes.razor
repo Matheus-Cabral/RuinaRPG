@@ -1,6 +1,7 @@
 @page "/auditoria/condicoes"
 @inject HttpClient Http
 @inject PericiaCatalogo Catalogo
+@inject CatalogoDeElementos Elementos
 @using RuinaRPG.Client.Shared.Fields
 @using RuinaRPG.Contracts.Auth
 @using RuinaRPG.Contracts.Condicoes
@@ -82,7 +83,7 @@ else
             </MudExpansionPanels>
             <MudNumericField T="int?" @bind-Value="_form.DuracaoPadraoTurnos" Label="Duração padrão (Turnos, opcional)" Min="1" HelperText="Vazio = dura até ser removida." />
             <MudText Typo="Typo.subtitle2" Class="mt-2">Modificadores</MudText>
-            <CondicaoModificadoresEditor Linhas="_form.Linhas" Pericias="Catalogo.Ativas" />
+            <CondicaoModificadoresEditor Linhas="_form.Linhas" Pericias="Catalogo.Ativas" Elementos="Elementos.Afinidades" />
             <MudSelect T="string" Label="Categorias desabilitadas" Class="mt-3" MultiSelection="true"
                        SelectedValues="@_form.Categorias" SelectedValuesChanged="@(v => _form.Categorias = v.ToList())"
                        MultiSelectionTextFunc="@RotulosDasCategorias">
@@ -164,7 +165,7 @@ else
         }
         _verificado = true;
 
-        await Catalogo.CarregarAsync();
+        await Task.WhenAll(Catalogo.CarregarAsync(), Elementos.CarregarAsync());
         await LoadAsync();
     }
 
@@ -279,6 +280,6 @@ else
         }
 
         var ativa = new CondicaoAtiva(Guid.Empty, c.Nome, modificadores, desabilitacoes);
-        return string.Join("; ", new EfeitosDeCondicao([ativa]).Explicar(Catalogo.Label)[0].Linhas);
+        return string.Join("; ", new EfeitosDeCondicao([ativa]).Explicar(Catalogo.Label, nomeDoElemento: Elementos.NomeDoAlvo)[0].Linhas);
     }
 }

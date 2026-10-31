@@ -12,11 +12,15 @@ namespace RuinaRPG.Api.Services;
 /// </summary>
 public sealed class CemiterioDaFicha(RuinaRpgDbContext db)
 {
-    public async Task<IReadOnlyList<MotivoDoCemiterio>> MotivosAsync(CharacterSheet sheet)
+    public Task<IReadOnlyList<MotivoDoCemiterio>> MotivosAsync(CharacterSheet sheet) =>
+        MotivosAsync(sheet.OwnerId, sheet.CampaignId, sheet.Morto);
+
+    /// <summary>Os motivos de uma ficha dada só por dono, campanha e <c>Morto</c> (para quem não precisa carregá-la).</summary>
+    public async Task<IReadOnlyList<MotivoDoCemiterio>> MotivosAsync(Guid ownerId, Guid campaignId, bool morto)
     {
-        var donoEhMembro = await db.CampaignMembers.AnyAsync(m => m.CampaignId == sheet.CampaignId && m.UserId == sheet.OwnerId);
-        var estadoDoDono = await db.Users.Where(u => u.Id == sheet.OwnerId).Select(u => u.Estado).SingleAsync();
-        return Cemiterio.Motivos(sheet.Morto, donoEhMembro, estadoDoDono);
+        var donoEhMembro = await db.CampaignMembers.AnyAsync(m => m.CampaignId == campaignId && m.UserId == ownerId);
+        var estadoDoDono = await db.Users.Where(u => u.Id == ownerId).Select(u => u.Estado).SingleAsync();
+        return Cemiterio.Motivos(morto, donoEhMembro, estadoDoDono);
     }
 
     /// <summary>A Ficha de Personagem existe e está no cemitério. Ficha apagada não está.</summary>

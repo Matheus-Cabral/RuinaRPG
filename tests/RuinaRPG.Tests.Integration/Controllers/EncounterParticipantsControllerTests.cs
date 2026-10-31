@@ -55,7 +55,7 @@ public class EncounterParticipantsControllerTests(ApiFixture fixture) : ApiTestB
     }
 
     private static RuinaRPG.Contracts.CreatureSheets.UpdateCreatureSheetRequest ValidCreatureUpdate(string nome, int vitalidadeAtual) => new(
-        null, nome, "Lobo", "Fisico", "Predador", "Terra", "F", 3, 200, 5, vitalidadeAtual, 8, 10, "Parcial");
+        null, nome, "Lobo", "Fisico", "Predador", 0, "F", 3, 200, 5, vitalidadeAtual, 8, 10, "Parcial");
 
     private async Task UpdateCreatureVitalidadeAsync(string gmToken, string creatureId, string nome, int vitalidadeAtual) =>
         await Client.SendAsync(AuthedRequest(HttpMethod.Put, $"/api/creature-sheets/{creatureId}", gmToken, ValidCreatureUpdate(nome, vitalidadeAtual)));
