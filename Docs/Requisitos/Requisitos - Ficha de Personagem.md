@@ -145,7 +145,7 @@ As Afinidades são **pontos distribuídos por elemento**. A seção é uma **lis
 
 Os pontos consomem o orçamento de afinidade da ficha, e o total é limitado — ver R0007.
 
-*Conversão (2.2.0)*: as fichas feitas com a lista antiga de linhas foram convertidas em pontos por elemento: cada Elemento/Caminho recebeu o maior valor com que aparecia em qualquer linha (o gasto total de cada ficha não mudou), cada Sub-Elemento o valor da sua linha, e a Experiência da linha foi para o Sub-Elemento dela (ou para a Essência Básica 1 se a linha não tinha Sub-Elemento; duas linhas para o mesmo elemento ficam com a maior). Linhas totalmente vazias sumiram.
+*Conversão (2.2.0)*: as fichas feitas com a lista antiga de linhas foram convertidas em pontos por elemento: cada Elemento/Caminho recebeu o maior valor com que aparecia em qualquer linha (o gasto total de cada ficha não mudou), cada Sub-Elemento a soma dos valores das suas linhas (Alma e Vida, que existiam como Essência e como Sub-Elemento, ficaram com os dois valores somados), e a Experiência da linha foi para o Sub-Elemento dela (ou para a Essência Básica 1 se a linha não tinha Sub-Elemento; duas linhas para o mesmo elemento ficam com a maior). Linhas totalmente vazias sumiram.
 
   
 

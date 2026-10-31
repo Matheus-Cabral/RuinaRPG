@@ -83,8 +83,13 @@ public sealed class BancoComAfinidadesAntigas : IAsyncLifetime
             new(null, null, null, null, EssenciaBasica.Mundano, 2, 9),
             new(Elemento.Agua, 0, null, null, null, null, 0),
         ],
-        // Caminho como Essência e o Sub-Elemento legado de mesmo id: o valor do Sub-Elemento prevalece.
+        // Caminho como Essência e o Sub-Elemento legado de mesmo id: os dois valores somam.
         [new(Elemento.Ar, 1, null, null, EssenciaBasica.Alma, 5, null), new(null, null, SubElemento.Alma, 2, null, null, 1)],
+        // O mesmo com a Vida, e a Essência em duas linhas (vale o maior) somada ao Sub-Elemento.
+        [
+            new(Elemento.Ar, 1, null, null, EssenciaBasica.Vida, 2, null), new(Elemento.Ar, 1, SubElemento.Vida, 3, EssenciaBasica.Vida, 4, null),
+            new(null, null, SubElemento.Vida, 1, null, null, null),
+        ],
         // Valores negativos (a API antiga não os recusava).
         [new(Elemento.Fogo, -2, SubElemento.Raio, 3, EssenciaBasica.Ar, -1, -4), new(Elemento.Terra, -3, null, null, null, null, 2)],
         // Sub-Elemento cujas linhas somam abaixo de 0, com Experiência: fica com 0 pontos e a Experiência.

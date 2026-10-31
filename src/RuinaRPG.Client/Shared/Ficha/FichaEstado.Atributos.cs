@@ -28,7 +28,6 @@ public sealed partial class FichaEstado
     /// <summary>As Afinidades por elemento (2.c): gasto, máximo, se a seção aparece e os elementos; <c>null</c> até a carga.</summary>
     public AfinidadesDaFichaResponse? Afinidades { get; set; }
 
-
     /// <summary>
     /// Os pontos de Acerto Crítico digitados e ainda não aplicados. Moram aqui, e não na seção, para sobreviver à troca de
     /// aba (a aba inativa sai da árvore), como quando eram um campo da página.

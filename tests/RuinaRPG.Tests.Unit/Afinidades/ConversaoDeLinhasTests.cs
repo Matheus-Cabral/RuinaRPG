@@ -105,4 +105,26 @@ public class ConversaoDeLinhasTests
         ]);
         Assert.Equal((0, (int?)4), r[4]);
     }
+
+    [Fact]
+    public void Alma_como_Essencia_e_como_Sub_Elemento_soma_os_dois_valores()
+    {
+        var r = ConversaoDeLinhas.Converter(
+        [
+            new LinhaDeAfinidade(null, null, null, null, EssenciaBasica.Alma, 3, null),
+            new LinhaDeAfinidade(null, null, SubElemento.Alma, 2, null, null, null),
+        ]);
+        Assert.Equal((5, (int?)null), r[9]);
+    }
+
+    [Fact]
+    public void Vida_como_Essencia_e_como_Sub_Elemento_soma_os_dois_valores()
+    {
+        var r = ConversaoDeLinhas.Converter(
+        [
+            new LinhaDeAfinidade(null, null, null, null, EssenciaBasica.Vida, 2, null),
+            new LinhaDeAfinidade(null, null, SubElemento.Vida, 3, null, null, null),
+        ]);
+        Assert.Equal((5, (int?)null), r[14]);
+    }
 }

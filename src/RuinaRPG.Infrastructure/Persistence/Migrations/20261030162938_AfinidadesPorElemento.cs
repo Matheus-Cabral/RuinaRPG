@@ -283,7 +283,7 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
         /// <summary>
         /// Linhas antigas → pontos por elemento, exatamente como <c>ConversaoDeLinhas.Converter</c> (Domain): cada
         /// Elemento/Caminho fica com o maior valor (nunca abaixo de 0) entre Essência 1 e 2 de todas as linhas; cada
-        /// Sub-Elemento com a soma dos valores das suas linhas (nunca abaixo de 0), prevalecendo sobre uma Essência de mesmo id; a
+        /// Sub-Elemento com a soma dos valores das suas linhas, somada ao valor da Essência de mesmo id (Alma, Vida), nunca abaixo de 0; a
         /// Experiência vai ao Sub-Elemento da linha ou, sem ele, à Essência 1, ficando a maior (nunca abaixo de 0);
         /// fica a linha com pontos &gt; 0 ou com Experiência. Os enums antigos mapeiam pelo nome:
         /// Elemento Ar=0 Agua=1 Fogo=2 Terra=3; EssenciaBasica Ar=0 Agua=1 Fogo=2 Terra=3 Alma=4 Vida=5 Mundano=6;
@@ -326,13 +326,12 @@ namespace RuinaRPG.Infrastructure.Persistence.Migrations
                     GROUP BY ficha, id
                 ),
                 subs AS (
-                    SELECT ficha, sub AS id, GREATEST(SUM(vs), 0) AS v FROM linhas WHERE sub IS NOT NULL GROUP BY ficha, sub
+                    SELECT ficha, sub AS id, SUM(vs) AS v FROM linhas WHERE sub IS NOT NULL GROUP BY ficha, sub
                 ),
                 pontos AS (
-                    SELECT ficha, id, v FROM subs
-                    UNION ALL
-                    SELECT e.ficha, e.id, e.v FROM essencias e
-                    WHERE NOT EXISTS (SELECT 1 FROM subs s WHERE s.ficha = e.ficha AND s.id = e.id)
+                    SELECT COALESCE(s.ficha, e.ficha) AS ficha, COALESCE(s.id, e.id) AS id,
+                           GREATEST(COALESCE(s.v, 0) + COALESCE(e.v, 0), 0) AS v
+                    FROM subs s FULL JOIN essencias e ON e.ficha = s.ficha AND e.id = s.id
                 ),
                 experiencias AS (
                     SELECT ficha, COALESCE(sub, e1) AS id, GREATEST(MAX(exp), 0) AS exp

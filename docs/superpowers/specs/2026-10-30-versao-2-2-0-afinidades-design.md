@@ -46,7 +46,7 @@ cada Vocação/Classe vê) sem mexer em código.
 7. **Conversão das fichas existentes** (linhas → pontos por elemento):
    - cada Elemento/Caminho recebe o **maior valor** com que aparecia em qualquer linha (a mesma conta do gasto de
      hoje — o total gasto de cada ficha **não muda**);
-   - cada Sub-Elemento recebe o valor da sua linha;
+   - cada Sub-Elemento recebe a soma dos valores das suas linhas; Alma e Vida, que existiam como Essência e como Sub-Elemento, ficam com os dois valores somados (o gasto antigo contava os dois);
    - a Experiência da linha vai para o Sub-Elemento dela, ou para a Essência Básica 1 se a linha não tem
      Sub-Elemento; duas linhas mandando para o mesmo elemento → fica a maior;
    - linhas totalmente vazias somem.

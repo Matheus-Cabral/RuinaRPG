@@ -5,7 +5,9 @@ namespace RuinaRPG.Domain.Afinidades;
 /// <summary>
 /// Converte as linhas de Afinidade do formato antigo (2.1.0) em pontos por elemento do catálogo.
 /// Cada Elemento/Caminho fica com o maior valor em que aparecia; cada Sub-Elemento soma os valores das suas
-/// linhas, nunca abaixo de 0 (o gasto da ficha não muda); a Experiência vai ao Sub-Elemento da linha ou, sem ele, à Essência 1,
+/// linhas, nunca abaixo de 0 (o gasto da ficha não muda). Um id que aparecia como Essência e como Sub-Elemento
+/// (Alma, Vida) soma os dois: o maior valor como Essência mais a soma como Sub-Elemento, nunca abaixo de 0 (o gasto
+/// antigo contava os dois); a Experiência vai ao Sub-Elemento da linha ou, sem ele, à Essência 1,
 /// e duas linhas para o mesmo elemento ficam com a maior.
 /// </summary>
 public static class ConversaoDeLinhas
@@ -29,7 +31,7 @@ public static class ConversaoDeLinhas
                 Maior(experiencia, destino, exp);
         }
 
-        foreach (var (id, valor) in somaDeSub) pontos[id] = Math.Max(0, valor);
+        foreach (var (id, valor) in somaDeSub) pontos[id] = Math.Max(0, pontos.GetValueOrDefault(id) + valor);
         foreach (var id in experiencia.Keys) pontos.TryAdd(id, 0);
 
         return pontos
@@ -39,12 +41,6 @@ public static class ConversaoDeLinhas
 
     private static void Maior(Dictionary<int, int> d, int id, int valor) =>
         d[id] = Math.Max(d.GetValueOrDefault(id), valor);
-
-    /// <summary>
-    /// O id no catálogo da Essência 1 de uma linha antiga — usado só pelas linhas de Afinidade que ainda existem até
-    /// a ficha passar a pontos por elemento.
-    /// </summary>
-    public static int IdDoElemento(Elemento e) => IdDe(e);
 
     // Ids do catálogo (os inteiros do antigo enum AfinidadeElemental; Mundano = 18).
     private static int IdDe(Elemento e) => e switch
