@@ -30,6 +30,16 @@ public abstract class FichaTestes<TTipo>(ApiFixture fixture) : TestesDeFicha<TTi
     /// </summary>
     protected abstract Task DefinirXpAsync(FichaDeTeste f, int xp);
 
+    protected async Task<string> CreateEscudoItemAsync(string gmToken, string nome, decimal peso)
+    {
+        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
+            new CreateItemRequest("Escudo", nome, peso, 25, null, null, null,
+                null, null, null, null, null, null, null,
+                "Leve", null, null, null,
+                2, null, null, null, null)));
+        return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
+    }
+
     protected async Task<string> CreateArmaItemAsync(string gmToken, string nome, decimal peso)
     {
         var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
@@ -81,6 +91,27 @@ public abstract class FichaTestes<TTipo>(ApiFixture fixture) : TestesDeFicha<TTi
 
         equipada!.Movimentacao.Should().Be(8);
         desequipada!.Movimentacao.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Escudo_equipado_nao_pesa_e_desequipado_pesa()
+    {
+        // Mesma conta da Arma, para o Escudo (a Criatura não mostra o Peso, mas a Movimentação o usa): Peso Máximo = 4;
+        // um Escudo de 50 desequipado leva ao piso 1.
+        var f = await NovaFichaAsync();
+        foreach (var atributo in new[] { "Agilidade", "Forca", "Vigor" })
+            await Client.SendAsync(AuthedRequest(HttpMethod.Put, Url(f, $"attributes/{atributo}"), f.Token, new AtualizarAtributo(4, 0, false)));
+        var itemId = await CreateEscudoItemAsync(f.GmToken, "Escudo Pesado", peso: 50m);
+        var adicionado = await Client.SendAsync(AuthedRequest(HttpMethod.Post, Url(f, "shields"), f.Token, new AdicionarEscudo(itemId)));
+        var escudoId = (await adicionado.Content.ReadFromJsonAsync<EscudoLido>())!.Id;
+
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, Url(f, $"shields/{escudoId}"), f.Token, true));
+        var equipado = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, Url(f, "sub-attributes"), f.Token))).Content.ReadFromJsonAsync<SubAttributesResponse>();
+        await Client.SendAsync(AuthedRequest(HttpMethod.Put, Url(f, $"shields/{escudoId}"), f.Token, false));
+        var desequipado = await (await Client.SendAsync(AuthedRequest(HttpMethod.Get, Url(f, "sub-attributes"), f.Token))).Content.ReadFromJsonAsync<SubAttributesResponse>();
+
+        equipado!.Movimentacao.Should().Be(8);
+        desequipado!.Movimentacao.Should().Be(1);
     }
 
     [Fact]
@@ -291,16 +322,6 @@ public abstract class FichaDePersonagemOuNpcTestes<TTipo>(ApiFixture fixture) : 
                 null, null, null, null, null, null, null,
                 null, null, null, null,
                 null, null, null, null, capacidadeExtra)));
-        return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
-    }
-
-    protected async Task<string> CreateEscudoItemAsync(string gmToken, string nome, decimal peso)
-    {
-        var response = await Client.SendAsync(AuthedRequest(HttpMethod.Post, "/api/items", gmToken,
-            new CreateItemRequest("Escudo", nome, peso, 25, null, null, null,
-                null, null, null, null, null, null, null,
-                "Leve", null, null, null,
-                2, null, null, null, null)));
         return (await response.Content.ReadFromJsonAsync<ItemResponse>())!.Id;
     }
 

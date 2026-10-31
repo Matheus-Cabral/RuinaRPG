@@ -83,7 +83,11 @@ public class SaidaDoJogador(RuinaRpgDbContext db, RemocaoDeParticipante remocao,
             foreach (var participante in dele)
                 await remocao.RemoverAsync(encontro, participante.Id);
             if (dele.Count > 0)
+            {
+                // A saída pode não mudar coluna nenhuma da linha do encontro: toca o token para uma ação simultânea receber 409.
+                condicoesDoEncontro.ConferirVersaoDoEncontro(encontro);
                 _encontrosAAvisar.Add(encontro.Id);
+            }
         }
     }
 
@@ -96,14 +100,7 @@ public class SaidaDoJogador(RuinaRpgDbContext db, RemocaoDeParticipante remocao,
         await condicoesDoEncontro.NotificarAsync();
         foreach (var encounterId in _encontrosAAvisar)
         {
-            try
-            {
-                await encontros.Clients.Group($"encounter-{encounterId}").SendAsync("ParticipantsChanged");
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Failed to notify encounter {EncounterId} of a ParticipantsChanged update.", encounterId);
-            }
+            await encontros.AvisarParticipantesAlteradosAsync(logger, encounterId);
         }
         foreach (var (jogadorId, fichaId) in _fichasAAvisar)
             await notificacoes.AvisarUsuarioAsync(logger, jogadorId, NotificationEvents.FichaNoCemiterioAlterada, fichaId.ToString());

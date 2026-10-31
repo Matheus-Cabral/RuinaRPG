@@ -46,12 +46,7 @@ public class CemiterioEscritaTests(ApiFixture fixture) : TestesDeFicha(fixture)
                 .Select(p => $"{p.Name}={(p.ParameterType.IsEnum ? Enum.GetNames(p.ParameterType)[0] : p.ParameterType.Name)}"))))
             .OrderBy(e => e.Template, StringComparer.Ordinal).ThenBy(e => e.Verbo, StringComparer.Ordinal);
 
-    private static bool DaFichaDePersonagem(string template)
-    {
-        var segmentos = template.Split('/');
-        return segmentos.Length >= 3 && segmentos[0] == "api" && segmentos[1] == "character-sheets"
-            && segmentos[2].StartsWith('{') && segmentos[2].Trim('{', '}').Split(':')[0] is "id" or "sheetId";
-    }
+    private static bool DaFichaDePersonagem(string template) => FichaNoCemiterioFilter.ParametroDaFicha(template) is not null;
 
     [Theory]
     [MemberData(nameof(EscritasDaFicha), DisableDiscoveryEnumeration = true)]

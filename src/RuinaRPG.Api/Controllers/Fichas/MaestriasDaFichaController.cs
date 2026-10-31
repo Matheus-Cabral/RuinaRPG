@@ -44,16 +44,9 @@ public abstract class MaestriasDaFichaController<TSheet, TMaestria, TSkill, TLin
             return erro;
 
         var (nome, chave, atributoPedido, gastoMaestria) = Ler(request);
-        var pericia = await Pericias.AtivaPorChaveAsync(chave);
-        if (pericia is null)
-            return BadRequest(PericiaOuAtributoDesconhecido);
-        if (!Enum.TryParse<TAtributo>(atributoPedido, out var atributo) || !Enum.IsDefined(atributo))
-            return BadRequest(PericiaOuAtributoDesconhecido);
-        // A "lista fixa mais curta" da R0005: só Perícias marcadas DisponivelParaCriaturas têm linha de
-        // CreatureSkill semeada; sem esta checagem, uma Perícia válida mas não permitida (ex.: Alquimia)
-        // passaria pela busca acima e daria 500 no SingleAsync de ComputeTotalAsync.
-        if (Tipo.SoPericiasDeCriatura && !pericia.DisponivelParaCriaturas)
-            return BadRequest("Perícia fora da lista permitida para Criaturas.");
+        var (recusa, pericia, atributo) = await ValidarPericiaEAtributoAsync(chave, atributoPedido);
+        if (recusa is not null)
+            return recusa;
 
         var mastery = Nova(sheetId, nome, pericia.Id, atributo, gastoMaestria);
         Linhas.Add(mastery);
@@ -62,6 +55,22 @@ public abstract class MaestriasDaFichaController<TSheet, TMaestria, TSkill, TLin
         var porId = await Pericias.PorIdAsync();
         var total = await ComputeTotalAsync(sheet, mastery.Id, pericia, atributo, mastery.GastoMaestria, await Tipo.CondicoesAsync(sheet));
         return Created(string.Empty, ParaResposta(mastery, total, porId));
+    }
+
+    /// <summary>
+    /// A Perícia e o Atributo pedidos para criar ou editar uma Maestria, ou a recusa (400): Perícia ativa, Atributo
+    /// conhecido e, na Criatura, a "lista fixa mais curta" da R0005 — só Perícias marcadas DisponivelParaCriaturas têm
+    /// linha de CreatureSkill semeada; sem esta checagem, uma Perícia válida mas não permitida (ex.: Alquimia) daria 500
+    /// no SingleAsync de ComputeTotalAsync.
+    /// </summary>
+    private async Task<(ActionResult? Recusa, PericiaDefinicao Pericia, TAtributo Atributo)> ValidarPericiaEAtributoAsync(string chave, string? atributoPedido)
+    {
+        var pericia = await Pericias.AtivaPorChaveAsync(chave);
+        if (pericia is null || !Enum.TryParse<TAtributo>(atributoPedido, out var atributo) || !Enum.IsDefined(atributo))
+            return (BadRequest(PericiaOuAtributoDesconhecido), default!, default);
+        if (Tipo.SoPericiasDeCriatura && !pericia.DisponivelParaCriaturas)
+            return (BadRequest("Perícia fora da lista permitida para Criaturas."), default!, default);
+        return (null, pericia, atributo);
     }
 
     [HttpGet]
@@ -91,13 +100,9 @@ public abstract class MaestriasDaFichaController<TSheet, TMaestria, TSkill, TLin
         if ((await FichaEditavelAsync(sheetId)).Negado(out var erro, out var sheet))
             return erro;
 
-        var pericia = await Pericias.AtivaPorChaveAsync(request.Pericia);
-        if (pericia is null)
-            return BadRequest(PericiaOuAtributoDesconhecido);
-        if (!Enum.TryParse<TAtributo>(request.Atributo, out var atributo) || !Enum.IsDefined(atributo))
-            return BadRequest(PericiaOuAtributoDesconhecido);
-        if (Tipo.SoPericiasDeCriatura && !pericia.DisponivelParaCriaturas)
-            return BadRequest("Perícia fora da lista permitida para Criaturas.");
+        var (recusa, pericia, atributo) = await ValidarPericiaEAtributoAsync(request.Pericia, request.Atributo);
+        if (recusa is not null)
+            return recusa;
 
         var mastery = await Linhas.FirstOrDefaultAsync(m => m.Id == id && m.SheetId == sheetId);
         if (mastery is null)

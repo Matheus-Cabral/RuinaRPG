@@ -282,14 +282,7 @@ public class EncounterParticipantsController(RuinaRpgDbContext db, EncounterLog 
             .Select(p => p.EncounterId).Distinct().ToListAsync();
         foreach (var encounterId in encounterIds)
         {
-            try
-            {
-                await encontros.Clients.Group($"encounter-{encounterId}").SendAsync("ParticipantsChanged");
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Failed to notify encounter {EncounterId} of a ParticipantsChanged update.", encounterId);
-            }
+            await encontros.AvisarParticipantesAlteradosAsync(logger, encounterId);
         }
     }
 

@@ -155,7 +155,7 @@ public class CondicoesDoEncontro(
     /// Condição): o salvamento então confere a versão (xmin) e uma ação simultânea que rodaria os mesmos ajustes
     /// recebe 409 (ConflitoDeConcorrenciaDoEncontro) em vez de aplicá-los de novo.
     /// </summary>
-    private void ConferirVersaoDoEncontro(Encounter encounter) =>
+    public void ConferirVersaoDoEncontro(Encounter encounter) =>
         db.Entry(encounter).Property(e => e.Nome).IsModified = true;
 
     /// <summary>
@@ -296,14 +296,7 @@ public class CondicoesDoEncontro(
         }
         foreach (var encounterId in _encontrosAAvisar)
         {
-            try
-            {
-                await encontros.Clients.Group($"encounter-{encounterId}").SendAsync("ParticipantsChanged");
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Failed to notify encounter {EncounterId} of a ParticipantsChanged update.", encounterId);
-            }
+            await encontros.AvisarParticipantesAlteradosAsync(logger, encounterId);
         }
         _donosAAvisar.Clear();
         _encontrosAAvisar.Clear();

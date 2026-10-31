@@ -156,6 +156,30 @@ public class ContasDeJogadorTests(ApiFixture fixture) : ApiTestBase(fixture)
     }
 
     [Fact]
+    public async Task Excluir_troca_o_SecurityStamp_e_desativar_nao()
+    {
+        var gm = await GmAsync();
+        var excluido = await JogadorAsync(gm);
+        var desativado = await JogadorAsync(gm);
+        var antesDoExcluido = await SecurityStampAsync(excluido.Id);
+        var antesDoDesativado = await SecurityStampAsync(desativado.Id);
+        antesDoExcluido.Should().NotBeNullOrEmpty();
+
+        (await AcaoAsync(gm, desativado.Id, "desativar")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await AcaoAsync(gm, excluido.Id, "excluir", new ExcluirContaRequest(excluido.Nickname))).StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        (await SecurityStampAsync(excluido.Id)).Should().NotBe(antesDoExcluido).And.NotBeNullOrEmpty();
+        (await SecurityStampAsync(desativado.Id)).Should().Be(antesDoDesativado);
+    }
+
+    private async Task<string?> SecurityStampAsync(string jogadorId)
+    {
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<RuinaRpgDbContext>();
+        return await db.Users.AsNoTracking().Where(u => u.Id == Guid.Parse(jogadorId)).Select(u => u.SecurityStamp).SingleAsync();
+    }
+
+    [Fact]
     public async Task Excluir_libera_o_email_e_reserva_o_apelido()
     {
         var gm = await GmAsync();

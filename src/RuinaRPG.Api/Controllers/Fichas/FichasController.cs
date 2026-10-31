@@ -126,9 +126,7 @@ public abstract class FichasController<TSheet, TStats>(RuinaRpgDbContext db, ITa
     protected async Task<IActionResult> ApagarAsync(Guid id)
     {
         var sheet = await Tipo.CarregarAsync(id);
-        if (sheet is null)
-            return NotFound();
-        if (await Tipo.MestreAsync(sheet) != CurrentUserId())
+        if (sheet is null || await Tipo.MestreAsync(sheet) != CurrentUserId())
             return Tipo.Negado(this);
 
         Db.Set<TSheet>().Remove(sheet);
@@ -183,17 +181,7 @@ public abstract class FichasController<TSheet, TStats>(RuinaRpgDbContext db, ITa
     {
         foreach (var encounterId in await Tipo.EncontrosAsync(sheetId))
         {
-            // Item 3 da auditoria de lacunas: a ficha já está salva aqui — uma falha do hub (ex.: o backplane do
-            // SignalR fora do ar por um instante) não pode virar 500 para quem salvou de fato. A sincronização ao
-            // vivo só fica para trás até a próxima mudança; nada se perde.
-            try
-            {
-                await hub.Clients.Group($"encounter-{encounterId}").SendAsync("ParticipantsChanged");
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Failed to notify encounter {EncounterId} of a ParticipantsChanged update.", encounterId);
-            }
+            await hub.AvisarParticipantesAlteradosAsync(logger, encounterId);
         }
     }
 

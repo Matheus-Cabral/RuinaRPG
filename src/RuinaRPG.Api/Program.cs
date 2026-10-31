@@ -184,7 +184,7 @@ builder.Services
                 var db = context.HttpContext.RequestServices.GetRequiredService<RuinaRpgDbContext>();
                 var estado = await db.Users.AsNoTracking().Where(u => u.Id == userId)
                     .Select(u => (EstadoDaConta?)u.Estado).SingleOrDefaultAsync(context.HttpContext.RequestAborted);
-                if (estado != EstadoDaConta.Ativa)
+                if (estado is not { } atual || !ContaDeJogador.PodeEntrar(atual))
                     context.Fail("Conta inativa.");
             }
         };

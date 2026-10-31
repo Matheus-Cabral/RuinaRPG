@@ -40,7 +40,7 @@ public class ConcorrenciaDoEncontroTests : IClassFixture<ApiFixture>, IAsyncLife
         return _factory.DisposeAsync().AsTask();
     }
 
-    private sealed record Cena(string Gm, string EncounterId, string A, string B, string AplicadaId);
+    private sealed record Cena(string Gm, string CampaignId, string EncounterId, string A, string B, string AplicadaId);
 
     private async Task<HttpResponseMessage> EnviarAsync(HttpMethod method, string url, string token, object? body = null)
     {
@@ -88,7 +88,7 @@ public class ConcorrenciaDoEncontroTests : IClassFixture<ApiFixture>, IAsyncLife
             (await db.EncounterParticipants.FindAsync(Guid.Parse(a)))!.PVAtual = 10;
             await db.SaveChangesAsync();
         }
-        return new Cena(gm, encounterId, a, b, aplicadaId);
+        return new Cena(gm, campaignId, encounterId, a, b, aplicadaId);
     }
 
     private async Task<int?> PvDeAAsync(Cena c)
@@ -178,5 +178,31 @@ public class ConcorrenciaDoEncontroTests : IClassFixture<ApiFixture>, IAsyncLife
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await EnviarAsync(HttpMethod.Delete, $"/api/encounters/{c.EncounterId}/participants/{c.A}/condicoes/{c.AplicadaId}", c.Gm)).StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    // Sair da campanha tira o jogador de encontros sem mudar coluna nenhuma da linha do encontro (a preparação não passa
+    // a vez): sem tocar o token, uma ação simultânea no mesmo encontro passaria despercebida.
+    [Fact]
+    public async Task Remover_jogador_com_o_encontro_alterado_no_meio_responde_409_e_nao_remove_o_participante()
+    {
+        var c = await CenaAsync("Said");
+        var codigo = (await LerAsync<RuinaRPG.Contracts.Invites.InviteCodeResponse>(await EnviarAsync(HttpMethod.Post, "/api/invite-codes", c.Gm))).Code;
+        var registro = await _client.PostAsJsonAsync("/api/auth/register/jogador", new RegisterJogadorRequest("CcJg", "ccjg@teste.com", "Senha!123", "Senha!123", codigo));
+        var jogador = (await registro.Content.ReadFromJsonAsync<AuthResponse>())!.AccessToken;
+        var jogadorId = (await LerAsync<MeResponse>(await EnviarAsync(HttpMethod.Get, "/api/auth/me", jogador))).Id;
+        var campaignId = c.CampaignId;
+        (await EnviarAsync(HttpMethod.Post, $"/api/campaigns/{campaignId}/members", c.Gm, new AddCampaignMemberRequest(jogadorId))).IsSuccessStatusCode.Should().BeTrue();
+        var ficha = await LerAsync<RuinaRPG.Contracts.CharacterSheets.CharacterSheetResponse>(
+            await EnviarAsync(HttpMethod.Post, $"/api/campaigns/{campaignId}/character-sheets", c.Gm, new RuinaRPG.Contracts.CharacterSheets.CreateCharacterSheetRequest(jogadorId)));
+        var participanteId = (await LerAsync<EncounterParticipantResponse>(await EnviarAsync(HttpMethod.Post, $"/api/encounters/{c.EncounterId}/participants", c.Gm,
+            new AddParticipantRequest(ficha.Id, null, null, 5)))).Id;
+
+        _gancho.Armar(OutraAcaoNoEncontro(c));
+        var response = await EnviarAsync(HttpMethod.Delete, $"/api/campaigns/{campaignId}/members/{jogadorId}", c.Gm);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        await using var db = _gancho.NovoContexto();
+        (await db.EncounterParticipants.AnyAsync(p => p.Id == Guid.Parse(participanteId))).Should().BeTrue("a saída foi desfeita");
+        (await db.CampaignMembers.AnyAsync(m => m.UserId == Guid.Parse(jogadorId))).Should().BeTrue();
     }
 }

@@ -17,6 +17,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="RuinaRPG.Tests.Integration" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\RuinaRPG.Domain\RuinaRPG.Domain.csproj" />
     <ProjectReference Include="..\RuinaRPG.Infrastructure\RuinaRPG.Infrastructure.csproj" />
     <ProjectReference Include="..\RuinaRPG.Contracts\RuinaRPG.Contracts.csproj" />

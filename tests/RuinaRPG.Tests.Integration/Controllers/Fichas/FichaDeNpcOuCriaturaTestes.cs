@@ -188,6 +188,21 @@ public abstract class FichaDeNpcOuCriaturaTestes<TTipo>(ApiFixture fixture) : Te
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
+    /// <summary>Um só caminho de 404 ao apagar: Jogador sem relação com a ficha e ficha inexistente respondem como outro Mestre.</summary>
+    [Fact]
+    public async Task Delete_by_an_unrelated_player_or_of_a_missing_sheet_returns_the_same_404()
+    {
+        var f = await NovaFichaAsync();
+        var jogador = (await JogadorAsync(f.GmToken)).Token;
+
+        var doJogador = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, UrlDaFicha(f.SheetId), jogador));
+        var inexistente = await Client.SendAsync(AuthedRequest(HttpMethod.Delete, UrlDaFicha(Guid.NewGuid().ToString()), f.GmToken));
+
+        doJogador.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        inexistente.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await GetAsync(UrlDaFicha(f.SheetId), f.GmToken)).StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
     [Fact]
     public async Task Dismiss_by_a_different_gm_returns_404()
     {

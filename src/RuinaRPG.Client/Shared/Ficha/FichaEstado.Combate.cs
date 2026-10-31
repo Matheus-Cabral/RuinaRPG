@@ -195,8 +195,7 @@ public sealed partial class FichaEstado
     }
 
     /// <summary>
-    /// A edição na linha: grava a linha com o campo
-    /// mudado. A mensagem de uma recusa vai para o alerta, um salvamento certo o apaga.
+    /// A edição na linha, nos três tipos (PUT masteries/{id}): grava a linha com o campo mudado. A mensagem de uma recusa vai para o alerta, um salvamento certo o apaga.
     /// </summary>
     public async Task AtualizarMaestriaAsync(string id, string campo, object? valor)
     {

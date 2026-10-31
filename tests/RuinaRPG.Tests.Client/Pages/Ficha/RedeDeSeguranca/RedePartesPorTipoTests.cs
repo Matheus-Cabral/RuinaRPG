@@ -262,7 +262,7 @@ public abstract class RedePartesPorTipoTests : RedeDeSegurancaBase
         }
     }
 
-    /// <summary>Maestrias (aba Combate): adicionar e remover nos três tipos; editar na linha só no Personagem.</summary>
+    /// <summary>Maestrias (aba Combate): adicionar e remover nos três tipos; editar na linha nos três.</summary>
     public sealed class Maestrias : RedePartesPorTipoTests
     {
         private Task<IRenderedComponent<IComponent>> AbrirCombateAsync(string tipo, string papel) =>
